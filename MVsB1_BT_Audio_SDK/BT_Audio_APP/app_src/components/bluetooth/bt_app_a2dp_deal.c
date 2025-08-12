@@ -162,6 +162,8 @@ void BtA2dpDisconnectedDev(BT_A2DP_CALLBACK_PARAMS * param)
 {
 	APP_DBG("A2dp disconnect,index:%d\n",param->index);
 	uint8_t index = GetBtManagerA2dpIndex(param->index);
+
+	
 	//SetA2dpState(param->index, BT_A2DP_STATE_NONE);
 	//SetBtDisconnectProfile(BT_CONNECTED_A2DP_FLAG);
 	//重新更新蓝牙decoder相关参数

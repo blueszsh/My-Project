@@ -273,9 +273,9 @@ uint16_t  AdcLevelKeyProcess(void)
 			if(repeat_count[ADCLevelsScanCount] > how_many_times_have_effect)
 			{
 				ADCLevels_STEP_Store[ADCLevelsScanCount] =  i_count;
-				APP_DBG("Val = %d\n", Val);
-				APP_DBG("i_count = %d\n", i_count);
-				APP_DBG("ADCLevelsScanCount = %d\n", ADCLevelsScanCount);
+				//DBG("Val = %d\n", Val);  // zsh A2
+				//DBG("i_count = %d\n", i_count); // zsh A2
+				//DBG("ADCLevelsScanCount = %d\n", ADCLevelsScanCount); // zsh A2
 				return (ADCLevels_Msg_Ch[ADCLevelsScanCount]+i_count);
 			}
 		}

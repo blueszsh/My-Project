@@ -664,6 +664,7 @@ static void BtStackMsgProcess(uint16_t msgId)
 			}
 #endif
 			APP_DBG("[BT_STACK_APP]:tws pairing start\n");
+
 			BtTwsPairingStart();
 			break;
 
@@ -1006,6 +1007,9 @@ static void BtStackServiceEntrance(void * param)
 	BTStackMemAlloc(BT_STACK_MEM_SIZE, gBtHostStackMemHeap, 0);
 
 	APP_DBG("BtStackServiceEntrance.\n");
+
+
+
 	
 #if ( BT_SUPPORT == ENABLE )
 	//BR/EDR init

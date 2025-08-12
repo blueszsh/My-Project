@@ -24,7 +24,7 @@
 #define LDOIN_LOW_WARNING_CYCLE     120     //低电1分钟播报一次
 #define BAT_DET_VALUES_MAX          20      //10秒钟去抖窗口
 #define BAT_DET_WIN_TIME            30      //电池电量检测窗口 15S
-#define BAT_DET_WIN_COUNT           10      //10个窗口观察，150s稳定后升高电量
+#define BAT_DET_WIN_COUNT           5//10      //10个窗口观察，150s稳定后升高电量
 
 
 #define LDOIN_SAMPLE_COUNT			30      //获取LDOIN幅度时用来平均的采样次数
@@ -42,7 +42,7 @@
 #define LDOIN_VOLTAGE_4			    3680
 #define LDOIN_VOLTAGE_3			    3600
 #define LDOIN_VOLTAGE_LOW			3500    //低于此电压值提示低电电压
-#define LDOIN_VOLTAGE_OFF			3350	//低于此电压值关机
+#define LDOIN_VOLTAGE_OFF			3300	//低于此电压值关机
 
 #ifdef BAT_VOL_DET_LRADC
 const uint16_t LRADC_GradeVol[PWR_FULL + 1] =
@@ -104,8 +104,8 @@ bool IsInCharge(void)
 {
 	//设为输入，无上下拉
 	GPIO_PortAModeSet(CHARGE_DETECT_GPIO, 0x0);
-	GPIO_RegOneBitSet(CHARGE_DETECT_PORT_PU, CHARGE_DETECT_GPIO);
 	GPIO_RegOneBitClear(CHARGE_DETECT_PORT_PD, CHARGE_DETECT_GPIO);
+	GPIO_RegOneBitClear(CHARGE_DETECT_PORT_PU, CHARGE_DETECT_GPIO);
 	GPIO_RegOneBitClear(CHARGE_DETECT_PORT_OE, CHARGE_DETECT_GPIO);
 	GPIO_RegOneBitSet(CHARGE_DETECT_PORT_IE, CHARGE_DETECT_GPIO);
 	WaitUs(2);
@@ -154,16 +154,24 @@ void PowerVoltageSampling(void)
 		TimeOutSet(&PowerMonitorTimer, LDOIN_SAMPLE_PERIOD);
 
 		#ifdef BAT_VOL_DET_LRADC
-		bat_vol = ADC_SingleModeDataGet(BAT_VOL_LRADC_CHANNEL_PORT);
+		//bat_vol = ADC_SingleModeDataGet(BAT_VOL_LRADC_CHANNEL_PORT);
+		bat_vol = Get_ADC_SamplingVolGet();
 		#else
 		bat_vol = SarADC_LDOINVolGet();
 		#endif
 		
+      //  APP_DBG("----------> bat_vol: %d\n", bat_vol); 
+		#if BAT_protect_plan==1
+		     bat_vol = bat_vol * Voltage_multiple;
+		#elif BAT_protect_plan==2
+             bat_vol = bat_vol * Voltage_multiple+Adjust_Voltage; 
+		#endif
+		
 		//采样值小于1V则认为当前检测有误，返回满电
-		if(bat_vol < 1000)
+		/*if(bat_vol < 1000)
 		{
 			bat_vol = LDOIN_VOLTAGE_FULL;
-		}
+		}*/
 		
 		if(LdoinSampleCnt >= LDOIN_SAMPLE_COUNT)
 		{
@@ -189,8 +197,9 @@ uint16_t GetPowerVoltage(void)
     }	
 
 	LdoinLevelAverage = (uint16_t)(bat_val / LDOIN_SAMPLE_COUNT);
-	APP_DBG("LDOin 5V Volt: %lu\n", (uint32_t)LdoinLevelAverage);
-
+	//APP_DBG("LDOin 5V Volt: %lu\n", (uint32_t)LdoinLevelAverage);
+    //DBG(" -----------> PowerLevel =  %d\n",  PowerLevel);
+	
 	if (LdoinLevelAverage > LDOIN_VOLTAGE_FULL)
 	{
 		return PWR_FULL;
@@ -240,7 +249,7 @@ PWR_LEVEL ShakeEliminationProcessing(void)
 		{
 			PowerLevel--;
 		}
-		DBG("bat_value down: %d -> %d\n", last_bat_value, PowerLevel);
+		//DBG("bat_value down: %d -> %d\n", last_bat_value, PowerLevel);
 		bat_value_counter = 0;
 	}
 	else
@@ -329,6 +338,11 @@ PWR_LEVEL ShakeEliminationProcessing(void)
 		}
 		else if (tmp_bat_value_min > PowerLevel)
 		{
+		  /* DBG("+++++++++++++++++++++++++++++++++++++++\n");
+		   DBG("bat_value_win_tick = %d\n",bat_value_win_tick);
+		   DBG("bat_value_win_count = %d\n",bat_value_win_count);
+		   DBG("tmp_bat_value_min_wins = %d\n",tmp_bat_value_min_wins);*/
+			 
 			//需要持续120s才允许升高电量，防止抖动
 			if ((bat_value_win_tick == 0)&&(bat_value_win_count == BAT_DET_WIN_COUNT))
 			{
@@ -356,6 +370,9 @@ PWR_LEVEL ShakeEliminationProcessing(void)
 //电池电量
 void BatteryScan(void)
 {
+    static u8 BatLowMsgCnt=0;
+ 
+
 	if(IsTimeOut(&PowerMonitorDetectTimer))
 	{
 		TimeOutSet(&PowerMonitorDetectTimer, LDOIN_DETECT_PERIOD);	
@@ -374,6 +391,15 @@ void BatteryScan(void)
 		else
 #endif
 		{
+
+
+		   //电量过低,直接关机
+		   /*if(LdoinLevelAverage<3100)
+		   {
+               Custom_Event1_number = Custom_Event1_Poweroff;  
+               main_msg_send(Custom_Event2);
+		   }*/
+		   
 			if (PowerLevel == PWR_LEVEL_0)
 			{
 				bat_low_power_off_conuter++;
@@ -387,7 +413,9 @@ void BatteryScan(void)
 				{
 					bat_low_power_off_conuter = 0;
 					//延时3s再关机
-					PowerOffMessage();
+					//PowerOffMessage();
+					Custom_Event1_number = Custom_Event1_Poweroff;  
+                    main_msg_send(Custom_Event2);
 				}
 			}
 			else if (PowerLevel == PWR_LEVEL_1)
@@ -397,13 +425,28 @@ void BatteryScan(void)
 				if (bat_low_conuter > LDOIN_LOW_WARNING_CYCLE)
 				{
 					bat_low_conuter = 0;
-					BatteryLowMessage();
+					Flag_low_power = 1;
+
+					BatLowMsgCnt++;
+					if(BatLowMsgCnt > 3)
+					{    
+					     BatLowMsgCnt=0;
+					     Custom_Event1_number = Custom_Event1_Poweroff;  
+                         main_msg_send(Custom_Event2);
+					}
+					else
+					{
+                        BatteryLowMessage();
+						Flag_low_power_tone=1;
+					}
 				}
 			}
 			else
 			{
 				bat_low_conuter = 0;
 				bat_low_power_off_conuter = 0;
+				Flag_low_power = 0;
+                BatLowMsgCnt=0;			
 			}
 		}
 
@@ -440,21 +483,33 @@ void PowerMonitorInit(void)
 	while(i < 10)
 	{
 		#ifdef BAT_VOL_DET_LRADC
-		bat_vol += ADC_SingleModeDataGet(BAT_VOL_LRADC_CHANNEL_PORT);
+		//bat_vol += ADC_SingleModeDataGet(BAT_VOL_LRADC_CHANNEL_PORT);
+		bat_vol += Get_ADC_SamplingVolGet();
 		#else
 		bat_vol += SarADC_LDOINVolGet();
 		#endif
+
+		//DBG("--------- PowerMonitorInit() bat_vol -> %d\n", bat_vol);
 		i++;
 		vTaskDelay(5);
 	}
 
 	LdoinLevelAverage = (uint16_t)(bat_vol/10);
+	
+	#if BAT_protect_plan==1
+		 LdoinLevelAverage = LdoinLevelAverage * Voltage_multiple;
+    #elif BAT_protect_plan==2
+         LdoinLevelAverage = LdoinLevelAverage * Voltage_multiple+Adjust_Voltage; 
+	#endif
+	
+	DBG("--------- PowerMonitorInit() LdoinLevelAverage -> %d\n", LdoinLevelAverage);
 	for(i=0; i<LDOIN_SAMPLE_COUNT; i++)
 	{
 		LdoinSampleVal[i] = LdoinLevelAverage;
 	}
 
 	PowerLevel = GetPowerVoltage();
+	DBG("--------- PowerMonitorInit() PowerLevel -> %d\n", PowerLevel);
 #ifdef CFG_FUNC_OPTION_CHARGER_DETECT
 	if(!IsInCharge()) //如果系统启动时，充电设备已经接入，则不提示低电与关机
 #endif
@@ -468,7 +523,19 @@ void PowerMonitorInit(void)
 		{
 			//开机低电，马上关机
 			bat_low_power_off_conuter = LDOIN_POWER_OFF_CYCLE - 1;
+			power_down_zx();
 		}
+		/*if(LdoinLevelAverage < BAT_protect_VTG)
+		{
+            //开机低电，马上关机
+			bat_low_power_off_conuter = LDOIN_POWER_OFF_CYCLE - 1;
+			power_down_zx();
+		}
+		else if(LdoinLevelAverage < BAT_warning_VTG)
+		{
+            //开机低电，5s后报警
+			bat_low_conuter = LDOIN_LOW_WARNING_CYCLE - 10;
+		}*/
 	}
 
 	//电量显示

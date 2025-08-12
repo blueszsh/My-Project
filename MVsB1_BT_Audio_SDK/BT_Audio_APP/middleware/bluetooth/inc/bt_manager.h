@@ -131,9 +131,9 @@ typedef enum
 	BT_HFP_STATE_INCOMING,
 	BT_HFP_STATE_OUTGOING,
 	BT_HFP_STATE_ACTIVE,
-	BT_HFP_STATE_3WAY_INCOMING_CALL,		//1CALL ACTIVE, 1CALL INCOMING
-	BT_HFP_STATE_3WAY_OUTGOING_CALL,		//1CALL ACTIVE, 1CALL OUTGOING
-	BT_HFP_STATE_3WAY_ATCTIVE_CALL			//2CALL ACTIVE
+	BT_HFP_STATE_3WAY_INCOMING_CALL,//		//1CALL ACTIVE, 1CALL INCOMING
+	BT_HFP_STATE_3WAY_OUTGOING_CALL,//		//1CALL ACTIVE, 1CALL OUTGOING
+	BT_HFP_STATE_3WAY_ATCTIVE_CALL	//		//2CALL ACTIVE
 } BT_HFP_STATE;
 
 typedef enum
@@ -275,7 +275,7 @@ typedef struct _BT_LINKED_ENV_TAG
 	//HFP
 	BT_HFP_STATE			hfpState;
 	uint8_t					hf_index;
-	uint8_t					appleDeviceFlag;	//1=apple device; 0=other device
+	uint8_t					appleDeviceFlag;//	//1=apple device; 0=other device
 	
 }BT_LINKED_ENV_TAG;
 
@@ -316,7 +316,7 @@ typedef struct _BT_MANAGER_ST
 	uint8_t 				btLinkState; //0=disconnect; 1=connected
 	//多链路
 	uint8_t					linkedNumber;
-	BT_LINKED_ENV_TAG		btLinked_env[BT_LINK_DEV_NUM];	//2条链路数据结构
+	BT_LINKED_ENV_TAG		btLinked_env[BT_LINK_DEV_NUM];//	//2条链路数据结构
 	
 	uint8_t					remoteAddr[BT_ADDR_SIZE];
 	uint8_t					remoteName[BT_NAME_SIZE];
@@ -325,9 +325,9 @@ typedef struct _BT_MANAGER_ST
 	uint8_t					btDdbLastProfile;
 	uint32_t				btDdbLastInfoOffset;
 
-	uint8_t					btAccessModeEnable; //1=初始化后自动进入可被搜索可被连接状态
+	uint8_t					btAccessModeEnable;// //1=初始化后自动进入可被搜索可被连接状态
 	uint32_t				btConStateProtectCnt;//10s超时,用于保护当前的搜索、连接状态
-	uint8_t					btLastAddrUpgradeIgnored; //1:用于测试盒校准频偏后,不更新最后一次连接设备信息
+	uint8_t					btLastAddrUpgradeIgnored;// //1:用于测试盒校准频偏后,不更新最后一次连接设备信息
 
 	//remote device
 	uint8_t					btReconnectTryCount;
@@ -358,10 +358,10 @@ typedef struct _BT_MANAGER_ST
 	uint32_t				twsSimplePairingCfg;
 	uint8_t					twsEnterPairingFlag;//tws组网开始标志 //flag:0=normal; 1=pairing
 	uint8_t					twsMode;//0=active mode; 2=sniff mode
-	uint8_t					twsSbSlaveDisable;//1=从机关闭TWS组网功能;
+	uint8_t					twsSbSlaveDisable;//;//1=从机关闭TWS组网功能;
 	uint8_t					twsStopConnect;	// 1 = 停止TWS组网配对
 #if (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
-	uint8_t					twsSoundbarSlaveTestFlag; //1 = soundbar slave进入校准测试标志
+	uint8_t					twsSoundbarSlaveTestFlag;//; //1 = soundbar slave进入校准测试标志
 #endif
 #endif
 
@@ -381,7 +381,7 @@ typedef struct _BT_MANAGER_ST
 	uint8_t					volGain;
 	//uint8_t					hfpScoCodecType;
 	uint8_t					hfpScoCodecType[BT_LINK_DEV_NUM];
-	uint8_t					hfpVoiceState;		//1:非通话,其他应用使用了通话链路传输音频 0:正常通话
+	uint8_t					hfpVoiceState;	//	//1:非通话,其他应用使用了通话链路传输音频 0:正常通话
 	uint8_t					hfpScoDiscIndex;	//sco断链index
 	uint16_t				hfpScoDiscDelay;	//sco断链延时处理
 #ifdef BT_HFP_BATTERY_SYNC

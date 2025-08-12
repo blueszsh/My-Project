@@ -68,6 +68,7 @@ extern volatile uint32_t gIdleRemindSoundTimeOutTimer;
 #define WAIT_POWER_ON_REMIND_SOUND	2
 #define ENTER_POWER_ON				3
 
+
 static struct
 {
 	uint16_t	AutoPowerOnState 	:	2;
@@ -272,7 +273,29 @@ void PowerOnRemindSound(void)
 		return; 		
 	}
 #endif	
-	IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_KAIJI, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
+    if(update_ok)
+    {
+	   IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_UPDATEOK, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
+    }
+	else
+	{
+	   #if CHARGE_EN && fun_idle_en
+	   if(Idle_sw.idle_mode == on_line)
+	   {
+         IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_MUTE, REMIND_PRIO_SYS);
+         Machine_state=Machine_FakePoweroff;  
+	   }
+	   else
+	   #endif
+	   {
+	     IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_POWER_ON, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
+         Machine_state=Machine_poweron_tone;//zsh A2
+         Idle_sw.idle_mode = off_line;
+	   }
+	}
+	
+	PA_contral();
+	
 	IdleMode.DeepSleepFlag = FALSE;
 	gIdleRemindSoundTimeOutTimer = 0;
 #endif
@@ -288,9 +311,13 @@ void PowerDownRemindSound(void)
 		return;			
 	}
 #endif	
-	IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_GUANJI, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
+	IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_MUTE, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
+//	IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_POWER_OF, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
+    //Machine_state=Machine_Poweroff_tone;//zsh A2
+    Idle_sw.idle_mode = on_line;
 	gIdleRemindSoundTimeOutTimer = 0;
-	RemindSoundItemRequestDisable();
+   // RemindSoundItemRequestDisable();//boeu注释
+  
 #endif
 }
 
@@ -306,6 +333,25 @@ bool GetPowerRemindSoundPlayEnd(void)
 #endif
 	return FALSE;
 }
+
+/*
+    boeu 开机提示音是否播放结束   Tone_play_state
+*/
+bool GetPowerOnRemindSoundPlayEnd(void)
+{
+#ifdef  CFG_FUNC_REMIND_SOUND_EN
+	if(IdleMode.RemindSoundFlag)
+	{
+		if(!RemindSoundIsPlay() || Tone_play_state==0)
+			IdleMode.RemindSoundFlag = FALSE;
+		return TRUE;
+	}
+#endif
+	return FALSE;
+}
+
+
+
 #ifdef	CFG_IDLE_MODE_POWER_KEY
 void PowerKeyModeInit(void)
 {
@@ -377,7 +423,7 @@ bool IdleModeInit(void)
 #endif	
 
 #ifdef  CFG_FUNC_REMIND_SOUND_EN	
-	if(!IdleMode.FristPowerOnFlag)
+	if((!IdleMode.FristPowerOnFlag)||Idle_sw.power_off_tone==tone_start)
 	{
 		PowerDownRemindSound();
 	}
@@ -388,6 +434,17 @@ bool IdleModeInit(void)
 		BtFastPowerOff();
 #endif
 	IdleMode.FristPowerOnFlag = FALSE;
+
+#if 0//def CFG_DMA_RGB_LED_EN
+	mainAppCt.rgb_mode=0xff;
+	mainAppCt.temp_rgb_mode = RGB_Effect_PowerOff_Charge;
+#endif
+#if 0//LEDS_mix_RGB_EN
+RGB_curr_effect = RGB_Effect_PowerOff_Charge;
+#endif
+
+		   
+
 	return TRUE;
 }
 
@@ -395,6 +452,8 @@ bool IdleModeInit(void)
 bool IdleModeDeinit(void)
 {
 	DBG("Idle Mode Deinit\n");
+
+	
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();
@@ -444,6 +503,7 @@ void SendQuitIdleModeMsg(void)
 
 void IdleModeRun(uint16_t msgId)
 {
+
 #if	defined(CFG_IDLE_MODE_POWER_KEY) && (POWERKEY_MODE != POWERKEY_MODE_PUSH_BUTTON)
 	if(IdleMode.PowerKeyWakeUpCheckFlag)
 	{	
@@ -566,8 +626,25 @@ void IdleModeRun(uint16_t msgId)
 			IdleMode.AutoPowerOnState = WAIT_POWER_ON_REMIND_SOUND;
 			break;
 		case WAIT_POWER_ON_REMIND_SOUND:
-			if(!GetPowerRemindSoundPlayEnd())
-				IdleMode.AutoPowerOnState = ENTER_POWER_ON;	
+			//DBG("WAIT_POWER_ON_REMIND_SOUND\n");
+			//if(!GetPowerRemindSoundPlayEnd())
+			if(!GetPowerOnRemindSoundPlayEnd())//boeu
+			{
+			    DBG("WAIT_POWER_ON_REMIND_SOUND  111\n");
+				//IdleMode.AutoPowerOnState = ENTER_POWER_ON;//原始包
+				#if fun_idle_en && CHARGE_EN
+				  if(Idle_sw.idle_mode == on_line)//插充电开机,停留在IDLE
+				  {
+				     IdleMode.AutoPowerOnState = POWER_ON_IDLE;
+					 DBG("WAIT_POWER_ON_REMIND_SOUND  idle on_line\n");
+				  }
+				  else
+				#endif  
+				  {
+                     IdleMode.AutoPowerOnState = ENTER_POWER_ON;
+					 DBG("WAIT_POWER_ON_REMIND_SOUND  idle off_line\n");
+				  }
+			}
 			break;
 		case ENTER_POWER_ON:
 			IdleMode.AutoPowerOnState = POWER_ON_IDLE;
@@ -585,7 +662,7 @@ void IdleModeRun(uint16_t msgId)
 		case MSG_POWER:
 		case MSG_POWERDOWN:
 		case MSG_DEEPSLEEP:
-#ifdef CFG_IDLE_MODE_POWER_KEY
+#if 0//def CFG_IDLE_MODE_POWER_KEY
 			if(SoftFlagGet(SoftFlagIdleModeEnterPowerDown)
 #ifdef	CFG_FUNC_REMIND_SOUND_EN
 			 && (!GetPowerRemindSoundPlayEnd())
@@ -593,6 +670,12 @@ void IdleModeRun(uint16_t msgId)
 			 )
 				break;
 #endif
+
+#ifdef	CFG_FUNC_REMIND_SOUND_EN
+			 if(!GetPowerRemindSoundPlayEnd())
+#endif
+				break;
+
 			if(IdleMode.AutoPowerOnState == POWER_ON_IDLE && (!GetPowerRemindSoundPlayEnd()))
 				IdleMode.AutoPowerOnState = NEED_POWER_ON;
 			break;
@@ -613,7 +696,10 @@ extern osMutexId SysModeMutex;
 void IdleModeEnter(void)
 {
 	if(GetSysModeState(ModeIdle) == ModeStateInit || GetSysModeState(ModeIdle) == ModeStateRunning )
+	{
+	   APP_DBG("GetSysModeState()==%d  return\n",GetSysModeState(ModeIdle));
 		return;
+	}
 	osMutexLock(SysModeMutex);
 	if(IDLE_NOT_REQUIRED_MODE & BIT(mainAppCt.SysCurrentMode))
 		IdleMode.SavePrevMode = mainAppCt.SysPrevMode;
@@ -626,6 +712,9 @@ void IdleModeEnter(void)
 	SysModeEnter(ModeIdle);
 	osMutexUnlock(SysModeMutex);
 	APP_DBG("enter idle mode\n");
+    Machine_state=Machine_FakePoweroff; 
+    Idle_sw.idle_mode = on_line;
+  
 }
 
 void IdleModeExit(void)
@@ -636,6 +725,7 @@ void IdleModeExit(void)
 	SysModeEnter(IdleMode.SavePrevMode);
 	osMutexUnlock(SysModeMutex);
 	APP_DBG("exit idle mode\n");
+  
 }
 
 #else

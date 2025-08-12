@@ -134,7 +134,7 @@ int32_t mp2_decoder_can_continue(AudioDecoderContext *audio_decoder);
 int32_t mp2_decoder_seek(AudioDecoderContext *audio_decoder, uint32_t seek_time);
 #endif
 
-static const uint8_t audio_decoder_lib_version[] = AUDIO_DECODER_LIBRARY_VERSION " build @ " __DATE__ " " __TIME__;
+static const uint8_t audio_decoder_lib_version[] = AUDIO_DECODER_LIBRARY_VERSION;// " build @ " __DATE__ " " __TIME__;
 const uint8_t* audio_decoder_get_lib_version(void)
 {
 	return audio_decoder_lib_version;

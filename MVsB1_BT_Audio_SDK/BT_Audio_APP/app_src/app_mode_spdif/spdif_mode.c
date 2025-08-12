@@ -573,6 +573,23 @@ bool SpdifPlayInit(void)
 	 }
 #endif
 
+
+  if(GetSystemMode() == ModeCoaxialAudioPlay)
+	{
+		APP_DBG("Coaxial Mode\n");
+		Save_task_state(Task_COAXIAL);
+		T_COAXIAL_inf.play_state = _Music_play;
+	}
+	else
+	{
+		APP_DBG("Spdif:App\n");
+		Save_task_state(Task_OPTICAL);
+		T_OPTICAL_inf.play_state = _Music_play;
+	}
+    PA_contral();
+
+    Machine_state=Machine_run;//zsh A2
+
 	return TRUE;
 }
 
@@ -771,6 +788,21 @@ bool SpdifPlayDeinit(void)
 		return FALSE;
 	}
 
+
+    if(GetSystemMode() == ModeCoaxialAudioPlay)
+	{
+		APP_DBG("Stopping Coaxial Mode\n");
+	
+		T_COAXIAL_inf.play_state = _Music_stop;
+	}
+	else
+	{
+		APP_DBG("Stopping  Spdif:App\n");
+		
+		T_OPTICAL_inf.play_state = _Music_stop;
+	}
+	PA_contral();
+	
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();

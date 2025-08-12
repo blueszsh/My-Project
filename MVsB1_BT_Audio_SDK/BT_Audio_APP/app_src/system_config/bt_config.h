@@ -56,7 +56,7 @@
  */
 #define BT_A2DP_SUPPORT				ENABLE //A2DP和AVRCP关联
 #if CFG_RES_MIC_SELECT
-#define BT_HFP_SUPPORT				ENABLE
+#define BT_HFP_SUPPORT				Phone_function
 #endif
 #define BT_SPP_SUPPORT				DISABLE
 	
@@ -140,7 +140,7 @@
  * If it doesn't support Advanced AVRCP, TG side will be ignored
  * 音量同步功能需要开启该宏开关
  */
-#define BT_AVRCP_VOLUME_SYNC			DISABLE
+#define BT_AVRCP_VOLUME_SYNC			Z__BT_AVRCP_VOLUME_SYNC
 
 /*
  * If it doesn't support Advanced AVRCP, TG side will be ignored
@@ -201,7 +201,7 @@
 #define BT_REMOTE_AEC_DISABLE			//关闭手机端AEC
 
 //MIC无运放,使用如下参数(参考)
-#define BT_HFP_MIC_PGA_GAIN				15  //ADC PGA GAIN +18db(0~31, 0:max, 31:min)
+#define BT_HFP_MIC_PGA_GAIN				0//15  //ADC PGA GAIN +18db(0~31, 0:max, 31:min)
 #define BT_HFP_MIC_PGA_GAIN_BOOST_SEL	2
 #define BT_HFP_MIC_DIGIT_GAIN			4095
 #define BT_HFP_INPUT_DIGIT_GAIN			1100
@@ -242,12 +242,12 @@
 #error Conflict: BT_TWS_LINK_NUM setting error 
 #endif
 
-#define CFG_TWS_ONLY_IN_BT_MODE		DISABLE //enable:仅在蓝牙模式下工作, disable:在所有模式下工作
+#define CFG_TWS_ONLY_IN_BT_MODE		ENABLE //enable:仅在蓝牙模式下工作, disable:在所有模式下工作
 #define TWS_STATRT_PLAY_FRAM		56*2    //取值范围[56*1 - 56*4]; 对应music通路的delay时间是56*3*[1 - 4] = [168 - 672]ms；此值越大，主副箱距离越远
 #define CFG_CMD_DELAY				10      //ms 主从CMD发送到处理延时5ms左右，信道质量差时更长，考虑被打断会形成7~20mS延时，此处设10ms较合适。
 
-//1.针对2.0的应用，可选择CFG_EFFECT_MUSIC_MASTER为1，由主机端统一调音；
-//2.针对2.1的应用(dac0+dacx)，必须选择CFG_EFFECT_MUSIC_MASTER为0,主机和从机单独调音，否则会存在DACX相位不一致的问题！
+////1.针对2.0的应用，可选择CFG_EFFECT_MUSIC_MASTER为1，由主机端统一调音；
+////2.针对2.1的应用(dac0+dacx)，必须选择CFG_EFFECT_MUSIC_MASTER为0,主机和从机单独调音，否则会存在DACX相位不一致的问题！
 #define CFG_EFFECT_MUSIC_MASTER		0		//0=master,slaver 独立有调音音效，1=只有master有调音，音效功能，slaver仅做为接收，
 
 //TWS组网条件判断

@@ -498,6 +498,8 @@ void AudioEffectSilenceDetectorApply(SilenceDetectorUnit *unit, int16_t *pcm_in,
 		return;
 	}
 	unit->param.level = silence_detector_apply(&unit->ct, pcm_in, n);
+	User_Set_Music_Energy(unit->param.level);//BOEU
+//DBG("unit->param.level = %d\n", unit->param.level);
 	
 #ifdef CFG_FUNC_SILENCE_AUTO_POWER_OFF_EN
 	//DBG("unit->param.level = %d\n", unit->param.level);
@@ -518,9 +520,12 @@ void AudioEffectSilenceDetectorApply24(SilenceDetectorUnit *unit, int32_t *pcm_i
 		return;
 	}
 	level = silence_detector_apply24(&unit->ct, pcm_in, n);
-
+    
+   
 	unit->param.level = (level>>8);
-
+    User_Set_Music_Energy(unit->param.level);//BOEU
+    
+  //   DBG("Apply24 unit->param.level = %d\n", unit->param.level);
 #ifdef CFG_FUNC_SILENCE_AUTO_POWER_OFF_EN
 	//DBG("unit->param.level = %d\n", unit->param.level);
     if(unit->param.level > SILENCE_THRESHOLD)

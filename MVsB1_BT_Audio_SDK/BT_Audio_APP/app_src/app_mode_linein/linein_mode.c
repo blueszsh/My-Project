@@ -90,8 +90,13 @@ static const uint8_t sDmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_SDIO_RX,		//3
 	255,//PERIPHERAL_ID_SDIO_TX,		//4
 #else
+	#ifdef CFG_DMA_RGB_LED_EN
+    255,//PERIPHERAL_ID_SDIO_RX,			//3
+	255,//PERIPHERAL_ID_SDIO_TX,			//4
+    #else
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
+    #endif
 #endif
 	
 	255,//PERIPHERAL_ID_UART0_RX,		//5
@@ -111,7 +116,11 @@ static const uint8_t sDmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_UART1_TX,		//13
 #endif
 
+#ifdef CFG_DMA_RGB_LED_EN
+	4,//PERIPHERAL_ID_TIMER4,			//14
+#else
 	255,//PERIPHERAL_ID_TIMER4,			//14
+#endif
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
 	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
@@ -284,6 +293,44 @@ void LineInPlayRun(uint16_t msgId)
 
 	switch(msgId)
 	{
+	   switch(msgId)
+		{
+              ////zsh A2
+		    case Custom_Event1:
+		        Custom_Event1_get = Custom_Event1_number;
+                Custom_Event1_number = 0;
+                switch(Custom_Event1_get)
+                {
+                    case Custom_Event1_pp:
+                        if(T_linein1_inf.play_state== _Music_play)
+                        {
+                            T_linein1_inf.play_state = _Music_puse;
+                        }
+                        else if(T_linein1_inf.play_state== _Music_puse)
+                        {
+                            T_linein1_inf.play_state = _Music_play;
+                        }
+                        PA_contral();
+                        if(T_linein1_inf.play_state== _Music_play)
+                        {                                                  																		
+						   main_msg_send(MSG_LINE_SET_ON);
+						}
+						else
+						{
+                           main_msg_send(MSG_LINE_SET_OFF);
+						}
+						
+                        //DEBUG_ZX(0, " Custom_Event1_AUX1_pp ", 0);
+                        break;
+                   
+
+                }
+                Custom_Event1_get = 0;
+	            DEBUG_ZX(0, " Custom_Event1 ", 0);
+	            break;
+				//end
+	   	}
+	   
 		case MSG_PLAY_PAUSE:
 			HardWareMuteOrUnMute();
 			break;
@@ -298,6 +345,11 @@ bool LineInPlayInit(void)
 {
 	APP_DBG("LineIn Play Init\n");
 	DMA_ChannelAllocTableSet((uint8_t *)sDmaChannelMap);//lineIn
+
+  Save_task_state(Task_line);
+  T_linein1_inf.play_state = _Music_play;
+  PA_contral();
+
 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 	//音效参数遍历，确定系统帧长，待修改，sam, mark
@@ -333,7 +385,7 @@ bool LineInPlayInit(void)
 #endif
 
 #ifdef CFG_FUNC_REMIND_SOUND_EN
-	if(RemindSoundServiceItemRequest(SOUND_REMIND_XIANLUMO, REMIND_ATTR_NEED_MUTE_APP_SOURCE) == FALSE)
+	if(RemindSoundServiceItemRequest(SOUND_REMIND_MODE_AUX, REMIND_ATTR_NEED_MUTE_APP_SOURCE) == FALSE)
 	{
 		if(IsAudioPlayerMute() == TRUE)
 		{
@@ -348,6 +400,8 @@ bool LineInPlayInit(void)
 		HardWareMuteOrUnMute();
 	}
 #endif
+    Machine_state=Machine_run;//zsh A2
+
 
 	return TRUE;
 }
@@ -361,6 +415,9 @@ bool LineInPlayDeinit(void)
 		return TRUE;
 	}
 
+  T_linein1_inf.play_state = _Music_stop;
+  PA_contral();
+  
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();

@@ -361,6 +361,34 @@ void AudioMusicProcess(AudioCoreContext *pAudioCore)
 			}
 #endif
 		}
+
+
+
+		#if 0//CFG_AUDIO_EFFECT_SILENCE_DECTOR_EN//boeu add
+		//以下代码为临时方案，先解决TWS Slave模式下无信号检测功能
+		if((tws_get_role() == BT_TWS_SLAVE))
+		{
+			for(i=0; i<AUDIO_EFFECT_NODE_NUM; i++)
+			{
+				pNode = &gEffectNodeList[1].EffecetNode[i];//伴奏使用第0组音效列表
+				if((pNode->Enable == FALSE) || (pNode->EffectUnit == NULL))
+				{
+					continue;
+				}
+				if(pNode->EffectType == SILENCE_DETECTOR)//临时处理代码
+				{
+					pNode->FuncAudioEffect(pNode->EffectUnit, music_in, music_in, n);
+					//分叉节点处理
+					if(pNode->NodeType == NodeType_Bifurcate && record_out)
+					{
+						memcpy(record_out, music_in, n * 2 * 2);//降噪音效之后第一个分叉节点
+					}
+					break;
+				}
+			}
+		}
+		#endif
+		
 	}
 	if(tws_in)
 	{

@@ -39,15 +39,18 @@
 //-----------register define-----------------------------------------------//
 
 #ifdef CFG_APP_LINEIN_MODE_EN
-	 //#define CFG_LINEIN_DET_EN
+	 #if Z__CFG_LINEIN_DET_EN==1
+	    #define CFG_LINEIN_DET_EN  
+	 #endif
+		
     #ifdef	CFG_LINEIN_DET_EN
-	#define LINEIN_DET_GPIO					GPIOA28
-	#define LINEIN_DET_GPIO_IN 				GPIO_A_IN
-	#define LINEIN_DET_BIT_MASK				GPIO_INDEX28
-	#define LINEIN_DET_GPIO_IE 				GPIO_A_IE
-	#define LINEIN_DET_GPIO_OE 				GPIO_A_OE
-	#define LINEIN_DET_GPIO_PU 				GPIO_A_PU
-	#define LINEIN_DET_GPIO_PD 				GPIO_A_PD
+	    #define LINEIN_DET_GPIO 				Z__LINEIN_DET_GPIO//GPIOA1
+        #define LINEIN_DET_GPIO_IN				Z__LINEIN_DET_GPIO_IN//
+        #define LINEIN_DET_BIT_MASK 		    Z__LINEIN_DET_BIT_MASK//
+        #define LINEIN_DET_GPIO_IE				Z__LINEIN_DET_GPIO_IE//
+        #define LINEIN_DET_GPIO_OE				Z__LINEIN_DET_GPIO_OE//
+        #define LINEIN_DET_GPIO_PU				Z__LINEIN_DET_GPIO_PU//
+        #define LINEIN_DET_GPIO_PD				Z__LINEIN_DET_GPIO_PD//
 	#endif
 #endif
 
@@ -105,44 +108,57 @@
 // 电池电压检测，是指LDOIN输入端的电压检测功能
 // 该功能宏打开后，默认包含电池电压检测功能
 //****************************************************************************************
-//#define CFG_FUNC_POWER_MONITOR_EN
-#ifdef CFG_FUNC_POWER_MONITOR_EN
-	//#define	 CFG_FUNC_OPTION_CHARGER_DETECT 	 //打开该宏定义，支持GPIO检测充电设备插入功能
-	#ifdef CFG_FUNC_OPTION_CHARGER_DETECT
-	//充电检测端口设置
-	#define CHARGE_DETECT_PORT_PU			GPIO_A_PU
-	#define CHARGE_DETECT_PORT_PD			GPIO_A_PD
-	#define CHARGE_DETECT_PORT_IN			GPIO_A_IN
-	#define CHARGE_DETECT_PORT_IE			GPIO_A_IE
-	#define CHARGE_DETECT_PORT_OE			GPIO_A_OE
-	#define CHARGE_DETECT_GPIO				GPIOA31
-	#endif
 
-	//#define BAT_VOL_DET_LRADC //打开该宏定义则为ADC检测电池电量  关闭为默认的LDOIN检测电池电量
+#if BAT_CHECK_EN  // zsh A2
+#define CFG_FUNC_POWER_MONITOR_EN
+#endif
+
+#ifdef CFG_FUNC_POWER_MONITOR_EN
+     #if CHARGE_EN
+	  #define	CFG_FUNC_OPTION_CHARGER_DETECT 	 //打开该宏定义，支持GPIO检测充电设备插入功能
+     #endif
+	  #ifdef CFG_FUNC_OPTION_CHARGER_DETECT
+			//充电检测端口设置
+			#define CHARGE_DETECT_PORT_PU			GPIO_B_PU
+			#define CHARGE_DETECT_PORT_PD			GPIO_B_PD
+			#define CHARGE_DETECT_PORT_IN			GPIO_B_IN
+			#define CHARGE_DETECT_PORT_IE			GPIO_B_IE
+			#define CHARGE_DETECT_PORT_OE			GPIO_B_OE
+			#define CHARGE_DETECT_GPIO				GPIOB6
+	  #endif
+
+  #if Pin_BAT_check!=Port_LDOIN
+	#define BAT_VOL_DET_LRADC //打开该宏定义则为ADC检测电池电量  关闭为默认的LDOIN检测电池电量
+  #endif
+  
 	#ifdef BAT_VOL_DET_LRADC
-    #define BAT_VOL_LRADC_CHANNEL_PORT		ADC_CHANNEL_GPIOA30
+    #define BAT_VOL_LRADC_CHANNEL_PORT		ADC_CHANNEL_GPIOA31
 	#define BAT_VOL_LRADC_CHANNEL_ANA_EN	GPIO_A_ANA_EN
-	#define BAT_VOL_LRADC_CHANNEL_ANA_MASK	GPIO_INDEX30
+	#define BAT_VOL_LRADC_CHANNEL_ANA_MASK	GPIO_INDEX31
 	#endif
 #endif
 	
 /**ADC按键**/
 #ifdef CFG_RES_ADC_KEY_USE
-		//#define CFG_RES_POWERKEY_ADC_EN		  //power key脚上adc key功能使能，共5个key
-    #define CFG_RES_ADC_KEY_PORT_CH1		ADC_CHANNEL_GPIOA20_A23
-	#define CFG_RES_ADC_KEY_CH1_ANA_EN		GPIO_A_ANA_EN
-	#define CFG_RES_ADC_KEY_CH1_ANA_MASK	GPIO_INDEX23
-	#define CFG_PARA_WAKEUP_GPIO_ADCKEY		WAKEUP_GPIOA23 //同步设置唤醒端口
-	#ifdef CFG_CHIP_BP10128
-	#define CFG_RES_ADC_KEY_PORT_CH2		ADC_CHANNEL_GPIOA26
+     #if Z_pwoerkey_EN
+		#define CFG_RES_POWERKEY_ADC_EN		  //power key脚上adc key功能使能，共5个key
+	 #endif	
+	#if Z_ADkey_1_EN 
+	    #define CFG_RES_ADC_KEY_PORT_CH1		_Pin_ADK1_ch
+		#define CFG_RES_ADC_KEY_CH1_ANA_EN		_Pin_ADK1_type
+		#define CFG_RES_ADC_KEY_CH1_ANA_MASK	_Pin_ADK1_INDEX
+		//#define CFG_PARA_WAKEUP_GPIO_ADCKEY		WAKEUP_GPIOA23 //同步设置唤醒端口
 	#endif
-	#define CFG_RES_ADC_KEY_CH2_ANA_EN		GPIO_A_ANA_EN
-	#define CFG_RES_ADC_KEY_CH2_ANA_MASK	GPIO_INDEX26
+	#if Z_ADkey_2_EN//def CFG_CHIP_BP10128
+	#define CFG_RES_ADC_KEY_PORT_CH2		_Pin_ADK2_ch
+	#endif
+	#define CFG_RES_ADC_KEY_CH2_ANA_EN		_Pin_ADK2_type
+	#define CFG_RES_ADC_KEY_CH2_ANA_MASK	_Pin_ADK2_INDEX
 #endif //CFG_RES_ADC_KEY_USE
 
 /**IR PIN**/
 #if defined(CFG_RES_IR_KEY_SCAN) || defined(CFG_PARA_WAKEUP_SOURCE_IR)
-#define CFG_RES_IR_PIN					IR_GPIOB6//IR_GPIOB6,IR_GPIOB7,IR_GPIOA29
+#define CFG_RES_IR_PIN					Pin_IR//IR_GPIOB6,IR_GPIOB7,IR_GPIOA29
 #endif
 
 /**编码旋钮按键**/
@@ -155,17 +171,20 @@
 
 /**GPIO按键**/
 #ifdef CFG_RES_IO_KEY_SCAN
+   #ifdef Z__CFG_SOFT_POWER_KEY_EN
 	#define  CFG_SOFT_POWER_KEY_EN                          //外围硬件自锁式软开关宏开关,开机后，做普通GPIO KEY0使用；    
-    #define  CFG_GPIO_KEY1_EN                               //GPIO KEY1使能
-    #define  CFG_GPIO_KEY2_EN                               //GPIO KEY2使能   
+   #endif
+   
+	//#define  CFG_GPIO_KEY1_EN                               //GPIO KEY1使能
+   // #define  CFG_GPIO_KEY2_EN                               //GPIO KEY2使能   
  
-	#define CFG_PARA_WAKEUP_GPIO_IOKEY1		WAKEUP_GPIOA23 //同步设置唤醒端口
-	#define CFG_PARA_WAKEUP_GPIO_IOKEY2		WAKEUP_GPIOA26 //同步设置唤醒端口
+	//#define CFG_PARA_WAKEUP_GPIO_IOKEY1		WAKEUP_GPIOA23 //同步设置唤醒端口
+	//#define CFG_PARA_WAKEUP_GPIO_IOKEY2		WAKEUP_GPIOA26 //同步设置唤醒端口
 #endif
 
 /**电位器功能选择**/
 #ifdef CFG_ADC_LEVEL_KEY_EN
-    #define  ADCLEVL_CHANNEL_MAP            (ADC_GPIOA20|ADC_GPIOA21|ADC_GPIOA22)//选择GPIOA20，GPIOA21,GPIOA22口做3路ADC电位器
+    #define  ADCLEVL_CHANNEL_MAP            (ADC_GPIOA20)//选择GPIOA20，GPIOA21,GPIOA22口做3路ADC电位器
  
 	#define MAX_ADCLEVL_LEVEL_VAL 	        4096//电位器最大电压值:4096对应3.3v
 	#define MAX_ADCLEVL_STEP_NUMBER 	    CFG_PARA_MAX_VOLUME_NUM//电位器调节最大步数，范围:0-31

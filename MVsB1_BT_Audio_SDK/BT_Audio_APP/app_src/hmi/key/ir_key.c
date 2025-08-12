@@ -18,6 +18,7 @@
 #include "ir_nec_key.h"
 #include "ir_key.h"
 #include "debug.h"
+#include "app_config.h"
 #include "ir.h"
 
 #define 	IR_KEY_SCAN_TIME			110		//注意该时间长短设置略大于IR长按建码间隔，NEC=108ms
@@ -99,14 +100,19 @@ uint8_t IRKeyIndexGet(void)
 
     if((IrKeyVal & 0x0000FFFF) == IR_MANU_ID)
     {
-        APP_DBG("IrKeyVal = %lx\n", IrKeyVal);
-        for(KeyIndex = 0; KeyIndex < IR_KEY_SUM; KeyIndex++)
-        {
-            if(((IrKeyVal >> 24) & 0x000000FF) == gIrVal[KeyIndex])
-            {    
-                return KeyIndex;
-            }
-        }
+        if((IrKeyVal & 0x0000FFFF) == IR_MANU_ID)
+	    {
+	        APP_DBG("123     IrKeyVal = %lx\n", IrKeyVal);
+			 KeyIndex = (IrKeyVal >> 16) & 0x000000FF;   // zsh A2
+			 return KeyIndex;
+	       /* for(KeyIndex = 0; KeyIndex < IR_KEY_SUM; KeyIndex++)
+	        {
+	            if(((IrKeyVal >> 24) & 0x000000FF) == gIrVal[KeyIndex])
+	            {    
+	                return KeyIndex;
+	            }
+	        }*/
+	    }
     }
 
     return IR_KEY_NONE;
@@ -138,6 +144,7 @@ IRKeyMsg IRKeyScan(void)
 	TimeOutSet(&IRKeyScanTimer, IR_KEY_SCAN_TIME);
 
 	KeyIndex = IRKeyIndexGet();
+
 	switch(IRKeyState)
 	{
 		case IR_KEY_STATE_IDLE:

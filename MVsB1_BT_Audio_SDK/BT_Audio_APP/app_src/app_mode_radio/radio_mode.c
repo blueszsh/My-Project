@@ -592,7 +592,8 @@ bool RadioPlayInit(void)
 	}
 	sRadioPlayCt->SampleRate = CFG_PARA_SAMPLE_RATE;	
 	RadioPlayResInit();
-	
+
+ 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 #ifdef CFG_EFFECT_PARAM_IN_FLASH_EN
 	//mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
@@ -682,6 +683,11 @@ bool RadioPlayInit(void)
 	}
 #endif
 
+
+  Save_task_state(Task_fm);
+  T_FM_inf.play_state  =_Music_play;
+  PA_contral();
+  
 	return TRUE;
 }
 
@@ -823,6 +829,9 @@ bool RadioPlayDeinit(void)
 	{
 		HardWareMuteOrUnMute();
 	}
+
+  T_FM_inf.play_state  =_Music_stop;
+  PA_contral();
 	
 	PauseAuidoCore();
 	

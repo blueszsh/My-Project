@@ -651,6 +651,9 @@ void BtTwsPairingStart(void)
 #endif
 
 #endif
+
+   BT_state = BT_tws_mode;
+
 }
 
 /**************************************************************************
@@ -663,12 +666,43 @@ void tws_msg_process(uint16_t msg)
 	{
 #ifdef BT_TWS_SUPPORT
 		case MSG_BT_TWS_MASTER_CONNECTED:
+			      Tws_state=1;
+				 if(btManager.btLinkState)
+				 {
+                   BT_state = BT_master_slave_phone;
+				   tws_master_a2dp_send();
+				 }
+				 else
+				 {
+                   BT_state = BT_master_slave;
+				 }
+				 Z_post_msg(Custom_Event2,Custom_Event1_tone_tws_con);
+
+                if(btManager.btLinkState==0)
+		        {
+		           Tws_master_bt_con=1;
+				   //main_msg_send(MSG_BT_CONNECT_CTRL);//连接手机
+		        }
+               
+		     #ifdef CFG_DMA_RGB_LED_EN
+		        mainAppCt.rgb_mode=RGB_Effect_TWS_Con;
+	         #endif
+		     #if LEDS_mix_RGB_EN
+		        RGB_curr_effect = RGB_Effect_TWS_Con;
+		     #endif
+			break;
 		case MSG_BT_TWS_SLAVE_CONNECTED:
+			     Tws_state=1;
+				 BT_state = BT_slave_master;
+
+				// Z_post_msg(Custom_Event2,Custom_Event1_tone_tws_con);
 			break;
 
 		//发起TWS组网
 		case MSG_BT_TWS_PAIRING:
 			BtStackServiceMsgSend(MSG_BT_STACK_TWS_PAIRING_START);//bkd change
+			BT_state = BT_tws_mode;
+			Z_post_msg(Custom_Event2,Custom_Event1_tone_TWS_Pair);
 			break;
 
 		case MSG_BT_TWS_RECONNECT:
@@ -676,7 +710,18 @@ void tws_msg_process(uint16_t msg)
 			break;
 		
 		case MSG_BT_TWS_DISCONNECT:
+			Tws_state=0;
+			     if(btManager.btLinkState)
+				 {
+                   BT_state = BT_connect;
+				 }
+				 else
+				 {
+                   BT_state = BT_master;
+				 }
+				 
 			BtTwsDeviceDisconnect();
+			Z_post_msg(Custom_Event2,Custom_Event1_tone_tws_discon);
 			break;
 
 		case MSG_BT_TWS_CLEAR_PAIRED_LIST:

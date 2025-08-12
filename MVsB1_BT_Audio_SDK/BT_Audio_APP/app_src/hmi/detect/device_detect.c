@@ -620,14 +620,14 @@ void DeviceServicePocess(uint16_t device_msgId)
 	if(gDeviceCheckTimer == 0)
 	{
 		gDeviceCheckTimer = DEVICE_DETECT_TIMER;
-		
+
 		DevicePlugEventCheck();
 		
 #if defined(CFG_RES_ADC_KEY_SCAN) || defined(CFG_RES_IR_KEY_SCAN) || defined(CFG_RES_CODE_KEY_USE)|| defined(CFG_ADC_LEVEL_KEY_EN) || defined(CFG_RES_IO_KEY_SCAN)
 		msgSend.msgId = KeyScan();
 		if(msgSend.msgId != MSG_NONE)
 		{
-#ifdef BT_TWS_SUPPORT	
+#if 0///def BT_TWS_SUPPORT	//BOEU
 			if((GetBtManager()->twsState == BT_TWS_STATE_CONNECTED)&&(GetBtManager()->twsRole == BT_TWS_SLAVE))
 			{
 				is_need_send_to_master = TRUE;

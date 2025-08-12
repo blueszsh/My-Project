@@ -41,6 +41,40 @@ PlateReverbUnit 	*mic_platereverb_unit = NULL;
 ReverbProUnit 		*mic_reverbpro_unit = NULL;
 #endif
 
+
+
+void MicEchoReverbGainAjust(int16_t 	EchoGain,	int16_t ReverbGain)
+{
+#ifdef CFG_FUNC_MIC_ECHO_REVERB_GAIN_EN
+	//int16_t *echo_tmp   	= (int16_t *)pcm_buf_1;
+	//int16_t *reverb_tmp 	= (int16_t *)pcm_buf_2;
+	//uint16_t n = mainAppCt.SamplesPreFrame;
+	
+	gCtrlVars.mic_echo_control_unit.gain =  MicGainTable[EchoGain]; 
+	gCtrlVars.mic_reverb_gain_control_unit.gain = MicGainTable[ReverbGain];
+    DBG("@@ MicEchoReverbGainAjust -->Echo Rverbe Gain= %d \n", MicGainTable[EchoGain]);
+
+   //DACx  
+   //gCtrlVars.rec_effect_gain_control_unit.gain = MicGainTable[ReverbGain];
+#endif
+/*
+	//echo gain
+#if CFG_AUDIO_EFFECT_MIC_ECHO_GAIN_CONTROL_EN
+	AudioEffectMicEchoReverbGainConfig(&gCtrlVars.mic_echo_control_unit, echo_tmp, echo_tmp, n, gCtrlVars.adc_mic_channel_num);
+
+#endif
+	
+	//reverb gain
+#if CFG_AUDIO_EFFECT_MIC_REVERB_GAIN_CONTROL_EN
+	AudioEffectMicEchoReverbGainConfig(&gCtrlVars.mic_reverb_gain_control_unit, reverb_tmp, reverb_tmp, n, gCtrlVars.adc_mic_channel_num);
+
+#endif*/
+
+}
+
+
+
+
 #ifdef CFG_FUNC_MUSIC_EQ_MODE_EN
 
 // EQ 参数加载函数

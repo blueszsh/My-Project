@@ -91,6 +91,54 @@ uint8_t gBtAbsVolSetTable[17]={
 	0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38, 0x40, 0x48,
 	0x50, 0x58, 0x60, 0x68, 0x70, 0x78, 0x7f};
 
+
+
+
+
+//  zsh  A2 
+// 调节麦的灵敏度
+  const int16_t MicGainTable[33]=
+{
+	0x0001,  // 0   -72.5 db
+	0x0001, // 1    -60
+	0x0004, // 1    -60
+	0x000D,// 2    -50
+	0x0029,// 3    -40
+	0x0049,// 4	-35
+	0x0083,// 5   -30
+	0x00E6,// 6   -25
+	0x019A,// 7   -20
+	0x02D8,// 8   -15
+	0x03F3,// 9
+	0x050F,// 10   -10
+	0x055E,// 11
+	0x05AD,// 12  -9
+	0x0606,// 13
+	0x065F,// 14	-8
+	0x06C2,// 15
+	0x0726,// 16  -7
+	0x0795,// 17
+	0x0805,// 18	-6
+	0x0881,	// 19
+	0x08FF,//   20	-5
+	0x098B,// 21
+	0x0A18,//  22	-4
+	0x0AB6,//  23
+	0x0B54,//  24 -3
+	0x0C03,//  25
+	0x0CB6,// 26	-2
+	0x0D7C,// 27
+	0x0E43,//  28	-1
+	0x0F21,// 29
+	0x1000,//  30	0
+	0x1000,//  31	0
+};
+//endif
+
+
+
+
+
 uint8_t BtAbsVolume2VolLevel(uint8_t absValue)
 {
 	uint8_t i;
@@ -257,9 +305,18 @@ void AudioMusicVolUp(void)
 	else
 #endif
 	{
+	    #if Z__SYS_GAMUT_VOL != 0
+		mainAppCt.MusicVolume = BOEU_AudioMusicVolUp();
+		
+		#else
 		if(mainAppCt.MusicVolume < CFG_PARA_MAX_VOLUME_NUM)
 		{
-			mainAppCt.MusicVolume++;
+		   //开启苹果手机音量同步
+           #if (BT_AVRCP_VOLUME_SYNC == ENABLE)
+               mainAppCt.MusicVolume++;
+		   #else
+			   mainAppCt.MusicVolume+=2;
+		   #endif
 			#ifdef CFG_FUNC_BREAKPOINT_EN
 			BackupInfoUpdata(BACKUP_SYS_INFO);
 			#endif
@@ -267,9 +324,10 @@ void AudioMusicVolUp(void)
 		else
 		{
 #ifdef CFG_FUNC_REMIND_SOUND_EN
-			RemindSoundServiceItemRequest(SOUND_REMIND_VOLMAX, REMIND_ATTR_NEED_MIX);
+			//RemindSoundServiceItemRequest(SOUND_REMIND_VOLMAX, REMIND_ATTR_NEED_MIX);
 #endif
 		}
+     #endif
 	    mainAppCt.gSysVol.AudioSourceVol[APP_SOURCE_NUM] = mainAppCt.MusicVolume;
 	}
 	
@@ -345,13 +403,23 @@ void AudioMusicVolDown(void)
 	else
 #endif
 	{
+	    #if Z__SYS_GAMUT_VOL != 0
+		mainAppCt.MusicVolume = BOEU_AudioMusicVolDown();
+		
+		#else
 		if(mainAppCt.MusicVolume > 0)
 		{
-			mainAppCt.MusicVolume--;
+			//开启苹果手机音量同步
+           #if (BT_AVRCP_VOLUME_SYNC == ENABLE)
+               mainAppCt.MusicVolume--;
+		   #else
+			   mainAppCt.MusicVolume-=2;
+		   #endif
 			#ifdef CFG_FUNC_BREAKPOINT_EN
 			BackupInfoUpdata(BACKUP_SYS_INFO);
 			#endif
 		}
+		#endif
 	    mainAppCt.gSysVol.AudioSourceVol[APP_SOURCE_NUM] = mainAppCt.MusicVolume;
 	}
 	
@@ -464,13 +532,23 @@ void AudioMicVolUp(void)
 		HardWareMuteOrUnMute();
 	}
 
+	 #if Z__SYS_MIC_VOL != 0
+      mainAppCt.MicVolume = BOEU_AudioMicVolUp();
+	
+	#else
 	if(mainAppCt.MicVolume < CFG_PARA_MAX_VOLUME_NUM)
 	{
-		mainAppCt.MicVolume++;
+		mainAppCt.MicVolume+=2;
 		#ifdef CFG_FUNC_BREAKPOINT_EN
 		BackupInfoUpdata(BACKUP_SYS_INFO);
 		#endif
 	}
+	#endif
+
+#if BOEU_DACX_OUT_PAM_EN //DACX(低音喇叭) 同步控制  MIC音量
+    gCtrlVars.rec_bypass_gain_control_unit.gain = gSysVolArr[mainAppCt.MicVolume];
+    gCtrlVars.rec_effect_gain_control_unit.gain = gSysVolArr[mainAppCt.MicVolume];
+#endif
     mainAppCt.gSysVol.AudioSourceVol[MIC_SOURCE_NUM] = mainAppCt.MicVolume;
 	APP_DBG("MIC_SOURCE_NUM vol = %d\n", mainAppCt.gSysVol.AudioSourceVol[MIC_SOURCE_NUM]);
 	AudioCoreSourceVolSet(MIC_SOURCE_NUM, gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[MIC_SOURCE_NUM]], gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[MIC_SOURCE_NUM]]);
@@ -483,13 +561,25 @@ void AudioMicVolDown(void)
 		HardWareMuteOrUnMute();
 	}
 
+	#if Z__SYS_MIC_VOL != 0
+      mainAppCt.MicVolume = BOEU_AudioMicVolDown();
+	
+	#else
 	if(mainAppCt.MicVolume > 0)
 	{
-		mainAppCt.MicVolume--;
+		mainAppCt.MicVolume-=2;
 		#ifdef CFG_FUNC_BREAKPOINT_EN
 		BackupInfoUpdata(BACKUP_SYS_INFO);
 		#endif
 	}
+	#endif
+
+#if BOEU_DACX_OUT_PAM_EN //DACX(低音喇叭) 同步控制   MIC音量
+    gCtrlVars.rec_bypass_gain_control_unit.gain = gSysVolArr[mainAppCt.MicVolume];
+    gCtrlVars.rec_effect_gain_control_unit.gain = gSysVolArr[mainAppCt.MicVolume];
+#endif
+
+
     mainAppCt.gSysVol.AudioSourceVol[MIC_SOURCE_NUM] = mainAppCt.MicVolume;
 	APP_DBG("MIC_SOURCE_NUM vol = %d\n", mainAppCt.gSysVol.AudioSourceVol[MIC_SOURCE_NUM]);
 	AudioCoreSourceVolSet(MIC_SOURCE_NUM, gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[MIC_SOURCE_NUM]], gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[MIC_SOURCE_NUM]]);
@@ -903,32 +993,133 @@ void AdcLevelMsgProcess(uint16_t Msg)//Sliding resistance
 		APP_DBG("AdcValue = %d\n",AdcValue);
 		switch(AdcLevelCh)
 		{
+         
+          #if MIC_VOL_sliding_block_EN
+			case Z_MIC_VOL_AdcLevelCh://ADC LEVEL Channel 1
+			    #if MIC_VOL_block_reverse==0
+			    mainAppCt.gSysVol.AudioSourceVol[0] = mainAppCt.MicVolume = AdcValue;
+			    #else
+			    mainAppCt.gSysVol.AudioSourceVol[0] = mainAppCt.MicVolume = (31-AdcValue);
+			    #endif
+				DBG("MIC_VOL = %d\n", mainAppCt.gSysVol.AudioSourceVol[0]);
+				AudioCoreSourceVolSet(0, gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[0]], gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[0]]);
+				
+				break;
+		  #endif
+		  
+			#ifdef CFG_FUNC_MIC_VOLUME_EN
+			case Z_MIC_VOL_AdcLevelCh:
+				#if MIC_VOL_block_reverse==0
+			    //	mainAppCt.MicVolumeStep = AdcValue;
+			    
+					mainAppCt.gSysVol.AudioSourceVol[0] = mainAppCt.MicVolume = AdcValue;
+			    #else
+			    	//mainAppCt.MicVolumeStep  = (31-AdcValue);
+			    	
+			    mainAppCt.gSysVol.AudioSourceVol[0] = mainAppCt.MicVolume = (31-AdcValue);
+			    #endif
 
-			case 1://ADC LEVEL Channel 1
-			    #if CFG_RES_MIC_SELECT
-				mainAppCt.MicVolumeBak = AdcValue*2;
-				APP_DBG("MicVolumeBak = %d\n", mainAppCt.MicVolumeBak);
-			    //mainAppCt.gSysVol.AudioSourceVol[0] = mainAppCt.MicVolume = AdcValue;
-				//APP_DBG("source0 vol = %d\n", mainAppCt.gSysVol.AudioSourceVol[0]);
-				//AudioCoreSourceVolSet(0, gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[0]], gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[0]]);
+				printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>> mainAppCt.MicVolume = %d\n",mainAppCt.MicVolume);
+				//MicVolumeGainAjust(mainAppCt.MicVolumeStep);
+				
+				AudioCoreSourceVolSet(0, gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[0]], gSysVolArr[mainAppCt.gSysVol.AudioSourceVol[0]]);
+				break;
+		  #endif
+		  
+          #if Z__CFG_FUNC_BT_VOL_EN
+			case Z_BTVOL_AdcLevelCh:
+			    #if BT_VOL_block_reverse==0
+				AudioMusicVolSet(AdcValue);
+				DBG("BT VOL   = %d\n", AdcValue);
+				#else
+				AudioMusicVolSet(31-AdcValue);
+				DBG("BT VOL  = %d\n",31-AdcValue);
 				#endif
-				break;
 				
-			case 2://ADC LEVEL Channel 2
 				break;
-				
+		  #endif
+
+		  #ifdef CFG_FUNC_MIC_ECHO_REVERB_GAIN_EN	
+			case Z_MIC_ECHO_AdcLevelCh:
+		
+				#if 0
+				#if MIC_ECHO_block_reverse==0	
+			    mainAppCt.ReverbStep = AdcValue;
+			    #else
+                mainAppCt.ReverbStep = 31-AdcValue;
+			    #endif
+				ReverbStepSet(mainAppCt.ReverbStep);
+				DBG("Mic ECHO  ReverbStep = %d\n", mainAppCt.ReverbStep);
+				#else
+				#if MIC_ECHO_block_reverse==0	
+			    mainAppCt.ReverbGainStep = AdcValue;
+				mainAppCt.EchoGainStep = AdcValue;
+			    #else
+                mainAppCt.ReverbGainStep = 31-AdcValue;
+				mainAppCt.EchoGainStep = 31-AdcValue;
+			    #endif
+				MicEchoReverbGainAjust(mainAppCt.EchoGainStep,mainAppCt.ReverbGainStep);
+				#endif
+
+              #ifdef CFG_FUNC_BREAKPOINT_EN
+				BackupInfoUpdata(BACKUP_SYS_INFO);
+			  #endif
+				break;
+		  #endif
+		  
+			/*#ifdef CFG_FUNC_MIC_TREB_BASS_EN
 			case 3://ADC LEVEL Channel 3
-//				mainAppCt.MicBassStepBak = 15 - AdcValue/2;
-//				mainAppCt.MicTrebStepBak = AdcValue/2;
-				//MicBassTrebAjust(mainAppCt.MicBassStep, mainAppCt.MicTrebStep);
+				mainAppCt.MicBassStep = 15 - AdcValue/2;
+				mainAppCt.MicTrebStep = AdcValue/2;
+				MicBassTrebAjust(mainAppCt.MicBassStep, mainAppCt.MicTrebStep);
+				break;
+				#endif*/
+
+		  #ifdef CFG_FUNC_MIC_TREB_BASS_EN
+			case Z_MIC_TREB_AdcLevelCh:
+				#if MIC_TREB_block_reverse==0	
+				mainAppCt.MicTrebStep = AdcValue/2;
+				#else
+				
+				mainAppCt.MicTrebStep =15- AdcValue/2;
+				#endif
+				DBG("@@@@ MIC TrebStep = %d\n", mainAppCt.MicTrebStep);
+				MicBassTrebAjust(mainAppCt.MicBassStep, mainAppCt.MicTrebStep);
 				break;
 
-			case 4://ADC LEVEL Channel 4
+			case Z_MIC_BASS_AdcLevelCh:
+				#if MIC_BASS_block_reverse==0	
+				mainAppCt.MicBassStep = AdcValue/2;
+				#else
+				mainAppCt.MicBassStep = 15 - AdcValue/2;
 				
+				#endif
+				DBG("@@@@ MIC BASS = %d\n",mainAppCt.MicBassStep);
+				MicBassTrebAjust(mainAppCt.MicBassStep, mainAppCt.MicTrebStep);
 				break;
-			case 5://ADC LEVEL Channel 5
-				
+				#endif
+
+		    #ifdef  CFG_FUNC_MUSIC_TREB_BASS_EN
+			case Z_Music_TREB_AdcLevelCh:
+				#if Music_TREB_block_reverse==0	
+			    mainAppCt.MusicTrebStep = AdcValue;
+			    #else
+                mainAppCt.MusicTrebStep = 31-AdcValue;
+			    #endif
+				DBG("@@@@MusicTrebStep = %d\n", mainAppCt.MusicTrebStep);
+				MusicBassTrebAjust(mainAppCt.MusicBassStep, mainAppCt.MusicTrebStep);
 				break;
+			case Z_Music_BASS_AdcLevelCh:
+				#if Music_BASS_block_reverse==0	
+			    mainAppCt.MusicBassStep = AdcValue;
+			    #else
+                mainAppCt.MusicBassStep = 31-AdcValue;
+			    #endif
+				DBG("@@@@MusicBassStep = %d\n", mainAppCt.MusicBassStep);
+				MusicBassTrebAjust(mainAppCt.MusicBassStep, mainAppCt.MusicTrebStep);
+				break;
+			#endif
+			// zsh end
 			case 6://ADC LEVEL Channel 6
 				
 				break;

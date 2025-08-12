@@ -76,8 +76,13 @@ static const uint8_t DmaChannelMap[29] = {
 #else
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
+#ifdef CFG_DMA_RGB_LED_EN
+    255,//PERIPHERAL_ID_SDIO_RX,			//3
+	255,//PERIPHERAL_ID_SDIO_TX,			//4
+    #else
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
+    #endif
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
@@ -88,7 +93,11 @@ static const uint8_t DmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_UART0_TX,		//11
 	255,//PERIPHERAL_ID_UART1_RX,		//12
 	255,//PERIPHERAL_ID_UART1_TX,		//13
+#ifdef CFG_DMA_RGB_LED_EN
+	4,//PERIPHERAL_ID_TIMER4,			//14
+#else
 	255,//PERIPHERAL_ID_TIMER4,			//14
+#endif
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
 	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
@@ -364,7 +373,14 @@ bool TwsSlavePlayInit(void)
 	{
 	 	HardWareMuteOrUnMute();
 	}
-	
+	//Z_post_msg(Custom_Event2,Custom_Event1_tone_tws_con);
+	RemindSoundServiceItemRequest(SOUND_REMIND_TWS_CON, REMIND_PRIO_SYS|REMIND_ATTR_NEED_HOLD_PLAY);
+
+    Save_task_state(Task_TwsSlave);
+  
+     PA_contral();
+	 
+
 	return TRUE;
 }
 
@@ -520,6 +536,9 @@ bool TwsSlavePlayDeinit(void)
 	
 	osPortFree(gTwsSlavePlayCt);
 	gTwsSlavePlayCt = NULL;
+
+
+    T_TwsSlave_inf.play_state = _Music_stop;
 
 	return TRUE;
 }

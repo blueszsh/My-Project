@@ -39,7 +39,7 @@
 #define CFG_DBUS_ACCESS_REMIND_SOUND_DATA  	//开启宏则使用DBUS从flash中获取提示音数据
 #define CFG_PARAM_REMIND_LIST_MAX		15	//提示音阻塞播放最大个数。
 
-#define	REMIND_DBG(format, ...)		//printf(format, ##__VA_ARGS__)
+#define	REMIND_DBG(format, ...)		printf(format, ##__VA_ARGS__)
 
 #ifndef CFG_REMIND_SOUND_DECODING_USE_LIBRARY
 #include "mp2.h"
@@ -481,6 +481,7 @@ void RemindMp2Decode(void)
 			if(RemindSoundCt.ConstDataOffset >= RemindSoundCt.ConstDataSize)
 			{
 				REMIND_DBG("Remind end\n");
+				tone_play_end();//BOEU
 				RemindSoundCt.player_init = MP2_DECODE_END;
 				//SendRemindSoundEndMsg();
 				RemindSoundPlayEndNotify();
@@ -556,6 +557,7 @@ uint16_t RemindDataLenGet(void)
 			REMIND_DBG("remind play end!\n");
 			RemindSoundPlayEndNotify();	
 			delay_cnt = 0;
+			tone_play_end();//BOEU
 		}
 	}
 	return Mp2Decode.dec_last_len;
@@ -583,6 +585,13 @@ uint16_t RemindDataGet(void* Buf, uint16_t Samples)
 #endif	
 }
 
+
+void RemindSoundItemRequestEnable(void)//boeu
+{
+	RemindSoundCt.Disable = FALSE;
+}
+
+
 void RemindSoundItemRequestDisable(void)
 {
 	RemindSoundCt.Disable = TRUE;
@@ -593,10 +602,19 @@ bool RemindSoundServiceItemRequest(char *SoundItem, uint32_t play_attribute)
 	uint8_t i;
 	uint16_t ItemRef = SOUND_REMIND_TOTAL;
 
+	//REMIND_DBG("RemindSoundServiceItemRequest() \n");
+	
 	if(SoftFlagGet(SoftFlagNoRemind) || RemindSoundCt.Disable == TRUE)
+	{
+	    REMIND_DBG("REMIND_SOUND return 11\n");
+		REMIND_DBG("RemindSoundCt.Disable == %d\n",RemindSoundCt.Disable);
 		return FALSE;
+	}
 	if(SoundItem == NULL)//strlen(SoundItem) != REMIND_SOUND_ID_LEN ||
+	{
+	   REMIND_DBG("REMIND_SOUND return 22\n");
 		return FALSE;
+	}
 	if(RemindSoundCt.EmptyIndex == CFG_PARAM_REMIND_LIST_MAX)
 	{
 		REMIND_DBG("REMIND_SOUND_ID_BUF is full!\n");
@@ -604,7 +622,10 @@ bool RemindSoundServiceItemRequest(char *SoundItem, uint32_t play_attribute)
 	}
 	ItemRef = RemindSountItemFind((uint8_t *)SoundItem);
 	if(ItemRef >= SOUND_REMIND_TOTAL)
+	{
+	   REMIND_DBG("REMIND_SOUND return 33\n");
 		return FALSE;
+	}
 
 	RemindSoundCt.RequestUpdate = TRUE;
 	osMutexLock(RemindMutex);
@@ -653,6 +674,10 @@ bool RemindSoundServiceItemRequest(char *SoundItem, uint32_t play_attribute)
 //		//AudioCoreSourceMute(MIC_SOURCE_NUM,TRUE,TRUE);
 //		AudioCoreSourceMute(APP_SOURCE_NUM,TRUE,TRUE);
 //	}
+    REMIND_DBG("REMIND_SOUND return TRUE\n");
+    Tone_play_state=1;
+	PA_contral();
+	
 	return TRUE;
 }
 
@@ -911,6 +936,8 @@ bool RemindSoundRun(SysModeState ModeState)
 			{
 				AudioCoreSourceMute(REMIND_SOURCE_NUM, TRUE, TRUE);
 				DBG("Mute Remind\n");
+		//boeu 因为原始包CFG_REMIND_SOUND_DECODING_USE_LIBRARY没有打开,所以放在这	
+			//	tone_play_end();
 				RemindSoundCt.ItemState = REMIND_ITEM_MUTE;
 
 			}

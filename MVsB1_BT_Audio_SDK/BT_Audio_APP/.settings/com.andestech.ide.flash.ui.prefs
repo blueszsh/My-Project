@@ -1,0 +1,2 @@
+RseFlashDriverModel=<?xml version\="1.0" encoding\="UTF-8" standalone\="yes"?><rseFlashDriverModel><addr>0x0</addr><eraseAll>false</eraseAll><flashDriver>F\:\\MV-2023\\MY-301\\V1\\MVsB1_BT_Audio_SDK_24bit_v0.4.2\\BT_Audio_APP\\tools\\b1_download_v3.0.exe</flashDriver><imageFile>F\:\\MV-2023\\MY-301\\V1\\MVsB1_BT_Audio_SDK_24bit_v0.4.2\\BT_Audio_APP\\Release\\output\\BT_Audio_APP.bin</imageFile><lock>false</lock><unlock>false</unlock><verify>false</verify></rseFlashDriverModel>
+eclipse.preferences.version=1
