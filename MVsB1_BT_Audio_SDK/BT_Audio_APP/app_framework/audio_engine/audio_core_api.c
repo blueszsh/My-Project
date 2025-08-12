@@ -494,7 +494,6 @@ void AudioCoreAppSourceVolApply(uint16_t Source,int16_t *pcm_in,uint16_t n,uint1
 	{
 		RightVol = AudioCore.AudioSource[j].RightVol;
 	}
-
 	LeftVolStep = LeftVol > AudioCore.AudioSource[j].LeftCurVol ? (LeftVol - AudioCore.AudioSource[j].LeftCurVol) : (AudioCore.AudioSource[j].LeftCurVol - LeftVol);
 	LeftVolStep = LeftVolStep / SOURCEFRAME(j) + (LeftVolStep % SOURCEFRAME(j) ? 1 : 0);
 	RightVolStep = RightVol > AudioCore.AudioSource[j].RightCurVol ? (RightVol - AudioCore.AudioSource[j].RightCurVol) : (AudioCore.AudioSource[j].RightCurVol - RightVol);

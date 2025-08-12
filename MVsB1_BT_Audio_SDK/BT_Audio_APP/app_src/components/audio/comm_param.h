@@ -37,7 +37,7 @@ typedef struct _EffectComCt
 
 extern const EffectComCt AudioEffectCommParam[];
 extern const EffectComCt AudioEffectAECParam_HFP[];
-extern const unsigned char CommParam[918];
+extern const unsigned char CommParam[1146];
 extern const unsigned char AECParam_HFP[328];
 
 #ifdef  __cplusplus

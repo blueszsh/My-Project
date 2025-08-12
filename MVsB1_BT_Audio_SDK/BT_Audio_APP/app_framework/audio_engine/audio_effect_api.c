@@ -22,6 +22,7 @@
 #include "overdrive.h"
 #include "distortion_exp.h"
 #include "eq_drc.h"
+#include "audio_effect_class.h"
 
 #ifdef BT_TWS_SUPPORT
 #include "bt_tws_api.h"
@@ -37,6 +38,8 @@ osMutexId AudioEffectMutex = NULL;
 int16_t*  EchoAudioBuf=NULL;
 #endif
 
+extern PCM_DATA_TYPE * DynamicEQBuf;
+extern PCM_DATA_TYPE * DynamicEQWatchBuf;
 
 #ifdef CFG_FUNC_EQMODE_FADIN_FADOUT_EN
 int16_t EqModeAudioBuf[512*2];
@@ -416,7 +419,7 @@ void AudioEffectPitchShifterInit(PitchShifterUnit *unit, uint8_t channel, uint32
 		return;
 	}
 	unit->channel = channel;
-	pitch_shifter_init(&unit->ct, channel, sample_rate, unit->param.semitone_steps, CFG_MIC_PITCH_SHIFTER_FRAME_SIZE);//512
+	pitch_shifter_init24(&unit->ct, channel, sample_rate, unit->param.semitone_steps, CFG_MIC_PITCH_SHIFTER_FRAME_SIZE);//512
 }
 void AudioEffectPitchShifterConfig(PitchShifterUnit *unit)
 {
@@ -424,9 +427,9 @@ void AudioEffectPitchShifterConfig(PitchShifterUnit *unit)
 	{
 		return;
 	}
-	pitch_shifter_configure(&unit->ct, unit->param.semitone_steps);
+	pitch_shifter_configure24(&unit->ct, unit->param.semitone_steps);
 }
-void AudioEffectPitchShifterApply(PitchShifterUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n)
+void AudioEffectPitchShifterApply(PitchShifterUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n)
 {
 	if(unit->enable == FALSE)
 	{
@@ -440,8 +443,8 @@ void AudioEffectPitchShifterApply(PitchShifterUnit *unit, int16_t *pcm_in, int16
 
 		for(iIdx = 0; iIdx < Cnt; iIdx++)
 		{
-			pitch_shifter_apply(&unit->ct, (int16_t *)(pcm_in  + (PSSample * unit->channel) * iIdx),
-									  	  (int16_t *)(pcm_out + (PSSample * unit->channel) * iIdx));
+			pitch_shifter_apply24(&unit->ct, (int32_t *)(pcm_in  + (PSSample * unit->channel) * iIdx),
+									  	  (int32_t *)(pcm_out + (PSSample * unit->channel) * iIdx));
 		}
 	}
 }
@@ -456,8 +459,8 @@ void AudioEffectReverbInit(ReverbUnit *unit, uint8_t channel, uint32_t sample_ra
 		return;
 	}
 	unit->channel = channel;
-	reverb_init(&unit->ct, channel, sample_rate);
-	reverb_configure(&unit->ct, unit->param.dry_scale, unit->param.wet_scale, unit->param.width_scale, unit->param.roomsize_scale, unit->param.damping_scale);
+	reverb_init24(&unit->ct, channel, sample_rate);
+	reverb_configure24(&unit->ct, unit->param.dry_scale, unit->param.wet_scale, unit->param.width_scale, unit->param.roomsize_scale, unit->param.damping_scale);
 }
 
 void AudioEffectReverbConfig(ReverbUnit *unit)
@@ -466,16 +469,16 @@ void AudioEffectReverbConfig(ReverbUnit *unit)
 	{
 		return;
 	}
-	reverb_configure(&unit->ct, unit->param.dry_scale, unit->param.wet_scale, unit->param.width_scale, unit->param.roomsize_scale, unit->param.damping_scale);
+	reverb_configure24(&unit->ct, unit->param.dry_scale, unit->param.wet_scale, unit->param.width_scale, unit->param.roomsize_scale, unit->param.damping_scale);
 }
 
-void AudioEffectReverbApply(ReverbUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n)
+void AudioEffectReverbApply(ReverbUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n)
 {
 	if(unit->enable == FALSE)
 	{
 		return;
 	}
-	reverb_apply(&unit->ct, pcm_in, pcm_out, n);
+	reverb_apply24(&unit->ct, pcm_in, pcm_out, n);
 }
 #endif
 
@@ -498,9 +501,7 @@ void AudioEffectSilenceDetectorApply(SilenceDetectorUnit *unit, int16_t *pcm_in,
 		return;
 	}
 	unit->param.level = silence_detector_apply(&unit->ct, pcm_in, n);
-	User_Set_Music_Energy(unit->param.level);//BOEU
-//DBG("unit->param.level = %d\n", unit->param.level);
-	
+
 #ifdef CFG_FUNC_SILENCE_AUTO_POWER_OFF_EN
 	//DBG("unit->param.level = %d\n", unit->param.level);
     if(unit->param.level > SILENCE_THRESHOLD)
@@ -520,12 +521,9 @@ void AudioEffectSilenceDetectorApply24(SilenceDetectorUnit *unit, int32_t *pcm_i
 		return;
 	}
 	level = silence_detector_apply24(&unit->ct, pcm_in, n);
-    
-   
+
 	unit->param.level = (level>>8);
-    User_Set_Music_Energy(unit->param.level);//BOEU
-    
-  //   DBG("Apply24 unit->param.level = %d\n", unit->param.level);
+
 #ifdef CFG_FUNC_SILENCE_AUTO_POWER_OFF_EN
 	//DBG("unit->param.level = %d\n", unit->param.level);
     if(unit->param.level > SILENCE_THRESHOLD)
@@ -536,6 +534,34 @@ void AudioEffectSilenceDetectorApply24(SilenceDetectorUnit *unit, int32_t *pcm_i
 }
 #endif
 #endif
+
+#ifdef CFG_FUNC_RECORDER_SILENCE_DECTOR
+void UserSilenceDetectorInit(SilenceDetectorUnit *unit, uint8_t channel, uint32_t sample_rate)
+{
+    unit->channel = channel;
+    silence_detector_init(&unit->ct,  channel, sample_rate);
+}
+//pcm_out实际上没有用，仅仅为了代码对齐
+void UserSilenceDetectorApply(SilenceDetectorUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n)
+{
+	unit->param.level = silence_detector_apply(&unit->ct, pcm_in, n);
+	DBG("unit->param.level = %d\n", unit->param.level);
+}
+
+#ifdef CFG_AUDIO_WIDTH_24BIT
+//pcm_out实际上没有用，仅仅为了代码对齐
+void UserSilenceDetectorApply24(SilenceDetectorUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n)
+{
+	uint32_t level;
+
+	level = silence_detector_apply24(&unit->ct, pcm_in, n);
+
+	unit->param.level = (level>>8);
+}
+#endif
+
+#endif
+
 
 #if CFG_AUDIO_EFFECT_3D_EN
 void AudioEffectThreeDInit(ThreeDUnit *unit, uint8_t channel, uint32_t sample_rate)
@@ -734,6 +760,14 @@ void AudioEffectVocalCutApply(VocalCutUnit *unit, int16_t *pcm_in, int16_t *pcm_
 	}
 	vocal_cut_apply(&unit->ct, pcm_in, pcm_out, n, unit->param.wetdrymix);
 }
+void AudioEffectVocalCutApply24(VocalCutUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n)
+{
+	if(unit->enable == FALSE)
+	{
+		return;
+	}
+	vocal_cut_apply24(&unit->ct, pcm_in, pcm_out, n, unit->param.wetdrymix);
+}
 #endif
 
 #if CFG_AUDIO_EFFECT_PLATE_REVERB_EN
@@ -745,7 +779,7 @@ void AudioEffectPlateReverbInit(PlateReverbUnit *unit, uint8_t channel, uint32_t
 		return;
 	}
 	unit->channel = channel;
-	plate_reverb_init(&unit->ct, channel, sample_rate, unit->param.highcut_freq, unit->param.modulation_en);
+	reverb_plate_init24(&unit->ct, channel, sample_rate, unit->param.highcut_freq, unit->param.modulation_en);
 	plate_reverb_configure(&unit->ct, unit->param.predelay, unit->param.diffusion, unit->param.decay, unit->param.damping, unit->param.wetdrymix);
 }
 void AudioEffectPlateReverbConfig(PlateReverbUnit *unit)
@@ -757,13 +791,13 @@ void AudioEffectPlateReverbConfig(PlateReverbUnit *unit)
 	plate_reverb_configure(&unit->ct, unit->param.predelay, unit->param.diffusion, unit->param.decay, unit->param.damping, unit->param.wetdrymix);
 }
 
-void AudioEffectPlateReverbApply(PlateReverbUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n)
+void AudioEffectPlateReverbApply(PlateReverbUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n)
 {
 	if(unit->enable == FALSE)
 	{
 		return;
 	}
-	plate_reverb_apply(&unit->ct, pcm_in, pcm_out, n);
+	reverb_plate_apply24(&unit->ct, pcm_in, pcm_out, n);
 }
 #endif
 
@@ -905,7 +939,11 @@ void AudioEffectPcmDelayInit(PcmDelayUnit *unit, uint8_t channel, uint32_t sampl
 	}
 	unit->channel = channel;
 	max_delay_samples = unit->param.max_delay * gCtrlVars.sample_rate/1000;
-	pcm_delay_init(&unit->ct, channel, max_delay_samples, unit->param.high_quality, unit->s_buf);
+	#ifdef CFG_AUDIO_WIDTH_24BIT
+	pcm_delay_init24(&unit->ct, channel, max_delay_samples, unit->param.high_quality, unit->s_buf);
+	#else
+	pcm_delay_init16(&unit->ct, channel, max_delay_samples, unit->param.high_quality, unit->s_buf);
+	#endif
 }
 
 void AudioEffectPcmDelayApply(PcmDelayUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n)
@@ -916,7 +954,18 @@ void AudioEffectPcmDelayApply(PcmDelayUnit *unit, int16_t *pcm_in, int16_t *pcm_
 		return;
 	}
 	delay_samples = (unit->param.delay*gCtrlVars.sample_rate)/1000;
-	pcm_delay_apply(&unit->ct, pcm_in, pcm_out, n, delay_samples);
+	pcm_delay_apply16(&unit->ct, pcm_in, pcm_out, n, delay_samples);
+}
+
+void AudioEffectPcmDelayApply24(PcmDelayUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n)
+{
+	uint32_t delay_samples = 0;
+	if(unit->enable == FALSE)
+	{
+		return;
+	}
+	delay_samples = (unit->param.delay*gCtrlVars.sample_rate)/1000;
+	pcm_delay_apply24(&unit->ct, pcm_in, pcm_out, n, delay_samples);
 }
 #endif
 
@@ -1307,6 +1356,41 @@ void AudioEffectAECApply(AECUnit *unit, int16_t *u_pcm_in, int16_t *d_pcm_in, in
 }
 #endif
 
+void AudioEffectVirtualSurroundInit(VirtualSurroundUnit *unit, uint8_t channel, uint32_t sample_rate)
+{
+#if CFG_AUDIO_EFFECT_VIRTUAL_SURROUND_EN
+	if(unit->enable == FALSE)
+	{
+		return;
+	}
+	unit->channel = channel;
+	virtual_surround_init(&unit->ct, channel, sample_rate);
+#endif
+}
+
+void AudioEffectVirtualSurroundApply(VirtualSurroundUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n)
+{
+#if CFG_AUDIO_EFFECT_VIRTUAL_SURROUND_EN
+	if(unit->enable == FALSE)
+	{
+		return;
+	}
+	virtual_surround_apply16(&unit->ct, pcm_in, pcm_out, n);
+#endif
+}
+
+void AudioEffectVirtualSurroundApply24(VirtualSurroundUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n)
+{
+#if CFG_AUDIO_EFFECT_VIRTUAL_SURROUND_EN
+	if(unit->enable == FALSE)
+	{
+		return;
+	}
+	virtual_surround_apply24(&unit->ct, pcm_in, pcm_out, n);
+#endif
+}
+
+
 #if CFG_AUDIO_EFFECT_DISTORTION_DS1_EN
 void AudioEffectDistortionDS1Init(DistortionDS1Unit *unit, uint8_t channel, uint32_t sample_rate)
 {
@@ -1458,4 +1542,150 @@ void AudioEffectHowlingSuppressorFineApply(HowlingFineUnit *unit, int16_t *pcm_i
 #endif
 
 #endif
+/************************************************************
+ *
+ *
+ ************************************************************/
+#if CFG_AUDIO_EFFECT_DYNAMIC_EQ && defined(CFG_FUNC_AUDIO_EFFECT_EN)
+void AudioEffectDynamicEqInit(DynamicEqUnit *unit, uint8_t channel, uint32_t sample_rate)
+{
+	if((unit->enable == FALSE)||(unit->eq_low==NULL)||(unit->eq_high==NULL))
+	{
+		DBG("DynamicEq invalid\n");
+		return;
+	}
 
+//  DBG("%s\n",__func__);
+
+	unit->channel = channel;
+
+	dynamic_eq_init(&unit->ct, unit->channel, sample_rate, unit->param.low_energy_threshold, unit->param.normal_energy_threshold, unit->param.high_energy_threshold,
+			unit->param.attack_time,unit->param.release_time,unit->eq_low,unit->eq_high);
+}
+
+void AudioEffectDynamicEqApply(DynamicEqUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n)
+{
+	if((unit->enable == FALSE) || (unit->eq_low==NULL)||(unit->eq_high==NULL))
+	{
+		return;
+	}
+
+//	memset(DynamicEQBuf, 0, n * unit->channel * sizeof(PCM_DATA_TYPE));
+//	memset(DynamicEQWatchBuf, 0, n * unit->channel * sizeof(PCM_DATA_TYPE));	
+
+	memcpy(DynamicEQBuf, pcm_in, n * unit->channel * sizeof(PCM_DATA_TYPE));
+	memcpy(DynamicEQWatchBuf, pcm_in, n * unit->channel * sizeof(PCM_DATA_TYPE));
+
+	dynamic_eq_apply16(&unit->ct, (int16_t *)DynamicEQBuf,(int16_t *)DynamicEQWatchBuf, (int16_t *)pcm_out, n);
+}
+
+void AudioEffectDynamicEqApply24(DynamicEqUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n)
+{
+#ifdef CFG_AUDIO_WIDTH_24BIT
+	if((unit->enable == FALSE) || (unit->eq_low==NULL)||(unit->eq_high==NULL))
+	{
+		return;
+	}
+
+//	memset(DynamicEQBuf, 0, n * unit->channel * sizeof(PCM_DATA_TYPE));
+//	memset(DynamicEQWatchBuf, 0, n * unit->channel * sizeof(PCM_DATA_TYPE));
+	
+	memcpy(DynamicEQBuf, pcm_in, n * unit->channel * sizeof(PCM_DATA_TYPE));
+	memcpy(DynamicEQWatchBuf, pcm_in, n * unit->channel * sizeof(PCM_DATA_TYPE));
+
+	dynamic_eq_apply24(&unit->ct, (int32_t *)DynamicEQBuf,(int32_t *)DynamicEQWatchBuf, (int32_t *)pcm_out, n);
+#endif
+}
+
+void AudioEffectEQApplyNull(EQUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n)
+{
+	if(unit->enable == FALSE)
+	{
+		return;
+	}
+	unit->ct = unit->ct;
+	pcm_in = pcm_in;
+	pcm_out = pcm_out;
+	n = n;
+}
+
+void AudioEffectEQApplyNull24(EQUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n)
+{
+#ifdef CFG_AUDIO_WIDTH_24BIT
+	if(unit->enable == FALSE)
+	{
+		return;
+	}
+	unit->ct = unit->ct;
+	pcm_in = pcm_in;
+	pcm_out = pcm_out;
+	n = n;
+#endif 
+}
+#endif //end of CFG_AUDIO_EFFECT_DYNAMIC_EQ
+/*
+ *
+ *
+ */
+#if CFG_AUDIO_EFFECT_BUTTERWORTH
+/*
+****************************************************************
+* ButterWorth 音效初始化
+*
+*
+****************************************************************
+*/
+void AudioEffectButterWorthInit(ButterWorthUnit *unit, uint8_t channel, uint32_t sample_rate)
+{
+//	int32_t ret;
+	if(unit->enable == FALSE)
+	{
+		return;
+	}
+
+    unit->channel = channel;
+
+//    ret = filter_butterworth_estimate_memory_usage(unit->filter_order, &persistent_size);
+//
+//    if(FILTERBUTTERWORTH_ERROR_OK != ret)
+//     {
+//		unit->enable = 0;
+//		APP_DBG("ButterWorthUnit malloc err! %ldu\n",persistent_size);
+//    	return;
+//     }
+//    persistent_size = 236;//use easy
+
+	filter_butterworth_init((uint8_t *)&unit->ct, unit->channel, sample_rate, unit->param.filter_type, unit->param.filter_order, unit->param.fc);
+}
+/*
+****************************************************************
+* butterworth16主循环处理函数
+*
+*
+****************************************************************
+*/
+void AudioEffectButterWorthApply(ButterWorthUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n)
+{
+	if(unit->enable)
+	{
+		filter_butterworth_apply16((uint8_t *)&unit->ct, pcm_in, pcm_out, n);
+	}
+}
+
+/*
+****************************************************************
+* butterworth24主循环处理函数
+*
+*
+****************************************************************
+*/
+#ifdef CFG_AUDIO_WIDTH_24BIT
+void AudioEffectButterWorthApply24(ButterWorthUnit *unit, int32_t *pcm_in, int32_t *pcm_out, int32_t n)
+{
+	if(unit->enable)
+	{
+		filter_butterworth_apply24((uint8_t *)&unit->ct, pcm_in, pcm_out, n);
+	}
+}
+#endif
+#endif//end of #if CFG_AUDIO_EFFECT_BUTTERWORTH

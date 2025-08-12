@@ -10,6 +10,11 @@
 
 #define SBC_FIFO_SIZE	8*1024
 #define SBC_FIFO_LEVEL_HIGH 	(SBC_FIFO_SIZE / 10 * 7) //70% 开播
+
+#define BT_AAC_LEVEL_HIGH					(12)//frame 计数
+#define BT_AAC_LEVEL_LOW					(5)
+#define BT_AAC_START_FRAME					((BT_AAC_LEVEL_LOW + BT_AAC_LEVEL_HIGH) / 2 + 1)
+
 typedef struct _BT_A2DP_PLAYER
 {
 #ifdef BT_AUDIO_AAC_ENABLE
@@ -43,6 +48,7 @@ typedef struct _BT_A2DP_PLAYER
  * 获取 SBC DATA 有效长度
  **********************************************************************************/
 uint32_t GetValidSbcDataSize(void);
+uint32_t GetValidFrameDataSize(void);
 
 /***********************************************************************************
  * AVRCP连接成功后自动发送播放命令，播放音乐

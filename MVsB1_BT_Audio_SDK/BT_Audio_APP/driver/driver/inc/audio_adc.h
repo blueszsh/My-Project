@@ -314,6 +314,14 @@ void AudioADC_VolGet(ADC_MODULE ADCModule, uint16_t* LeftVol, uint16_t* RightVol
 void AudioADC_AnaInit(void);
 
 /**
+ * @brief  ADC 模块模拟部分上电初始化(低功耗版本)
+ * @param  无
+ * @return 无
+ * @note 如果DAC模块工作，上电先做DAC上电操作，否则会有pop声
+ */
+void AudioADC_AnaInitLowEnergy(void);
+
+/**
  * @brief  ADC 模块模拟部分去初始化
  * @param  ADCModule    0,ADC0模块; 1,ADC1模块
  * @return 无
@@ -475,6 +483,14 @@ void AudioADC_AGCFrameTime(ADC_MODULE ADCModule, uint16_t FrameTime);
 void AudioADC_AGCHoldTime(ADC_MODULE ADCModule, uint32_t HoldTime);
 
 /**
+ * @brief  AGC模块保持时间，开始AGC算法自适应增益之前的保持时间。
+ * @param  ADCModule    0,ADC0模块; 1,ADC1模块
+ * @param  HoldFrames	AGC开始算法之前的保持时间。单位：Frame的倍数。范围【0 ~ 31】
+ * @return 无
+ */
+void AudioADC_AGCHoldFrames(ADC_MODULE ADCModule, uint32_t HoldFrames);
+
+/**
  * @brief  AGC模块当输入信号太大时，AGC增益衰减的步进时间设置。
  * @param  ADCModule    	0,ADC0模块; 1,ADC1模块
  * @param  AttackStepTime 	AGC增益增强的步进时间，单位为ms,范围为1 ~ 4096 ms
@@ -531,7 +547,16 @@ void AudioADC_AGCNoiseGateMode(ADC_MODULE ADCModule, uint8_t NoiseGateMode);
  * @param  NoiseHoldTime	噪声持续NoiseHoldTime后，噪声相关算法开始执行。单位（ms）
  * @return 无
  */
-void AudioADC_AGCNoiseHoldTime(ADC_MODULE ADCModule, uint8_t NoiseHoldTime);
+void AudioADC_AGCNoiseHoldTime(ADC_MODULE ADCModule, uint32_t NoiseHoldTime);
+
+
+/**
+ * @brief  AGC模块AGC模块噪声保持时间设置。
+ * @param  ADCModule    0,ADC0模块; 1,ADC1模块
+ * @param  NoiseHoldFrames	噪声持续NoiseHoldTime后，噪声相关算法开始执行。单位FrameTime的倍数。范围【0 ~ 31】
+ * @return 无
+ */
+void AudioADC_AGCNoiseHoldFrames(ADC_MODULE ADCModule, uint32_t NoiseHoldFrames);
 
 /**
  * @brief  AGC模块获取AGC增益

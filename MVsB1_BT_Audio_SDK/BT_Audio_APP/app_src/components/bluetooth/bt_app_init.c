@@ -109,6 +109,7 @@ static void prinfBtConfigParams(void)
 			);
 	
 	//ble address
+	APP_DBG("BLE Name:%s\n", btStackConfigParams->ble_LocalDeviceName);
 	APP_DBG("BleAddr:");
 	APP_DBG("%02x:%02x:%02x:%02x:%02x:%02x\n", 
 			btStackConfigParams->ble_LocalDeviceAddr[0],
@@ -253,6 +254,10 @@ void LoadBtConfigurationParams(void)
 			btStackConfigParams->bt_trimValue = sys_parameter.BtTrimECO0;
 		else
 			btStackConfigParams->bt_trimValue = sys_parameter.BtTrim;
+
+		#if defined(CFG_TWS_ROLE_SLAVE_TEST) && (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
+		btManager.twsSoundbarSlaveTestFlag = 1;
+		#endif
 	}
 	
 	//蓝牙公共配置参数,暂时按照宏定义默认的参数进行配置 bt_config.h,频偏值保留flash中数据
@@ -366,12 +371,22 @@ static void ConfigBtStackParams(BtStackParams *stackParams)
 
 #ifdef BT_TWS_SUPPORT
 	stackParams->twsFeatures.twsAppCallback = BtTwsCallback;
+	#ifdef CFG_TWS_SOUNDBAR_APP
+	#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_RANDOM || TWS_SIMPLE_PAIRING_SUPPORT == DISABLE)
+	stackParams->twsFeatures.twsSimplePairingCfg = DISABLE;
+	btManager.twsSimplePairingCfg = DISABLE;
+	#else
+	stackParams->twsFeatures.twsSimplePairingCfg = ENABLE;
+	btManager.twsSimplePairingCfg = ENABLE;
+	#endif
+	#else
 	#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_RANDOM)
 	stackParams->twsFeatures.twsSimplePairingCfg = DISABLE;
 	btManager.twsSimplePairingCfg = DISABLE;
 	#else
 	stackParams->twsFeatures.twsSimplePairingCfg = ENABLE;
 	btManager.twsSimplePairingCfg = ENABLE;
+	#endif
 	#endif
 	stackParams->twsFeatures.twsRoleCfg = TWS_PAIRING_MODE;
 
@@ -435,6 +450,12 @@ bool BtStackInit(void)
 //	BTHostParamsConfig(&App_Bt_Host_config);
 
 	ConfigBtStackParams(&stackParams);
+
+#ifdef BT_PROFILE_BQB_ENABLE
+	stackParams.BQBTestFlag = 1;
+#else
+	stackParams.BQBTestFlag = 0;
+#endif
 
 	retInit = BTStackRunInit(&stackParams);
 	if(retInit != 0)

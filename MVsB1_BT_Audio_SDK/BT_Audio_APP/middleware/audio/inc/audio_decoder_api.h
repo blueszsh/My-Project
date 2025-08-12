@@ -21,8 +21,13 @@ extern "C" {
 #include "song_info.h"
 #include "audio_decoder_in_use.h" // User defined configuration file for audio decoders to be used.
 
+#ifdef LOSSLESS_DECODER_HIGH_RESOLUTION
+#define	APE_HIGH_RESOLUTION
+#define	FLAC_HIGH_RESOLUTION
+#define	WAV_HIGH_RESOLUTION
+#endif
 
-#define AUDIO_DECODER_LIBRARY_VERSION   "8.7.1"     /**< audio decoder library version string        */
+#define AUDIO_DECODER_LIBRARY_VERSION   "8.10.4"     /**< audio decoder library version string        */
 
 
 /**

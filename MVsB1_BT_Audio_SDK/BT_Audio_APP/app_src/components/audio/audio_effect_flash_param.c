@@ -55,11 +55,13 @@ const uint16_t EffectTypeParamCtLen[] =
 	sizeof(PlateReverbParam),//PLATE_REVERB,
 	sizeof(ReverbProParam),//REVERB_PRO,
 	sizeof(VoiceChangerProParam),//VOICE_CHANGER_PRO,
+	//sizeof(VocalRemoverParam),//VOCAL_REMOVE,//20
 	sizeof(PhaseControlParam),//PHASE_CONTROL,//20
-	sizeof(VocalRemoverParam),//VOCAL_REMOVE,
+	sizeof(VocalRemoverParam),//VOCAL_REMOVE,//21
 	sizeof(PitchShifterProParam),//PITCH_SHIFTER_PRO,
 	sizeof(VBClassicParam),//VIRTUAL_BASS_CLASSIC,
 	sizeof(PcmDelayParam),//PCM_DELAY,
+	//sizeof(PhaseControlParam),//PHASE_CONTROL,
 	sizeof(ExciterParam),//EXCITER,//25
 	sizeof(ChorusParam),//CHORUS,
 	sizeof(AutoWahParam),//AUTO_WAH,
@@ -73,13 +75,21 @@ const uint16_t EffectTypeParamCtLen[] =
 	sizeof(OverdriveParam),//OVERDRIVE,//35
 	sizeof(DistortionParam),//DISTORTION
 	sizeof(EQDRCParam),//EQ_DRC
-	//AEC = 100,////AEC,用户自定义音效，固定为100
-	//注意，用户自定义音效，参数往后增加
+	sizeof(AECParam),//
+	sizeof(DistortionDS1Param),//
+	sizeof(OverdrivePolyParam),//40
+	sizeof(CompanderParam),//
+	sizeof(LLCompressorParam),//
+	sizeof(HowlingFineParam),//
 };
 
 const uint16_t EffectTypeParam100CtLen[] =
 {
+#ifndef CFG_EFFECT_PARAM_UPDATA_BY_ACPWORKBENCH
 	sizeof(AECParam),//AEC = 100,////AEC,用户自定义音效，固定为100
+#else
+	sizeof(DynamicEqParam),
+#endif
 	//注意，用户自定义音效，参数往后增加
 };
 

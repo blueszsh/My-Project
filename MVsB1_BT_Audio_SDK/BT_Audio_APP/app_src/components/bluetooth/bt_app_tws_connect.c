@@ -492,8 +492,16 @@ void BtTwsRunLoop(void)
 
 			if((btManager.twsState == BT_TWS_STATE_NONE)&&(btManager.btLinkState == 0))
 			{
-				//TWS回连超时,进入可被搜索可被连接状态
-				BtSetAccessMode_Disc_Con();
+				#if (defined(BT_TWS_SUPPORT) && (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE))
+				if (!btManager.twsSoundbarSlaveTestFlag)
+				{
+					BtSetAccessMode_NoDisc_Con();
+				}
+				else
+				#endif
+				{
+					BtSetAccessMode_Disc_Con(); //TWS回连超时,进入可被搜索可被连接状态
+				}
 			}
 		}
 	}
@@ -536,7 +544,12 @@ bool TwsPeerSlave(void)
 		{
 			if(btManager.twsState == BT_TWS_STATE_NONE)
 			{
+				#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
+				BtSetAccessMode_NoDisc_Con();
+				#else
 				BtSetAccessMode_Disc_Con();
+				#endif
+
 				TwsSlaveModeEnter();
 				BtTwsEnterPeerPairingMode();
 				return TRUE;
@@ -554,6 +567,7 @@ bool TwsPeerSlave(void)
 
 bool TwsRoleSlave(void)
 {
+#if (TWS_SIMPLE_PAIRING_SUPPORT==ENABLE)
 	if(!btManager.twsSbSlaveDisable)
 	{
 		//1.断开TWS
@@ -572,6 +586,9 @@ bool TwsRoleSlave(void)
 		//1.开启BLE SCAN
 		tws_slave_start_simple_pairing();
 	}
+#else
+	BtTwsEnterSimplePairingMode();
+#endif
 
 	return FALSE;
 }
@@ -598,7 +615,7 @@ void BtTwsPairingStart(void)
 	
 	if(BB_link_state_get(1)||btManager.btTwsPairingStartDelayCnt)
 	{
-		btManager.btTwsPairingStartDelayCnt = 1;
+		//btManager.btTwsPairingStartDelayCnt = 1;
 		return;
 	}
 
@@ -651,9 +668,6 @@ void BtTwsPairingStart(void)
 #endif
 
 #endif
-
-   BT_state = BT_tws_mode;
-
 }
 
 /**************************************************************************
@@ -663,46 +677,14 @@ void BtTwsPairingStart(void)
 void tws_msg_process(uint16_t msg)
 {
 	switch(msg)
-	{
-#ifdef BT_TWS_SUPPORT
+	{	
 		case MSG_BT_TWS_MASTER_CONNECTED:
-			      Tws_state=1;
-				 if(btManager.btLinkState)
-				 {
-                   BT_state = BT_master_slave_phone;
-				   tws_master_a2dp_send();
-				 }
-				 else
-				 {
-                   BT_state = BT_master_slave;
-				 }
-				 Z_post_msg(Custom_Event2,Custom_Event1_tone_tws_con);
-
-                if(btManager.btLinkState==0)
-		        {
-		           Tws_master_bt_con=1;
-				   //main_msg_send(MSG_BT_CONNECT_CTRL);//连接手机
-		        }
-               
-		     #ifdef CFG_DMA_RGB_LED_EN
-		        mainAppCt.rgb_mode=RGB_Effect_TWS_Con;
-	         #endif
-		     #if LEDS_mix_RGB_EN
-		        RGB_curr_effect = RGB_Effect_TWS_Con;
-		     #endif
-			break;
 		case MSG_BT_TWS_SLAVE_CONNECTED:
-			     Tws_state=1;
-				 BT_state = BT_slave_master;
-
-				// Z_post_msg(Custom_Event2,Custom_Event1_tone_tws_con);
 			break;
 
 		//发起TWS组网
 		case MSG_BT_TWS_PAIRING:
 			BtStackServiceMsgSend(MSG_BT_STACK_TWS_PAIRING_START);//bkd change
-			BT_state = BT_tws_mode;
-			Z_post_msg(Custom_Event2,Custom_Event1_tone_TWS_Pair);
 			break;
 
 		case MSG_BT_TWS_RECONNECT:
@@ -710,30 +692,14 @@ void tws_msg_process(uint16_t msg)
 			break;
 		
 		case MSG_BT_TWS_DISCONNECT:
-			Tws_state=0;
-			     if(btManager.btLinkState)
-				 {
-                   BT_state = BT_connect;
-				 }
-				 else
-				 {
-                   BT_state = BT_master;
-				 }
-				 
 			BtTwsDeviceDisconnect();
-			Z_post_msg(Custom_Event2,Custom_Event1_tone_tws_discon);
 			break;
 
 		case MSG_BT_TWS_CLEAR_PAIRED_LIST:
 			BtDdb_ClearTwsDeviceAddrList();
 			break;
 
-		case MSG_BT_CLEAR_PAIRED_LIST:
-			memset(btManager.btLinkDeviceInfo,0,sizeof(btManager.btLinkDeviceInfo));
-			BtDdb_EraseBtLinkInforMsg();
-			break;
-
-#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
+	#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
 		//Soundbar Slave进入可以校频偏状态
 		//校准完频偏后,需要重启系统
 		case MSG_BT_SOUNDBAR_SLAVE_TEST_MODE:
@@ -743,21 +709,19 @@ void tws_msg_process(uint16_t msg)
 				{
 					btManager.twsSoundbarSlaveTestFlag = 1;
 					APP_DBG("Soundbar Slave Enter Test State\n");
-					BtSetAccessMode_Disc_Con();
 				}
 				else
 				{
 					btManager.twsSoundbarSlaveTestFlag = 0;
 					APP_DBG("Soundbar Slave Exit Test State\n");
-					BtSetAccessMode_NoDisc_Con();
 				}
+				BtStackServiceMsgSend(MSG_BTSTACK_ACCESS_MODE_SET);
 			}
 			break;
-#endif
-#endif
-#ifdef BT_TWS_SUPPORT
+	#endif
+
 		case MSG_BT_SNIFF:
-	#if((TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER)||(TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE))
+	#if(( (TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER)||(TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE) ) && defined(BT_SNIFF_ENABLE))
 			if(GetBtManager()->twsState > BT_TWS_STATE_NONE)
 			{
 				if(tws_audio_state_get() == TWS_DISCONNECT)
@@ -781,7 +745,7 @@ void tws_msg_process(uint16_t msg)
 					{
 						//if(sniff_lmpsend_get() == 0)
 						{
-						//发起sniff请求，主从停止TWS传输，主从都会进入 tws_stop_callback().
+							//发起sniff请求，主从停止TWS传输，主从都会进入 tws_stop_callback().
 							//sniff_lmpsend_set(1);
 							tws_stop_transfer();
 						}
@@ -790,7 +754,6 @@ void tws_msg_process(uint16_t msg)
 					{
 						tws_slave_send_cmd_sniff();
 					}
-
 				}
 				else
 				{
@@ -802,11 +765,6 @@ void tws_msg_process(uint16_t msg)
 			}
 		break;
 	#else
-//		BtStackServiceMsgSend(MSG_BT_STACK_TWS_PAIRING_STOP);
-
-//		if(btManager.twsState == BT_TWS_STATE_CONNECTED)
-//			BtStackServiceMsgSend(MSG_BT_STACK_TWS_SYNC_POWERDOWN);
-		
 		{
 			MessageContext		msgSend;
 			msgSend.msgId		= MSG_DEEPSLEEP;
@@ -814,8 +772,6 @@ void tws_msg_process(uint16_t msg)
 		}
 		break;
 	#endif
-#endif
-
 	}
 }
 #else

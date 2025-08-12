@@ -283,7 +283,11 @@ void SetSysModeState(SysModeNumber sys_mode,SysModeState sys_mode_state)
  */
 SysModeState GetSysModeState(SysModeNumber sys_mode)
 {
-	return SysMode[GetModeIndexInModeLoop(&sys_mode)].ModeState;
+	if(GetModeDefineState(sys_mode))
+	{
+		return SysMode[GetModeIndexInModeLoop(&sys_mode)].ModeState;
+	}
+	return ModeStateDeinit;
 }
 
 bool GetModeDefineState(SysModeNumber sys_mode)
@@ -320,7 +324,13 @@ void SysModeEnter(SysModeNumber SetMode)
 	{
 		return;
 	}
-	if(GetSysModeState(SetMode) == ModeStateSusend)
+
+
+	if(GetSysModeState(SetMode) == ModeStateSusend
+#ifdef CFG_TWS_SOUNDBAR_APP
+		&& !(mainAppCt.SysCurrentMode == ModeIdle && SetMode == ModeTwsSlavePlay)
+#endif
+		)
 	{
 		SendModeKeyMsg();
 		return;
@@ -360,7 +370,9 @@ static void SysModeGenerateByPlugEvent(uint16_t Msg)
 				if( ((!(BIT(mode) & DeviceEventMsgTableArray[i_count].SupportMode)) &&
 					(GetSysModeState(mode) == ModeStateInit || GetSysModeState(mode) == ModeStateRunning))
 #ifdef	CFG_FUNC_RECORDER_EN
-					|| SoftFlagGet(SoftFlagRecording)	//Â¼ÒôÆÁ±Î°Î²åÊÂ¼þ
+					|| (SoftFlagGet(SoftFlagRecording)	
+					    && (DeviceEventMsgTableArray[i_count].EnterMode != ModeUDiskPlayBack)
+					    && (DeviceEventMsgTableArray[i_count].EnterMode != ModeCardPlayBack))  //Â¼ÒôÆÁ±Î°Î²åÊÂ¼þ
 #endif
 					)
 				{

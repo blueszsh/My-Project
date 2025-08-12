@@ -39,7 +39,7 @@
 #define CFG_DBUS_ACCESS_REMIND_SOUND_DATA  	//开启宏则使用DBUS从flash中获取提示音数据
 #define CFG_PARAM_REMIND_LIST_MAX		15	//提示音阻塞播放最大个数。
 
-#define	REMIND_DBG(format, ...)		printf(format, ##__VA_ARGS__)
+#define	REMIND_DBG(format, ...)		//printf(format, ##__VA_ARGS__)
 
 #ifndef CFG_REMIND_SOUND_DECODING_USE_LIBRARY
 #include "mp2.h"
@@ -122,9 +122,9 @@ osMutexId RemindMutex = NULL;
 	static	struct _Mp2DecodeContext
 	{
 		MPADecodeContext  	dec_cnt;
-		int16_t 			dec_fifo[15*128];//3840字节
+		int16_t 			dec_fifo[15*128 * MPA_MAX_CHANNELS];//3840字节
 		uint32_t 			dec_last_len;
-		uint8_t 			dec_buf[626];
+		uint8_t 			dec_buf[626 * MPA_MAX_CHANNELS];
 	}Mp2Decode;
 
 	extern bool decode_header(uint32_t header);
@@ -481,7 +481,6 @@ void RemindMp2Decode(void)
 			if(RemindSoundCt.ConstDataOffset >= RemindSoundCt.ConstDataSize)
 			{
 				REMIND_DBG("Remind end\n");
-				tone_play_end();//BOEU
 				RemindSoundCt.player_init = MP2_DECODE_END;
 				//SendRemindSoundEndMsg();
 				RemindSoundPlayEndNotify();
@@ -557,7 +556,6 @@ uint16_t RemindDataLenGet(void)
 			REMIND_DBG("remind play end!\n");
 			RemindSoundPlayEndNotify();	
 			delay_cnt = 0;
-			tone_play_end();//BOEU
 		}
 	}
 	return Mp2Decode.dec_last_len;
@@ -575,22 +573,15 @@ uint16_t RemindDataGet(void* Buf, uint16_t Samples)
 
 	if(Mp2Decode.dec_last_len >= Samples)
 	{
-		memcpy(Buf,p,Samples*2);
+		memcpy(Buf,p,Samples*2*MPA_MAX_CHANNELS);
 		RemindSoundCt.Samples += Samples;
 		Mp2Decode.dec_last_len = Mp2Decode.dec_last_len-Samples;
-		memcpy(p,p+Samples*2,Mp2Decode.dec_last_len*2);
+		memcpy(p,p+Samples*2*MPA_MAX_CHANNELS, Mp2Decode.dec_last_len*2*MPA_MAX_CHANNELS);
 		return Samples;
 	}
 	return 0;
 #endif	
 }
-
-
-void RemindSoundItemRequestEnable(void)//boeu
-{
-	RemindSoundCt.Disable = FALSE;
-}
-
 
 void RemindSoundItemRequestDisable(void)
 {
@@ -602,19 +593,10 @@ bool RemindSoundServiceItemRequest(char *SoundItem, uint32_t play_attribute)
 	uint8_t i;
 	uint16_t ItemRef = SOUND_REMIND_TOTAL;
 
-	//REMIND_DBG("RemindSoundServiceItemRequest() \n");
-	
 	if(SoftFlagGet(SoftFlagNoRemind) || RemindSoundCt.Disable == TRUE)
-	{
-	    REMIND_DBG("REMIND_SOUND return 11\n");
-		REMIND_DBG("RemindSoundCt.Disable == %d\n",RemindSoundCt.Disable);
 		return FALSE;
-	}
 	if(SoundItem == NULL)//strlen(SoundItem) != REMIND_SOUND_ID_LEN ||
-	{
-	   REMIND_DBG("REMIND_SOUND return 22\n");
 		return FALSE;
-	}
 	if(RemindSoundCt.EmptyIndex == CFG_PARAM_REMIND_LIST_MAX)
 	{
 		REMIND_DBG("REMIND_SOUND_ID_BUF is full!\n");
@@ -622,10 +604,7 @@ bool RemindSoundServiceItemRequest(char *SoundItem, uint32_t play_attribute)
 	}
 	ItemRef = RemindSountItemFind((uint8_t *)SoundItem);
 	if(ItemRef >= SOUND_REMIND_TOTAL)
-	{
-	   REMIND_DBG("REMIND_SOUND return 33\n");
 		return FALSE;
-	}
 
 	RemindSoundCt.RequestUpdate = TRUE;
 	osMutexLock(RemindMutex);
@@ -657,34 +636,20 @@ bool RemindSoundServiceItemRequest(char *SoundItem, uint32_t play_attribute)
 
 	osMutexUnlock(RemindMutex);
 
-//	if(play_attribute & REMIND_SOUND_NEED_HOLD_PLAY)
-//	{
-//		if(RemindSoundCt.player_init != MP2_DECODE_IDLE
-//			&& RemindSoundCt.player_init != MP2_WAIT_FOR_DECODE
-//			&& !RemindSoundCt.IsBlock)
-//			RemindSoundCt.IsBlock = TRUE;
-//	}
+	if(play_attribute & REMIND_ATTR_NEED_MUTE_APP_SOURCE)
+	{	
+		RemindSoundCt.MuteAppFlag = TRUE;	
+		//AudioCoreSourceMute(MIC_SOURCE_NUM,TRUE,TRUE);
+		AudioCoreSourceMute(APP_SOURCE_NUM,TRUE,TRUE);
+	}
 
-
-//	if(RemindSoundCt.player_init == MP2_DECODE_IDLE)
-//		RemindSoundCt.player_init = MP2_WAIT_FOR_DECODE;
-//	if(play_attribute & REMIND_SOUND_NEED_MUTE_APP_SOURCE)
-//	{
-//		RemindSoundCt.MuteAppFlag = TRUE;
-//		//AudioCoreSourceMute(MIC_SOURCE_NUM,TRUE,TRUE);
-//		AudioCoreSourceMute(APP_SOURCE_NUM,TRUE,TRUE);
-//	}
-    REMIND_DBG("REMIND_SOUND return TRUE\n");
-    Tone_play_state=1;
-	PA_contral();
-	
 	return TRUE;
 }
 
 bool RemindSoundSyncRequest(uint16_t ItemRef, TWS_AUDIO_CMD CMD)
 {
 	uint8_t i;
-	uint8_t play_attribute = REMIND_PRIO_PARTNER;
+	uint8_t play_attribute = REMIND_PRIO_NORMAL;//REMIND_PRIO_PARTNER;
 
 	if(SoftFlagGet(SoftFlagNoRemind) || RemindSoundCt.Disable == TRUE || ItemRef >= SOUND_REMIND_TOTAL)
 		return FALSE;
@@ -870,14 +835,16 @@ bool RemindSoundRun(SysModeState ModeState)
 					{
 						RemindSoundCt.ItemState = REMIND_ITEM_PREPARE;
 						RemindSoundCt.player_init = MP2_DECODE_HEADER;
-
-						if((RemindSoundCt.Request[0].Attr & REMIND_ATTR_MUTE) == 0 && ((RemindSoundCt.Request[0].Attr & REMIND_PRIO_MASK) == REMIND_PRIO_PARTNER))
+						if(GetSystemMode() != ModeIdle)
 						{
-							tws_local_audio_set(RemindSoundCt.Request[0].ItemRef, TWS_CMD_LOCAL_MASTER);
-						}
-						else
-						{
-							tws_local_audio_set(RemindSoundCt.Request[0].ItemRef, TWS_CMD_LOCAL_SYNC);
+							if((RemindSoundCt.Request[0].Attr & REMIND_ATTR_MUTE) == 0 && ((RemindSoundCt.Request[0].Attr & REMIND_PRIO_MASK) == REMIND_PRIO_PARTNER))
+							{
+								tws_local_audio_set(RemindSoundCt.Request[0].ItemRef, TWS_CMD_LOCAL_MASTER);
+							}
+							else
+							{
+								tws_local_audio_set(RemindSoundCt.Request[0].ItemRef, TWS_CMD_LOCAL_SYNC);
+							}
 						}
 						break;
 					}
@@ -936,8 +903,6 @@ bool RemindSoundRun(SysModeState ModeState)
 			{
 				AudioCoreSourceMute(REMIND_SOURCE_NUM, TRUE, TRUE);
 				DBG("Mute Remind\n");
-		//boeu 因为原始包CFG_REMIND_SOUND_DECODING_USE_LIBRARY没有打开,所以放在这	
-			//	tone_play_end();
 				RemindSoundCt.ItemState = REMIND_ITEM_MUTE;
 
 			}

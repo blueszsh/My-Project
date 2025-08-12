@@ -145,6 +145,12 @@ unsigned char tws_role_match(unsigned char *addr)
 		return BT_TWS_MASTER;
 	}
 #endif
+#if (TWS_PAIRING_MODE == CFG_TWS_PEER_MASTER)
+	if(btManager.btLinkState)
+	{
+		return BT_TWS_MASTER;
+	}
+#endif
 	if(memcmp(btManager.btTwsDeviceAddr, addr, 6) == 0)
 	{
 		return btManager.twsRole;

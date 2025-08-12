@@ -175,6 +175,36 @@ typedef struct
 } AvrcpAdvMediaInfo;
 
 /*---------------------------------------------------------------------------
+ * AvrcpMediaAttr structure
+ * 
+ * Used to describe media info attributes.
+ *
+ * 应用层缓存(大约1K)
+ */
+typedef struct _AppOneAttrInfo
+{
+	uint32_t			attrId;		/**< Track attribute ID , TRACK_ATTR_XXXX */
+	uint16_t			charSet;	/**< Character set ID, such as UTF8--0x006a */
+	uint16_t			length;		/**< The length of property string */
+	char				string[128];	/**< The property string */
+} AppOneAttrInfo;
+
+/**
+ * AvrcpAdvMediaInfo structure
+ * 
+ * Used to describe media info .
+ */
+typedef struct
+{
+	/* The number of elements returned */ 
+	uint8_t					numIds;
+
+	/* An array of element value text information */ 
+	AppOneAttrInfo			property[AVRCP_NUM_MEDIA_ATTRIBUTES];
+
+} AppAvrcpAdvMediaInfo;
+
+/*---------------------------------------------------------------------------
  * AvrcpAdvPlayStatus structure
  * 
  * Used to describe play status.

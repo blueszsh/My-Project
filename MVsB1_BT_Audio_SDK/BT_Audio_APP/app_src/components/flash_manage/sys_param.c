@@ -3,13 +3,14 @@
 #include "sys_param.h"
 #include "spi_flash.h"
 #include "flash_table.h"
+#include "bt_config.h"
 
 SYS_PARAMETER sys_parameter;
 
 static const SYS_PARAMETER default_parameter = 
 {
 	.bt_LocalDeviceName 	= BT_NAME,
-	.ble_LocalDeviceName	= BT_NAME,
+	.ble_LocalDeviceName	= BLE_NAME,
 	.bt_TxPowerLevel		= BT_TX_POWER_LEVEL,
 	.bt_PagePowerLevel		= BT_PAGE_TX_POWER_LEVEL,
 	.BtTrimECO0				= BT_TRIM_ECO0,
@@ -63,6 +64,13 @@ void sys_parameter_init(void)
 		if(sys_parameter.bt_PagePowerLevel > 23)
 			sys_parameter.bt_PagePowerLevel = default_parameter.bt_PagePowerLevel;			
 	}
+
+#ifdef BT_PROFILE_BQB_ENABLE
+	sys_parameter.bt_ReconnectionTryCounts = 0;
+	sys_parameter.bt_ReconnectionInternalTime = 2;
+
+	sys_parameter.bt_BBLostTryCounts = 1;
+#endif
 
 }
 

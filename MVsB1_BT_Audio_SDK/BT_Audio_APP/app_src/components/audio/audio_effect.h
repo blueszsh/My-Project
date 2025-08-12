@@ -18,7 +18,7 @@ typedef void (*AudioEffectApplyFunc)(void *effectUint, int16_t *pcm_in, int16_t 
 
 
 #define AUDIO_EFFECT_GROUP_NUM			3//音效列表组数
-#define AUDIO_EFFECT_NODE_NUM			12//一组音效最大个数
+#define AUDIO_EFFECT_NODE_NUM			16//一组音效最大个数
 
 #define AUDIO_EFFECT_SUM				(AUDIO_EFFECT_GROUP_NUM * AUDIO_EFFECT_NODE_NUM)
 
@@ -34,6 +34,22 @@ typedef enum __NodeType
 	NodeType_AEC,		//6,AEC为特殊算法，需要特殊处理
 //	NodeType_TONE,		//7,TREB BASS调节
 //	NodeType_EqMode,	//8,EQ模式切换		//优化EQ模式切换
+
+	NodeType_VS,		//虚拟环绕7.1 音效类型
+	
+	//-----all dynmic eq define--------//
+	NodeType_DynamicEqMin,
+	//-------------------------//
+	NodeType_DynamicEqGroup0,
+	NodeType_DynamicEqGroup0_LP,
+	NodeType_DynamicEqGroup0_HP,
+	//-------------------------------//
+	NodeType_DynamicEqGroup1,
+	NodeType_DynamicEqGroup1_LP,
+	NodeType_DynamicEqGroup1_HP,
+	//--------------------------------//
+	NodeType_DynamicEqMax,
+	//--------------------------------//
 } NodeType;
 
 /*音效节点*/

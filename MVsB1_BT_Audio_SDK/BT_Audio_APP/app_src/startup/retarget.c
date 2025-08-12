@@ -18,21 +18,38 @@ uint8_t DebugPrintPort = UART_PORT0;
 #include "sw_uart.h"
 
 typedef void (*uartfun)(uint8_t);
-#ifndef USE_DBG_CODE
-extern uartfun sendbyte;
-#else
-uartfun sendbyte;
-__attribute__((used))
-void nds_write(const unsigned char *buf, int size)
-{
-	int i;
-	for (i = 0; i < size; i++)
+
+#ifndef CFG_FUNC_STRING_CONVERT_EN
+	#ifndef USE_DBG_CODE
+	extern uartfun sendbyte;
+	#else
+	uartfun sendbyte;
+	__attribute__((used))
+	void nds_write(const unsigned char *buf, int size)
 	{
-		sendbyte(buf[i]);
+		int i;
+		for (i = 0; i < size; i++)
+		{
+			sendbyte(buf[i]);
+		}
 	}
-}
+	#endif
+#else
+	uartfun sendbyte;
+	__attribute__((used))
+	void nds_write(const unsigned char *buf, int size)
+	{
+		int i;
+		for (i = 0; i < size; i++)
+		{
+			sendbyte(buf[i]);
+		}
+	}
+
 
 #endif
+
+
 #include "rtos_api.h"
 #include "mcu_circular_buf.h"
 uint8_t IsSwUartActedAsUARTFlag = 0;
@@ -205,4 +222,7 @@ int DbgUartInit(int Which, unsigned int BaudRate, unsigned char DatumBits, unsig
 #endif
 	return 0;
 }
-
+uint8_t GetDebugPrintPort(void)
+{
+	return DebugPrintPort;
+}

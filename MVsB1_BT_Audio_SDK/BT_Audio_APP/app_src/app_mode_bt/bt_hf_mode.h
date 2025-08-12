@@ -58,7 +58,7 @@
 
 
 //AEC
-#define FRAME_SIZE					BLK_LEN
+#define FRAME_SIZE					AEC_BLK_LEN
 #define AEC_SAMPLE_RATE				16000
 #define LEN_PER_SAMPLE				2 //mono
 #define MAX_DELAY_BLOCK				BT_HFP_AEC_MAX_DELAY_BLK

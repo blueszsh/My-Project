@@ -423,6 +423,7 @@ typedef enum
 	MSG_POWERDOWN,			//PowerKey软开关应用下发送消息在task应用中处理
 	MSG_DEEPSLEEP,			//待机模式，断点处接着运行
 	MSG_BT_SNIFF,			//tws进入deepsleep
+	MSG_BT_DEEPSLEEP_SNIFF,	//SNIFF转发给main task
 	MSG_SOFT_POWER,         //外部CMOS电路软开关消息
 	MSG_RTC_SET,
 	MSG_RTC_UP,
@@ -436,7 +437,6 @@ typedef enum
 	MSG_LANG,               //中英文切换
 	MSG_UPDATE,             //MVA升级确认键
 	MSG_MODE,
-	MSG_MODE_BT,
 	MSG_SOFT_MODE,
 	MSG_POWER,
 	MSG_PLAY_PAUSE,
@@ -475,20 +475,12 @@ typedef enum
 	MSG_NUM_7,	
 	MSG_NUM_8,	
 	MSG_NUM_9,	
-	MSG_DMA_RGB_SW,
-	MSG_RGB_MODE,
-	MSG_MUSIC_VOL_SW,
-	MSG_VOL_MODE_SW,
-	MSG_SW_VOL_UP, 
-	MSG_SW_VOL_DOWN, 
     MSG_MAIN_VOL_UP,
     MSG_MAIN_VOL_DW,
 	MSG_MUSIC_VOLUP,
 	MSG_MUSIC_VOLDOWN,
 	MSG_MIC_VOLUP,
 	MSG_MIC_VOLDOWN,
-	MSG_MIC_EchoReverb_UP,  // zsh A2
-	MSG_MIC_EchoReverb_DW,// zsh A2
 	MSG_MIC_EFFECT_UP,
 	MSG_MIC_EFFECT_DW,
 	MSG_MIC_TREB_UP,
@@ -503,47 +495,21 @@ typedef enum
  	MSG_PITCH_DN,            //变调减	
 	MSG_VOCAL_CUT,	
 	MSG_MUTE,
-    MSG_PAM_CTRL_EN,
 	MSG_EQ,
 	MSG_3D,
 	MSG_VB,	
 	MSG_REMIND1,
-	MSG_Music_EFFECT_SW,
-	MSG_Music_EQ_SW,
-	MSG_MUTE_TONE,
-	MSG_Scene_down,
-	MSG_Scene_up,
  	MSG_EFFECTMODE,
- 	MSG_EFFECT_MOYIN_CTRL, //zsh A2
- 	MSG_EFFECT_BIANYIN,// zsh A2
- 	MSG_EFFECT_MOYIN,// zsh A2
- 	MSG_EFFECT_KTV,// zsh A2
- 	MSG_EFFECT_Country,// zsh A2
- 	MSG_EFFECT_RecordingRoom,// zsh A2
- 	MSG_EFFECT_MicBa,// zsh A2
- 	MSG_EFFECT_ZhuanYe,// zsh A2
- 	MSG_EFFECT_ZhuChi,// zsh A2
- 	MSG_TWS_Slave_BIANYIN_EFFECT,
- 	MSG_MOYIN_IN_OUT,
- 	MSG_MOYIN_IN_EFFECT_SW,////进入魔音后才可切换
- 	MSG_LINE_SET_ON,
- 	MSG_LINE_SET_OFF,
- 	MSG_EFFECT_PH_ON_LINE,
- 	MSG_EFFECT_PH_OFF_LINE,
- 	MSG_MIC1_CTRL_EN,
- 	MSG_LINE3_R_SW,
- 	MSG_LINE3_L_SW,
- 	MSG_KEY_NULL, //空消息(值不为0)
     MSG_MIC_FIRST,     
 	MSG_BT_AI,
 	MSG_BT_XM_AI_START,
 	MSG_BT_XM_AI_STOP,
-	MSG_BT_DIS_CTRL,
 	MSG_BT_CONNECT_CTRL,     //手动连接/断开蓝牙
 	MSG_BT_CLEAR_PAIRED_LIST, //清除BT所有的配对记录(包含TWS)
 	MSG_BT_CONNECT_MODE,
 	MSG_BT_OPEN_ACCESS,
 
+	MSG_TEST_C,
 //tws
 	MSG_BT_TWS_PAIRING,            //开始进行TWS组网
 	MSG_BT_TWS_CLEAR_PAIRED_LIST,  //清除配对记录
@@ -565,6 +531,14 @@ typedef enum
 	MSG_TWS_UNMUTE,
 	MSG_REMIND_PLAY_END,
 	MSG_BT_START_OTA,
+	//BQB
+	MSG_A2DP_CONNECT,
+	MSG_AVRCP_CONNECT,
+	MSG_AVRCP_STOP,
+	MSG_BT_BQB_AVDTP_SMG_BI38C,
+	MSG_BT_BQB_AVDTP_SMG,
+	MSG_HFP_CONNECT,
+	MSG_SCO_CONNECT,
 
 
 

@@ -88,6 +88,12 @@ void BtAvrcpCallback(BT_AVRCP_CALLBACK_EVENT event, BT_AVRCP_CALLBACK_PARAMS * p
             		(param->params.avrcpAdv.avrcpAdvTrack.ls/1000)/60,
             		(param->params.avrcpAdv.avrcpAdvTrack.ls/1000)%60);
 			}*/
+#if (BT_AVRCP_SONG_TRACK_INFOR == ENABLE)
+			//20240515
+			{
+				btManager.avrcpMediaInfoGetCnt = 1;
+			}
+#endif
 			break;
 
 		case BT_STACK_EVENT_AVRCP_ADV_ADDRESSED_PLAYERS:
@@ -129,7 +135,7 @@ void BtAvrcpCallback(BT_AVRCP_CALLBACK_EVENT event, BT_AVRCP_CALLBACK_PARAMS * p
 
 #if (BT_AVRCP_SONG_TRACK_INFOR == ENABLE)
 		case BT_STACK_EVENT_AVRCP_ADV_MEDIA_INFO:
-			APP_DBG("AVRCP Event: BT_STACK_EVENT_AVRCP_ADV_MEDIA_INFO\n");
+			//APP_DBG("AVRCP Event: BT_STACK_EVENT_AVRCP_ADV_MEDIA_INFO\n");
 			if(GetMediaInfo)
 				GetMediaInfo((void*)param->params.avrcpAdv.avrcpAdvMediaInfo);
 			break;

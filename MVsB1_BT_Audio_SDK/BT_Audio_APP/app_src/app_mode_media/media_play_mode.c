@@ -89,31 +89,33 @@ static const uint8_t DmaChannelMap[29] =
 #else
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
-#ifdef CFG_DMA_RGB_LED_EN
-    255,//PERIPHERAL_ID_SDIO_RX,			//3
-	255,//PERIPHERAL_ID_SDIO_TX,			//4
-#else
+
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
-#endif
+
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
+#if defined CFG_RES_AUDIO_SPDIFOUT_EN || defined CFG_FUNC_SPDIF_MIX_MODE
+	6,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_TX,		    //8 SPDIF_RX /TX same chanell
+#else
 	255,//PERIPHERAL_ID_SDPIF_RX,		//8 SPDIF_RX /TX same chanell
 	255,//PERIPHERAL_ID_SDPIF_TX,		//8 SPDIF_RX /TX same chanell
+#endif
 	255,//PERIPHERAL_ID_SPIM_RX,		//9
 	255,//PERIPHERAL_ID_SPIM_TX,		//10
 	255,//PERIPHERAL_ID_UART0_TX,		//11
 	255,//PERIPHERAL_ID_UART1_RX,		//12
 	255,//PERIPHERAL_ID_UART1_TX,		//13
-#ifdef CFG_DMA_RGB_LED_EN
-	4,//PERIPHERAL_ID_TIMER4,			//14
-#else
 	255,//PERIPHERAL_ID_TIMER4,			//14
-#endif
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
+#ifdef CFG_FUNC_LINE_MIX_MODE
+	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
+#else
 	255,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
+#endif
 	1,//PERIPHERAL_ID_AUDIO_ADC1_RX,	//18
 	2,//PERIPHERAL_ID_AUDIO_DAC0_TX,	//19
 	3,//PERIPHERAL_ID_AUDIO_DAC1_TX,	//20
@@ -155,6 +157,33 @@ uint8_t MediaPlayDevice(void)
 		return 255;
 	}
 	return sMediaPlayCt->Device;
+}
+
+void MediaPlayerStart(void)
+{
+	if(sMediaPlayCt == NULL)
+		return;
+	
+//	MessageContext		msgSend;
+	if(!MediaPlayerInitialize(sMediaPlayCt->Device, 1, 1))//初始化设备
+	{
+		APP_DBG("Media decoder init error ,exit media init\n");
+		if(!IsMediaPlugOut() && (GetSystemMode() == ModeUDiskAudioPlay || GetSystemMode() == ModeCardAudioPlay))
+		{
+			SendModeKeyMsg();
+		}
+		SoftFlagRegister(SoftFlagMediaDevicePlutOut);
+		SoftFlagDeregister(SoftFlagMediaModeRead);
+	}
+	else
+	{
+		AudioCoreSourceEnable(sMediaPlayCt->SourceNum);
+		AudioCoreSourceUnmute(sMediaPlayCt->SourceNum, TRUE, TRUE);
+		#ifdef BT_TWS_SUPPORT
+			AudioCoreSourceUnmute(TWS_SOURCE_NUM, TRUE, TRUE);
+		#endif
+		DecoderPlay(DECODER_MODE_CHANNEL);
+	}
 }
 
 static  void MediaPlayerSetAudioSource()
@@ -467,7 +496,6 @@ static void MediaPlayMsgProcess(uint16_t msgId)
  */
 bool MediaPlayInit(void)
 {
-
 	bool ret = FALSE;
 	
 	if(sMediaPlayCt != NULL)
@@ -479,8 +507,12 @@ bool MediaPlayInit(void)
 	//音效参数遍历，确定系统帧长，待修改，sam, mark
 #endif
 #ifdef BT_TWS_SUPPORT
-	tws_delay = BT_TWS_DELAY_DEFAULT;
+//	tws_delay = BT_TWS_DELAY_DEFAULT;
 #endif
+
+	//DMA channel
+	DMA_ChannelAllocTableSet((uint8_t*)DmaChannelMap);
+
 	if(!ModeCommonInit())
 	{
 		DBG("Common Audio error!\n");
@@ -515,21 +547,6 @@ bool MediaPlayInit(void)
 
 	APP_DBG("Media Play Init\n");
 
-  if(GetSystemMode()==ModeUDiskAudioPlay)
-  {
-      Save_task_state(Task_usb);
-  }
-  else if(GetSystemMode()==ModeCardAudioPlay)
-  {
-      Save_task_state(Task_sd);
-  }  
-  PA_contral();
-
-
-	 
-	//DMA channel
-	DMA_ChannelAllocTableSet((uint8_t*)DmaChannelMap);
-
 	sMediaPlayCt = (MediaPlayContext*)osPortMalloc(sizeof(MediaPlayContext));
 	if(sMediaPlayCt == NULL)
 	{
@@ -555,7 +572,11 @@ bool MediaPlayInit(void)
 	DecoderSourceNumSet(sMediaPlayCt->SourceNum, DECODER_MODE_CHANNEL);
 	AudioCoreIO	AudioIOSet;
 	memset(&AudioIOSet, 0, sizeof(AudioCoreIO));
+#ifdef CFG_AUDIO_SPDIFOUT_MEDIA_NO_SRC
+	AudioIOSet.Adapt = STD;
+#else
 	AudioIOSet.Adapt = SRC_ONLY;
+#endif
 	AudioIOSet.Sync = FALSE;
 	AudioIOSet.Channels = 2;
 	AudioIOSet.Net = DefaultNet;
@@ -625,7 +646,7 @@ bool MediaPlayInit(void)
 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 #ifdef CFG_EFFECT_PARAM_IN_FLASH_EN
-	//mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
+	mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
 #else
 	mainAppCt.EffectMode = EFFECT_MODE_NORMAL;
 #endif
@@ -644,9 +665,9 @@ bool MediaPlayInit(void)
 
 #ifdef CFG_FUNC_REMIND_SOUND_EN
 	if(GetSystemMode() == ModeUDiskAudioPlay)
-		ret = RemindSoundServiceItemRequest(SOUND_REMIND_MODE_UPA, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
+		ret = RemindSoundServiceItemRequest(SOUND_REMIND_UPANMODE, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
 	if(GetSystemMode() == ModeCardAudioPlay)
-		ret = RemindSoundServiceItemRequest(SOUND_REMIND_MODE_SD, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
+		ret = RemindSoundServiceItemRequest(SOUND_REMIND_CARDMODE, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
 #ifdef CFG_FUNC_RECORDER_EN
 	if(GetSystemMode() == ModeUDiskPlayBack || GetSystemMode() == ModeCardPlayBack)
 		ret = RemindSoundServiceItemRequest(SOUND_REMIND_RECHUIFA, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
@@ -667,9 +688,11 @@ bool MediaPlayInit(void)
 		HardWareMuteOrUnMute();
 	}
 #endif
-   Machine_state=Machine_run;//zsh A2
 
-
+#ifdef CFG_FUNC_LINE_MIX_MODE
+	AudioCoreSourceUnmute(LINE_SOURCE_NUM,1,1);
+#endif
+	
 	return TRUE;
 }
 
@@ -764,21 +787,7 @@ bool MediaPlayDeinit(void)
 		return TRUE;
 	}
 	APP_DBG("Media Play Deinit\n");
-
-
-   if( GetSystemMode() == ModeCardAudioPlay
-     ||GetSystemMode() == ModeCardPlayBack)
-    {
-         T_sd0_inf.play_state = _Music_stop;
-	}
-	else if( GetSystemMode() == ModeUDiskAudioPlay
-     ||GetSystemMode() == ModeUDiskPlayBack)
-    {
-         T_usb_inf.play_state = _Music_stop;
-	}
-
-    PA_contral();
-		
+	
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();
@@ -792,60 +801,64 @@ bool MediaPlayDeinit(void)
 	PauseAuidoCore();
 	MediaPlayerCloseSongFile();
 
-//注意此处，如果在TaskStateCreated,进入stop，它尚未init。
+	//注意此处，如果在TaskStateCreated,进入stop，它尚未init。
 	AudioCoreProcessConfig((void*)AudioNoAppProcess);
 	AudioCoreSourceDisable(sMediaPlayCt->SourceNum);
 	//AudioCoreSourceUnmute(sMediaPlayCt->SourceNum, TRUE, TRUE);
 	
 #ifndef CFG_FUNC_MIXER_SRC_EN
-#ifdef CFG_RES_AUDIO_DACX_EN
+	#ifdef CFG_RES_AUDIO_DACX_EN
 	AudioDAC_SampleRateChange(ALL, CFG_PARA_SAMPLE_RATE);//恢复
-#endif
-#ifdef CFG_RES_AUDIO_DAC0_EN
+	#endif
+	#ifdef CFG_RES_AUDIO_DAC0_EN
 	AudioDAC_SampleRateChange(DAC0, CFG_PARA_SAMPLE_RATE);//恢复
+	#endif
 #endif
-#endif
-//	AudioCoreSourceDeinit(REMIND_SOURCE_NUM);
+
 	AudioCoreSourceDeinit(sMediaPlayCt->SourceNum);
 	//Kill used services
 	DecoderServiceDeinit(DECODER_MODE_CHANNEL);
+
+#ifdef	CFG_APP_USB_PLAY_MODE_EN
 	if(GetSysModeState(ModeUDiskAudioPlay) == ModeStateDeinit
-	#ifdef CFG_FUNC_RECORDER_EN
-				|| GetSysModeState(ModeUDiskPlayBack) == ModeStateDeinit
-	#endif
+			#ifdef CFG_FUNC_RECORDER_EN
+			|| GetSysModeState(ModeUDiskPlayBack) == ModeStateDeinit
+			#endif
 		 )
 	{
-#ifdef	CFG_APP_USB_PLAY_MODE_EN
 		f_unmount(MEDIA_VOLUME_STR_U);
 		osMutexUnlock(UDiskMutex);
-#ifdef CFG_FUNC_UDISK_DETECT
+		#ifdef CFG_FUNC_UDISK_DETECT
 		if(!IsUDiskLink())
 		{
 			SoftFlagDeregister(SoftFlagUpgradeOK);
 		}
-#endif
+		#endif
 		APP_DBG("unmount u disk\n");
-#endif
 	}
-	else if(GetSysModeState(ModeCardAudioPlay) == ModeStateDeinit
-#ifdef CFG_FUNC_RECORDER_EN
-			|| GetSysModeState(ModeCardPlayBack) == ModeStateDeinit
 #endif
+
+#if (defined(CFG_APP_CARD_PLAY_MODE_EN) )
+	if(GetSysModeState(ModeCardAudioPlay) == ModeStateDeinit
+			#ifdef CFG_FUNC_RECORDER_EN
+			|| GetSysModeState(ModeCardPlayBack) == ModeStateDeinit
+			#endif
 		)
 	{
-#if (defined(CFG_APP_CARD_PLAY_MODE_EN) )
 		f_unmount(MEDIA_VOLUME_STR_C);
 		SDCardDeinit(CFG_RES_CARD_GPIO);
 		osMutexUnlock(SDIOMutex);
-#ifdef CFG_FUNC_CARD_DETECT
+
+		#ifdef CFG_FUNC_CARD_DETECT
 		if(GetCardState() == DETECT_STATE_OUT)
-#endif
+		#endif
 		{
 			SoftFlagDeregister(SoftFlagUpgradeOK);
 		}
 		APP_DBG("unmount sd card\n");
-#endif
 	}
+#endif
+
 	
 	//PortFree
 	ffpresearch_deinit();
@@ -854,6 +867,10 @@ bool MediaPlayDeinit(void)
 		osPortFree(gMediaPlayer->AccRamBlk);
 		gMediaPlayer->AccRamBlk = NULL;
 	}
+
+	extern void DecoderTimeClear(DecoderChannels DecoderChannel);
+	DecoderTimeClear(DECODER_MODE_CHANNEL);
+
 	MediaPlayerDeinitialize();
 
 	//osPortFree(sMediaPlayCt.AudioCoreMediaPlay);
@@ -867,7 +884,7 @@ bool MediaPlayDeinit(void)
 	osPortFree(sMediaPlayCt);
 	sMediaPlayCt = NULL;
 #ifdef BT_TWS_SUPPORT
-	tws_delay = BT_TWS_DELAY_DEINIT;
+//	tws_delay = BT_TWS_DELAY_DEINIT;
 #endif
 	return TRUE;
 

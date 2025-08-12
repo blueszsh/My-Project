@@ -100,6 +100,15 @@ I2S_ERROR_CODE I2S_MonoModeSet(I2S_MODULE I2SModuleIndex, bool IsMono);
  */
 I2S_ERROR_CODE I2S_AlignModeSet(I2S_MODULE I2SModuleIndex, I2S_20BIT_24BIT_ALIGN_MODE AlignMode);
 
+/**
+ * @brief  配置I2S的clk时钟频率，默认mclk0=11289600, mclk1=12288000。
+ * @param  I2SModuleIndex I2S_MODULE
+ * @param  mclk0 配置输入到I2S的mclk0是时钟频率
+ * @param  mclk1 配置输入到I2S的mclk1是时钟频率
+ * @return I2S_ERROR_CODE
+ */
+void I2S_MclkFreqSet(I2S_MODULE I2SModuleIndex, uint32_t mclk0,  uint32_t mclk1);
+
 /****************************************************************************/
 /*                Lrclk和Bclk时钟的分频和相位相关函数                    */
 /****************************************************************************/
@@ -334,6 +343,9 @@ I2S_ERROR_CODE I2S_FadeEnable(I2S_MODULE I2SModuleIndex);
  * @return I2S_ERROR_CODE
  */
 I2S_ERROR_CODE I2S_FadeDisable(I2S_MODULE I2SModuleIndex);
+
+
+void RST_I2SModule(I2S_MODULE I2SModuleIndex);
 
 #ifdef  __cplusplus
 }

@@ -133,7 +133,7 @@ void SwUartDelay(unsigned int us)//200ns
 		"nop\n""nop\n""nop\n"
 		"nop\n""nop\n""nop\n"
 		"nop\n""nop\n""nop\n"	
-		"nop\n"
+		"nop\n""nop\n""nop\n"   // Clock_PllLock = 316MHz
 		);	
 	}
 

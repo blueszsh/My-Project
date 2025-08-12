@@ -92,9 +92,12 @@ static const uint8_t DmaChannelMap[29] =
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
 
-#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN) && !defined (CFG_FUNC_RECORDER_EN)
 	255,//PERIPHERAL_ID_SDIO_RX,		//3
 	255,//PERIPHERAL_ID_SDIO_TX,		//4
+#elif defined (CFG_FUNC_RECORDER_EN) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+	5,//PERIPHERAL_ID_SDIO_RX,			//3
+	5,//PERIPHERAL_ID_SDIO_TX,			//4
 #else
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
@@ -103,8 +106,13 @@ static const uint8_t DmaChannelMap[29] =
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
+#if defined CFG_RES_AUDIO_SPDIFOUT_EN || defined CFG_FUNC_SPDIF_MIX_MODE
+	6,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_TX,		    //8 SPDIF_RX /TX same chanell
+#else
 	255,//PERIPHERAL_ID_SDPIF_RX,		//8 SPDIF_RX /TX same chanell
 	255,//PERIPHERAL_ID_SDPIF_TX,		//8 SPDIF_RX /TX same chanell
+#endif
 	255,//PERIPHERAL_ID_SPIM_RX,		//9
 	255,//PERIPHERAL_ID_SPIM_TX,		//10
 	255,//PERIPHERAL_ID_UART0_TX,		//11
@@ -251,6 +259,9 @@ void UsbDevicePlayResInit(void)
 	{
 		AudioIOSet.SampleRate = CFG_PARA_SAMPLE_RATE;//初始值
 	}
+#ifdef CFG_AUDIO_OUT_AUTO_SAMPLE_RATE_44100_48000
+	AudioOutSampleRateSet(AudioIOSet.SampleRate);
+#endif
 #ifdef	CFG_AUDIO_WIDTH_24BIT
 	AudioIOSet.IOBitWidth = 0;//0,16bit,1:24bit
 #ifdef BT_TWS_SUPPORT
@@ -325,6 +336,8 @@ bool UsbDevicePlayInit(void)
 	//音效参数遍历，确定系统帧长，待修改，sam, mark
 #endif
 
+	DMA_ChannelAllocTableSet((uint8_t *)DmaChannelMap);
+
 	if(!ModeCommonInit())
 	{
 		return FALSE;
@@ -345,8 +358,6 @@ bool UsbDevicePlayInit(void)
 	}
 
 //System config
-	DMA_ChannelAllocTableSet((uint8_t *)DmaChannelMap);
-
 	if(!UsbDevicePlayResMalloc(AudioCoreFrameSizeGet(DefaultNet)))
 	{
 		APP_DBG("UsbDevicePlayResMalloc Res Error!\n");
@@ -362,7 +373,7 @@ bool UsbDevicePlayInit(void)
 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 #ifdef CFG_EFFECT_PARAM_IN_FLASH_EN
-	//mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
+	mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
 #else
 	mainAppCt.EffectMode = EFFECT_MODE_NORMAL;
 #endif
@@ -394,28 +405,15 @@ bool UsbDevicePlayInit(void)
 	OTG_DeviceInit();
 	NVIC_EnableIRQ(Usb_IRQn);
 	
-#ifdef CFG_FUNC_REMIND_SOUND_EN
+	#ifdef CFG_FUNC_REMIND_SOUND_EN
 	if(RemindSoundServiceItemRequest(SOUND_REMIND_SHENGKAM, REMIND_PRIO_NORMAL) == FALSE)
+	#endif
 	{
 		if(IsAudioPlayerMute() == TRUE)
 		{
 			HardWareMuteOrUnMute();
 		}
 	}
-#endif
-
-#ifndef CFG_FUNC_REMIND_SOUND_EN
-	if(IsAudioPlayerMute() == TRUE)
-	{
-		HardWareMuteOrUnMute();
-	}
-#endif
-
-  Save_task_state(Task_pc);
-  T_pc_inf.play_state  =_Music_play;
-  PA_contral();
-  Machine_state=Machine_run;//zsh A2
-
 
 	return TRUE;
 }
@@ -499,9 +497,6 @@ bool UsbDevicePlayDeinit(void)
 	{
 		return TRUE;
 	}
-
-  T_pc_inf.play_state  =_Music_stop;
-  PA_contral();
 	
 	if(IsAudioPlayerMute() == FALSE)
 	{

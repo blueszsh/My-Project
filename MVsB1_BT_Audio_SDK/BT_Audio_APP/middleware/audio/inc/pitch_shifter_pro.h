@@ -4,7 +4,7 @@
  * @brief	Pitch Shifter Pro
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v2.1.1
+ * @version	v2.2.1
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -42,7 +42,8 @@ typedef struct _PitchShifterProContext
     
     int32_t x[2048];
     int32_t xlast; // must be put here
-    int16_t pcm_x[2][2048];
+    //int16_t pcm_x[2][2048];
+	int32_t pcm_x[2][2048];
     int32_t pcm_y[2][4096];
     int32_t phi0[2][1024];
     int32_t psi[2][1024];
@@ -80,6 +81,18 @@ int32_t pitch_shifter_pro_init(PitchShifterProContext *ct, int32_t num_channels,
  * @note Note that the number of PCM samples per frame is equal to the step_size set in pitch_shifter_pro_init(...).
  */
 int32_t pitch_shifter_pro_apply(PitchShifterProContext *ct, int16_t *pcm_in, int16_t *pcm_out);
+
+
+/**
+ * @brief Apply the pitch shifting (24-bit).
+ * @param ct Pointer to a PitchShifterProContext object.
+ * @param pcm_in PCM input buffer.
+ * @param pcm_out PCM output buffer. pcm_out can be the same as pcm_in. In this case, the PCM data is changed in-place.
+ * @return error code. PITCHSHIFTER_PRO_ERROR_OK means successful, other codes indicate error.
+ * @note Note that the number of PCM samples per frame is equal to the step_size set in pitch_shifter_pro_init(...).
+ */
+int32_t pitch_shifter_pro_apply24(PitchShifterProContext *ct, int32_t *pcm_in, int32_t *pcm_out);
+
 
 
 #ifdef __cplusplus

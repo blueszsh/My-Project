@@ -4,7 +4,7 @@
  * @brief	Overdrive effect for mono signals based on polynomial function
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v2.0.0
+ * @version	v2.1.0
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -53,7 +53,7 @@ int32_t overdrive_poly_init(OverdrivePolyContext *ct, int32_t sample_rate);
 
 
 /**
- * @brief Apply overdrive effect to a frame of PCM data (mono only)
+ * @brief Apply overdrive effect to a frame of 16-bit PCM data (mono only)
  * @param ct Pointer to a OverdrivePolyContext object.
  * @param pcm_in Address of the PCM input.
  * @param pcm_out Address of the PCM output.
@@ -65,6 +65,21 @@ int32_t overdrive_poly_init(OverdrivePolyContext *ct, int32_t sample_rate);
  * @note Note that only mono signals are accepted.
  */
 int32_t overdrive_poly_apply(OverdrivePolyContext *ct, int16_t *pcm_in, int16_t *pcm_out, int32_t n, int32_t gain, int32_t out_level);
+
+
+/**
+ * @brief Apply overdrive effect to a frame of 24-bit PCM data (mono only)
+ * @param ct Pointer to a OverdrivePolyContext object.
+ * @param pcm_in Address of the PCM input.
+ * @param pcm_out Address of the PCM output.
+ *        pcm_out can be the same as pcm_in. In this case, the PCM signals are changed in-place.
+ * @param n Number of PCM samples to process.
+ * @param gain Gain applied in dB before overdrive. Range: 0 ~ 48 dB
+ * @param out_level The output level of effect signals. Range: 0~100%.
+ * @return error code. OVERDRIVE_POLY_ERROR_OK means successful, other codes indicate error.
+ * @note Note that only mono signals are accepted.
+ */
+int32_t overdrive_poly_apply24(OverdrivePolyContext *ct, int32_t *pcm_in, int32_t *pcm_out, int32_t n, int32_t gain, int32_t out_level);
 
 
 #ifdef __cplusplus

@@ -16,23 +16,45 @@
 #define DISABLE						FALSE
 
 /*****************************************************************
+ *
+ * 在BQB测试时,开启此宏定义
+ *
+ */
+//#define BT_PROFILE_BQB_ENABLE
+
+/*****************************************************************
  * 蓝牙功能开关
  *****************************************************************/
 #ifdef CFG_APP_BT_MODE_EN
+
+/*
+ * 		TWS芯片主频配置
+ * 说明：此值必须为11.2986的整数倍；且超频到360M必须用超频芯片，否则设置也无效
+ * 112896 * 28 =  3161088   316M
+ * 112896 * 31 =  3499776   349M
+ * 如果超频到360M，请配置为 3499776
+ * 如果需要关闭TWS，并把主频超频到360M，直接在void SystemClockInit(void)中把 Clock_PllLock(288000); 改为360000即可
+ */
+#define SYS_CORE_DPLL_FREQ			3161088  // 3499776
+
 //TWS开关
 #define BT_TWS_SUPPORT
 
 //蓝牙双手机连接开关
 //#define BT_MULTI_LINK_SUPPORT
+
+	#if ( defined(CFG_RES_AUDIO_SPDIFOUT_EN) || defined(LOSSLESS_DECODER_HIGH_RESOLUTION) )
+	#undef 	BT_TWS_SUPPORT			//打开spdif out/LOSSLESS_DECODER_HIGH_RESOLUTION  需要关闭tws
+	#endif
 #endif
 
-//#define BT_USER_VISIBILITY_STATE
-#ifdef BT_USER_VISIBILITY_STATE
-#define BT_USER_PAIR_TTS
-#endif
 //BLE和BT(classic)模块宏定义开关
 #define BLE_SUPPORT					DISABLE
 #define BT_SUPPORT			        ENABLE
+
+#if (BLE_SUPPORT == ENABLE)
+#define BLE_NAME_TOFLASH			//开机默认从flash中读取ble名称
+#endif
 
 /*****************************************************************
  * Note: 蓝牙部分参数已移植到system_config/parameter.ini文件内进行配置,具体如下:
@@ -56,80 +78,87 @@
  */
 #define BT_A2DP_SUPPORT				ENABLE //A2DP和AVRCP关联
 #if CFG_RES_MIC_SELECT
-#define BT_HFP_SUPPORT				Phone_function
+#define BT_HFP_SUPPORT				ENABLE
 #endif
 #define BT_SPP_SUPPORT				DISABLE
 	
-	
-//在非蓝牙模式下,播放音乐自动切换到播放模式
+/*
+ * 在非蓝牙模式下,播放音乐自动切换到播放模式
+ */
 //#define BT_AUTO_ENTER_PLAY_MODE
 
-//开机蓝牙不可见只回连状态
+/*
+ * 开机蓝牙不可见只回连状态
+ */
 //#define POWER_ON_BT_ACCESS_MODE_SET
+
+/*
+ * 增加蓝牙连接/回连状态
+ */
+//#define BT_USER_VISIBILITY_STATE
+
+/*
+ * 回连未完成异常断开，增加继续回连的策略
+ */
+//#define  RECON_ADD
 
 /*****************************************************************
  * 宏定义开关警告
  *****************************************************************/
-#if (BT_SUPPORT != ENABLE)
-#if (defined(CFG_APP_BT_MODE_EN))
-#error Conflict: CFG_APP_BT_MODE_EN and BT_SUPPORT setting error 
+#if (BT_SUPPORT != ENABLE) && (defined(CFG_APP_BT_MODE_EN))
+	#error Conflict: CFG_APP_BT_MODE_EN and BT_SUPPORT setting error
 #endif
-#endif
-
 
 /*****************************************************************
  * 双手机链路
  *****************************************************************/
 #ifdef BT_MULTI_LINK_SUPPORT
-#define BT_LINK_DEV_NUM				2 	//蓝牙连接手机个数 (1 or 2)
-#define BT_DEVICE_NUMBER			2	//蓝牙ACL连接个数 (1 or 2)
-#define BT_SCO_NUMBER				2	//蓝牙通话链路个数 (1 or 2),BT_SCO_NUMBER必须小于BT_DEVICE_NUMBER
+	#define BT_LINK_DEV_NUM				2 	//蓝牙连接手机个数 (1 or 2)
+	#define BT_DEVICE_NUMBER			2	//蓝牙ACL连接个数 (1 or 2)
+	#define BT_SCO_NUMBER				2	//蓝牙通话链路个数 (1 or 2),BT_SCO_NUMBER必须小于BT_DEVICE_NUMBER
 
-#if (BT_LINK_DEV_NUM == 2)
-#define LAST_PLAY_PRIORITY				//后播放优先
-//#define BT_LINK_2DEV_ACCESS_DIS_CON		//开启后,第一个手机连上后,第二个手机需要能搜索到; 关闭后,第二个手机搜索不到,能回连上
-#endif
-
+	#if (BT_LINK_DEV_NUM == 2)
+	#define LAST_PLAY_PRIORITY				//后播放优先
+	//#define BT_LINK_2DEV_ACCESS_DIS_CON		//开启后,第一个手机连上后,第二个手机需要能搜索到; 关闭后,第二个手机搜索不到,能回连上
+	#endif
 #else
-#define BT_LINK_DEV_NUM				1 	//蓝牙连接手机个数 (1 or 2)
-#define BT_DEVICE_NUMBER			1	//蓝牙ACL连接个数 (1 or 2)
-#define BT_SCO_NUMBER				1	//蓝牙通话链路个数 (1 or 2) ,BT_SCO_NUMBER必须小于BT_DEVICE_NUMBER
+	#define BT_LINK_DEV_NUM				1 	//蓝牙连接手机个数 (1 or 2)
+	#define BT_DEVICE_NUMBER			1	//蓝牙ACL连接个数 (1 or 2)
+	#define BT_SCO_NUMBER				1	//蓝牙通话链路个数 (1 or 2) ,BT_SCO_NUMBER必须小于BT_DEVICE_NUMBER
 #endif
 
 /*****************************************************************
  * 宏定义开关警告
  *****************************************************************/
 #ifdef BT_DEVICE_NUMBER
-#if ((BT_DEVICE_NUMBER != 2)&&(BT_DEVICE_NUMBER != 1))
-#error Conflict: BT_DEVICE_NUMBER setting error 
-#endif
+	#if ((BT_DEVICE_NUMBER != 2)&&(BT_DEVICE_NUMBER != 1))
+	#error Conflict: BT_DEVICE_NUMBER setting error
+	#endif
 #endif
 
 #ifdef BT_SCO_NUMBER
-#if ((BT_SCO_NUMBER != 2)&&(BT_SCO_NUMBER != 1)&&(BT_SCO_NUMBER > BT_DEVICE_NUMBER))
-#error Conflict: BT_SCO_NUMBER setting error 
-#endif
+	#if ((BT_SCO_NUMBER != 2)&&(BT_SCO_NUMBER != 1)&&(BT_SCO_NUMBER > BT_DEVICE_NUMBER))
+	#error Conflict: BT_SCO_NUMBER setting error
+	#endif
 #endif
 
 /*****************************************************************
  * A2DP config
  *****************************************************************/
 #if BT_A2DP_SUPPORT == ENABLE
-
 #include "bt_a2dp_api.h"
 
-//Note:开启AAC,需要同步开启解码器类型USE_AAC_DECODER(app_config.h)
-//Note:目前1V2跟AAC解码不能同时打开
-//#define BT_AUDIO_AAC_ENABLE
-#ifdef BT_AUDIO_AAC_ENABLE
-#if (!defined(USE_AAC_DECODER))
-#define USE_AAC_DECODER
-#endif
+/*
+ * AAC播放使能
+ */
+#define BT_AUDIO_AAC_ENABLE
 
-//Note:目前1V2跟AAC解码不能同时打开
-#ifdef BT_MULTI_LINK_SUPPORT
-#error Conflict: BT_AUDIO_AAC_ENABLE and BT_MULTI_LINK_SUPPORT setting error
+//BQB认证测试A2DP时,需要开启AAC,与AVP测试项相关
+#if defined(BT_PROFILE_BQB_ENABLE) && !defined(BT_AUDIO_AAC_ENABLE)
+	#define BT_AUDIO_AAC_ENABLE
 #endif
+#if defined(BT_AUDIO_AAC_ENABLE) && !defined(USE_AAC_DECODER)
+	#define USE_AAC_DECODER
 #endif
 
 /*****************************************************************
@@ -140,12 +169,13 @@
  * If it doesn't support Advanced AVRCP, TG side will be ignored
  * 音量同步功能需要开启该宏开关
  */
-#define BT_AVRCP_VOLUME_SYNC			Z__BT_AVRCP_VOLUME_SYNC
+#define BT_AVRCP_VOLUME_SYNC			DISABLE
 
 /*
  * If it doesn't support Advanced AVRCP, TG side will be ignored
  * 和音量同步功能都用到AVRCP TG
  * player application setting and value和音量同步宏定义开关一致(eg:EQ/repeat mode/shuffle/scan configuration)
+ * 注意: 此功能只有苹果手机自带播放器才能实现, 苹果手机第三方播放器/其他的手机均不支持
  */
 #define BT_AVRCP_PLAYER_SETTING			DISABLE
 
@@ -186,30 +216,35 @@
  */
 #define BT_HFP_AUDIO_DATA				HFP_AUDIO_DATA_mSBC
 
-//电池电量同步(开启需要和 CFG_FUNC_POWER_MONITOR_EN 关联)
+/*
+ * 电池电量同步(开启需要和 CFG_FUNC_POWER_MONITOR_EN 关联)
+ */
 //#define BT_HFP_BATTERY_SYNC
 
-//开启HFP连接，不使能进入HFP相关模式(K歌模式和通话模式)
-//该应用适用于某些需要连接HFP协议，但是不需要HFP相关功能的场合
+/*
+ * 开启HFP连接，不使能进入HFP相关模式(K歌模式和通话模式)
+ * 该应用适用于某些需要连接HFP协议，但是不需要HFP相关功能的场合
+ */
 //#define BT_HFP_MODE_DISABLE
 
 /*
  * 通话相关配置
+ * 目前这些参数都已移到调音参数中，通过上位机调节参数
  */
 //AEC相关参数配置 (MIC gain, AGC, DAC gain, 降噪参数)
 #define BT_HFP_AEC_ENABLE
 #define BT_REMOTE_AEC_DISABLE			//关闭手机端AEC
 
 //MIC无运放,使用如下参数(参考)
-#define BT_HFP_MIC_PGA_GAIN				0//15  //ADC PGA GAIN +18db(0~31, 0:max, 31:min)
+#define BT_HFP_MIC_PGA_GAIN				15  //ADC PGA GAIN +18db(0~31, 0:max, 31:min)
 #define BT_HFP_MIC_PGA_GAIN_BOOST_SEL	2
 #define BT_HFP_MIC_DIGIT_GAIN			4095
 #define BT_HFP_INPUT_DIGIT_GAIN			1100
 
 //MIC有运放,使用如下参数(参考开发板)
-//#define BT_HFP_MIC_PGA_GAIN				14  //ADC PGA GAIN +2db(0~31, 0:max, 31:min)
-//#define BT_HFP_MIC_DIGIT_GAIN				4095
-//#define BT_HFP_INPUT_DIGIT_GAIN			4095
+//#define BT_HFP_MIC_PGA_GAIN			14  //ADC PGA GAIN +2db(0~31, 0:max, 31:min)
+//#define BT_HFP_MIC_DIGIT_GAIN			4095
+//#define BT_HFP_INPUT_DIGIT_GAIN		4095
 
 #define BT_HFP_AEC_ECHO_LEVEL			4 //Echo suppression level: 0(min)~5(max)
 #define BT_HFP_AEC_NOISE_LEVEL			2 //Noise suppression level: 0(min)~5(max)
@@ -221,57 +256,76 @@
 //来电通话时长配置选项
 #define BT_HFP_CALL_DURATION_DISP
 
+#endif
 
-#endif /* BT_HFP_SUPPORT == ENABLE */
 
 /*****************************************************************
  * TWS config
  *****************************************************************/
-#ifndef BT_TWS_SUPPORT
-#define BT_TWS_LINK_NUM				0		//不开起TWS功能,只能将此参数配置为0
-#if (BT_TWS_LINK_NUM != 0)
-#error Conflict: BT_TWS_LINK_NUM setting error 
-#endif
-#endif
-
 #ifdef BT_TWS_SUPPORT
 #include "bt_tws_api.h"
 
-#define BT_TWS_LINK_NUM				1		//TWS参数仅能为1
-#if (BT_TWS_LINK_NUM != 1)
-#error Conflict: BT_TWS_LINK_NUM setting error 
-#endif
+#define BT_TWS_LINK_NUM				1		//TWS参数仅能为1， 不可修改
+#define CFG_TWS_ONLY_IN_BT_MODE		DISABLE //enable:仅在蓝牙模式下工作, disable:在所有模式下工作
+#define TWS_FIFO_FRAMES				120 	//@Framesize=128, 对应music通路的TWS缓冲深度帧数
+#define TWS_DELAY_FRAMES			56*2	//建议112，~325mS; music通路的delay时间 N*2.9mS@44100；此值越大，主副箱距离越远, 25 < TWS_DELAY_FRAMES < TWS_FIFO_FRAMES
+//#define CFG_CMD_DELAY				10      //ms 主从CMD发送到处理延时5ms左右，信道质量差时更长，考虑被打断会形成7~20mS延时，此处设10ms较合适。
 
-#define CFG_TWS_ONLY_IN_BT_MODE		ENABLE //enable:仅在蓝牙模式下工作, disable:在所有模式下工作
-#define TWS_STATRT_PLAY_FRAM		56*2    //取值范围[56*1 - 56*4]; 对应music通路的delay时间是56*3*[1 - 4] = [168 - 672]ms；此值越大，主副箱距离越远
-#define CFG_CMD_DELAY				10      //ms 主从CMD发送到处理延时5ms左右，信道质量差时更长，考虑被打断会形成7~20mS延时，此处设10ms较合适。
-
-////1.针对2.0的应用，可选择CFG_EFFECT_MUSIC_MASTER为1，由主机端统一调音；
-////2.针对2.1的应用(dac0+dacx)，必须选择CFG_EFFECT_MUSIC_MASTER为0,主机和从机单独调音，否则会存在DACX相位不一致的问题！
-#define CFG_EFFECT_MUSIC_MASTER		0		//0=master,slaver 独立有调音音效，1=只有master有调音，音效功能，slaver仅做为接收，
 
 //TWS组网条件判断
 #define TWS_FILTER_NAME						//过滤名称
 //#define TWS_FILTER_USER_DEFINED			//自定义过滤条件(max:6bytes)
 #ifdef TWS_FILTER_USER_DEFINED
 //默认定义为字符串,假如是定义参数,请移步到配置处自行赋值
-#define TWS_FILTER_INFOR		"TWS-MV" //(length:6bytes)
+#define TWS_FILTER_INFOR			"TWS-MV" //(length:6bytes)
 #endif
 
 #define CFG_TWS_ROLE_RANDOM			0		//适用于双键组网		主从角色在组网前随机
-#define CFG_TWS_ROLE_MASTER			1		//Soundbar主			暂不支持
-#define CFG_TWS_ROLE_SLAVE			2		//Soundbar从			暂不支持
+#define CFG_TWS_ROLE_MASTER			1		//Soundbar主
+#define CFG_TWS_ROLE_SLAVE			2		//Soundbar从
 #define CFG_TWS_PEER_MASTER			3		//对箱主				按键发起配对的机器组网成功后默认就是MASTER
 #define CFG_TWS_PEER_SLAVE			4		//对箱从				按键发起配对的机器组网成功后默认就是SLAVE
 
 /*
- * 组网配对方式选择
+ * 1.Soundbar方案
+ * Note:这种场景下,必须要开启BLE功能
+ */
+//#define CFG_TWS_SOUNDBAR_APP  				//使用此功能 需要手动enable BLE_SUPPORT
+
+#ifdef CFG_TWS_SOUNDBAR_APP
+
+#if (BLE_SUPPORT ==	DISABLE)
+#undef 	BLE_SUPPORT
+#define BLE_SUPPORT  	ENABLE
+#endif
+
+#define BT_SNIFF_ENABLE                     //SOUNDBAR需要用到sniff
+
+/*
+ *  soundbar组网配对方式选择
+ * 	使用soundbar配置主从角色固定:		主机选择 CFG_TWS_ROLE_MASTER 编译烧录
+ * 									从机选择 CFG_TWS_ROLE_SLAVE 编译烧录
+ */
+#define TWS_PAIRING_MODE						CFG_TWS_ROLE_MASTER
+//#define TWS_PAIRING_MODE						CFG_TWS_ROLE_SLAVE
+
+#define TWS_SIMPLE_PAIRING_SUPPORT				ENABLE	// DISABLE: 需2个设备先后按键组网     ENABLE: 单按键组网
+//#define TWS_SOUNDBAR_MASTER_DISCONNECT_ENABLE  		//使能soundbar Master主动断开TWS
+#define CFG_TWS_ROLE_SLAVE_TEST                			//打开soundbar从机开机进较频偏模式；如果没有较过频偏，则开机可被测试盒连接，已经较过频偏则正常开机
+#else  
+
+/*
+ *  2.对箱方案
+ *  对箱组网配对方式选择
+ *  选择除 CFG_TWS_ROLE_MASTER, CFG_TWS_ROLE_SLAVE 外配置
  */
 #define TWS_PAIRING_MODE			CFG_TWS_PEER_MASTER
 
+#endif
 
-#if ((TWS_PAIRING_MODE == CFG_TWS_PEER_MASTER)||(TWS_PAIRING_MODE == CFG_TWS_ROLE_RANDOM))
-#define CFG_AUTO_ENTER_TWS_SLAVE_MODE		//slave连接成功后自动切换到tws_slave模式
+//slave连接成功后自动切换到tws_slave模式
+#if(TWS_PAIRING_MODE != CFG_TWS_PEER_SLAVE)
+#define CFG_AUTO_ENTER_TWS_SLAVE_MODE
 #endif
 
 /*
@@ -286,7 +340,9 @@
  */
 #define TWS_POWEROFF_MODE_SYNC
 
-#endif /* #ifdef BT_TWS_SUPPORT */
+#else
+#define BT_TWS_LINK_NUM				0		//不开起TWS功能,只能将此参数配置为0
+#endif
 
 #endif /*__BT_DEVICE_CFG_H__*/
 

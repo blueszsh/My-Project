@@ -4,7 +4,7 @@
  * @brief	Ping-Pong Delay
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v1.4.1
+ * @version	v1.5.0
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -53,7 +53,7 @@ extern "C" {
 
 
 /**
- * @brief Initialize ping-pong delay module
+ * @brief Initialize ping-pong delay module for 16-bit PCM data.
  * @param ct Pointer to an PingPongContext object.
  * @param max_delay_samples Maximum delay in samples. For example if you want to have maximum 500ms delay at 44.1kHz sample rate, the max_delay_samples = delay time*sample rate = 500*44.1 = 22050.
  * @param high_quality High quality switch. If high_quality is set 1, the delay values are losslessly saved for high quality output, otherwise (high_quality = 0) the delay values are compressed for longer maximum delay.
@@ -62,11 +62,24 @@ extern "C" {
  *        If high_quality is set 0, the buffer capacity = "ceil(max_delay_samples/32)*38" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 26220 bytes (ceil(22050/32)*38=690*38=26220)
  * @return error code. PINGPONG_ERROR_OK means successful, other codes indicate error.
  */
-int32_t pingpong_init(PingPongContext *ct, int32_t max_delay_samples, int32_t high_quality, uint8_t *s);
+int32_t pingpong_init16(PingPongContext *ct, int32_t max_delay_samples, int32_t high_quality, uint8_t *s);
 
 
 /**
- * @brief Apply ping-pong delay to a frame of PCM data (must be stereo, i.e. 2 channels)
+ * @brief Initialize ping-pong delay module for 24-bit PCM data.
+ * @param ct Pointer to an PingPongContext object.
+ * @param max_delay_samples Maximum delay in samples. For example if you want to have maximum 500ms delay at 44.1kHz sample rate, the max_delay_samples = delay time*sample rate = 500*44.1 = 22050.
+ * @param high_quality High quality switch. If high_quality is set 1, the delay values are losslessly saved for high quality output, otherwise (high_quality = 0) the delay values are compressed for longer maximum delay.
+ * @param s Delay buffer pointer. This buffer should be allocated by the caller and its capacity depends on both "high_quality" and "max_delay_samples".
+ *        If high_quality is set 1, the buffer capacity = "max_delay_samples*8" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 176400 bytes (22050*8=176400)
+ *        If high_quality is set 0, the buffer capacity = "ceil(max_delay_samples/32)*38" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 26220 bytes (ceil(22050/32)*38=690*38=26220)
+ * @return error code. PINGPONG_ERROR_OK means successful, other codes indicate error.
+ */
+int32_t pingpong_init24(PingPongContext *ct, int32_t max_delay_samples, int32_t high_quality, uint8_t *s);
+
+
+/**
+ * @brief Apply ping-pong delay to a frame of 16-bit PCM data (must be stereo, i.e. 2 channels)
  * @param ct Pointer to a PingPongContext object.
  * @param pcm_in Address of the PCM input. The data layout for stereo: L0,R0,L1,R1,L2,R2,...
  * @param pcm_out Address of the PCM output. The data layout for stereo: L0,R0,L1,R1,L2,R2,...
@@ -78,7 +91,23 @@ int32_t pingpong_init(PingPongContext *ct, int32_t max_delay_samples, int32_t hi
  * @return error code. PINGPONG_ERROR_OK means successful, other codes indicate error.
  * @note Only stereo (2 channels) PCM signals are supported for processing.
  */
-int32_t pingpong_apply(PingPongContext *ct, int16_t *pcm_in, int16_t *pcm_out, int32_t n, int16_t attenuation, int32_t delay_samples, int32_t wetdrymix);
+int32_t pingpong_apply16(PingPongContext *ct, int16_t *pcm_in, int16_t *pcm_out, int32_t n, int16_t attenuation, int32_t delay_samples, int32_t wetdrymix);
+
+
+/**
+ * @brief Apply ping-pong delay to a frame of 24-bit PCM data (must be stereo, i.e. 2 channels)
+ * @param ct Pointer to a PingPongContext object.
+ * @param pcm_in Address of the PCM input. The data layout for stereo: L0,R0,L1,R1,L2,R2,...
+ * @param pcm_out Address of the PCM output. The data layout for stereo: L0,R0,L1,R1,L2,R2,...
+ *        pcm_out can be the same as pcm_in. In this case, the PCM signals are changed in-place.
+ * @param n Number of PCM samples to process.
+ * @param attenuation attenuation coefficient. Q1.15 format to represent value in range from 0 to 1. For example, 8192 represents 0.25 as the attenuation coefficient.
+ * @param delay_samples Delay in samples. Range: 1 ~ max_delay_samples.
+ * @param wetdrymix The ratio of wet (ping-pong delay) signal to the mixed output (wet+dry). Range: 0~100 for 0~100%.
+ * @return error code. PINGPONG_ERROR_OK means successful, other codes indicate error.
+ * @note Only stereo (2 channels) PCM signals are supported for processing.
+ */
+int32_t pingpong_apply24(PingPongContext *ct, int32_t *pcm_in, int32_t *pcm_out, int32_t n, int16_t attenuation, int32_t delay_samples, int32_t wetdrymix);
 
 
 

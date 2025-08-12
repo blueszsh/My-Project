@@ -17,20 +17,28 @@
 #include "app_config.h"
 
 #include "audio_core_adapt.h"
+#include "resampler.h"
 
 enum
 {
-	MIC_SOURCE_NUM,			//麦克风通路
-	APP_SOURCE_NUM,			//app主要音源通道,配music音效
+	MIC_SOURCE_NUM,			     //麦克风通路
+	APP_SOURCE_NUM,			     //app主要音源通道,配music音效
 #ifdef CFG_FUNC_REMIND_SOUND_EN
-	REMIND_SOURCE_NUM,	 	//提示音使用固定混音通道 无音效
+	REMIND_SOURCE_NUM,	 	     //提示音使用固定混音通道 无音效
 #endif
 
 #ifdef CFG_RES_AUDIO_I2S0IN_EN
-	I2S0_SOURCE_NUM,            //i2s0 mix通道
+	I2S0_SOURCE_NUM,             //i2s0 mix通道
 #endif
 #ifdef CFG_RES_AUDIO_I2S1IN_EN
-	I2S1_SOURCE_NUM,            //i2s1 mix通道
+	I2S1_SOURCE_NUM,             //i2s1 mix通道
+#endif
+#ifdef CFG_FUNC_LINE_MIX_MODE
+	LINE_SOURCE_NUM,            //line mix通道
+#endif
+
+#ifdef CFG_FUNC_SPDIF_MIX_MODE
+	SPDIF_MIX_SOURCE_NUM,
 #endif
 
 #ifdef BT_TWS_SUPPORT
@@ -38,7 +46,7 @@ enum
 #endif
 
 #ifdef CFG_FUNC_RECORDER_EN
-	PLAYBACK_SOURCE_NUM,	//flashfs 录音回放通道		无音效
+	PLAYBACK_SOURCE_NUM,	      //flashfs 录音回放通道		无音效
 #endif
 	AUDIO_CORE_SOURCE_MAX_NUM,
 };
@@ -47,18 +55,18 @@ enum
 
 enum
 {
-	AUDIO_DAC0_SINK_NUM,		//主音频输出在audiocore Sink中的通道，必须配置，audiocore借用此通道buf处理数据	
+	AUDIO_DAC0_SINK_NUM,		  //主音频输出在audiocore Sink中的通道，必须配置，audiocore借用此通道buf处理数据
 #ifdef CFG_FUNC_RECORDER_EN
-	AUDIO_RECORDER_SINK_NUM,	//录音专用通道		 不叠加提示音音源。
+	AUDIO_RECORDER_SINK_NUM,	  //录音专用通道		 不叠加提示音音源。
 #endif
 #if	(defined(CFG_APP_BT_MODE_EN) && (BT_HFP_SUPPORT == ENABLE)) || defined(CFG_APP_USB_AUDIO_MODE_EN)
 	AUDIO_APP_SINK_NUM,
 #endif
 #ifdef CFG_RES_AUDIO_DACX_EN
-	AUDIO_DACX_SINK_NUM,		//dacx通道
+	AUDIO_DACX_SINK_NUM,		  //dacx通道
 #endif
 #if defined(CFG_RES_AUDIO_I2SOUT_EN)
-	AUDIO_STEREO_SINK_NUM,      //模式无关Dac0之外的 立体声输出
+	AUDIO_STEREO_SINK_NUM,        //模式无关Dac0之外的 立体声输出
 #endif
 
 #ifdef CFG_RES_AUDIO_I2S0OUT_EN
@@ -68,8 +76,12 @@ enum
 	AUDIO_I2S1_OUT_SINK_NUM,      //i2s_out通道
 #endif
 
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN
+	AUDIO_SPDIF_SINK_NUM,      	  //光纤/同轴 立体声输出
+#endif
+
 #ifdef BT_TWS_SUPPORT
-	TWS_SINK_NUM,				//缓冲
+	TWS_SINK_NUM,				  //缓冲
 #endif
 	AUDIO_CORE_SINK_MAX_NUM,
 };
@@ -116,6 +128,7 @@ typedef struct _AudioCoreSource
 	AudioCoreDataGetFunc		DataGetFunc;//抽数据入口函数
 	AudioCoreDataLenFunc		DataLenFunc;//数据sample数 函数
 	PCM_DATA_TYPE				*PcmInBuf;	//通路数据帧处理buf
+	PCM_DATA_TYPE				*AdaptBuf;	//SRC&SRA缓存buf
 #ifdef	CFG_AUDIO_WIDTH_24BIT
 	PCM_DATA_WIDTH				BitWidth;//输入音频位宽，0,16bit，1,24bit
 	bool						BitWidthConvFlag;//输入音频位宽，是否需要扩充到24bit
@@ -145,6 +158,7 @@ typedef struct _AudioCoreSink
 	AudioCoreSpaceLenFunc			SpaceLenFunc;//数据填充空间sample数 函数
 	uint32_t						Depth;//LenGetFunc()最大采样点深度，用于计算存留数据量
 	PCM_DATA_TYPE					*PcmOutBuf;//通路数据帧处理buf
+	PCM_DATA_TYPE					*AdaptBuf;//SRC&SRA缓存buf
 #ifdef	CFG_AUDIO_WIDTH_24BIT
 	PCM_DATA_WIDTH					BitWidth;//输入音频位宽，0,16bit，1,24bit
 	bool							BitWidthConvFlag;//输入音频位宽，是否需要位宽转换 24bit <--> 16bit
@@ -238,5 +252,9 @@ void AudioCoreRun(void);
 void AudioCoreSourceVolApply(void);
 void AudioCoreSinkVolApply(void);
 void AudioCoreAppSourceVolApply(uint16_t Source,int16_t *pcm_in,uint16_t n,uint16_t Channel);
+
+#ifdef	CFG_AUDIO_WIDTH_24BIT
+PCM_DATA_WIDTH AudioCoreSourceBitWidthGet(uint8_t Index);
+#endif
 
 #endif //__AUDIO_CORE_API_H__

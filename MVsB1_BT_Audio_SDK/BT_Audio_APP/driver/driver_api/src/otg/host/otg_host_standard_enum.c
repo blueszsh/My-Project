@@ -21,7 +21,7 @@
 #include "otg_host_hcd.h"
 #include "otg_host_standard_enum.h"
 //#include "otg_host_udisk.h"
-
+uint16_t AppleidVendor=0;//CFG_FUNC_DETECT_IPHONE
 extern int printf(const char *fmt, ...);
 #undef  OTG_DBG
 #define	OTG_DBG(format, ...)		//printf(format, ##__VA_ARGS__)  //bkd mark
@@ -166,8 +166,12 @@ bool OTG_HostEnumDevice(void)
 	OTG_DBG("Get All Device  Descriptor\n");
 	if(!OTG_HostGetDescriptor(USB_DT_DEVICE, 0, (uint8_t *)&OtgHostInfo.DeviceDesCriptor, DescriptorLen))
 	{
+		OTG_DBG("idVendor:\t%04X \n",OtgHostInfo.DeviceDesCriptor.idVendor);
+		AppleidVendor = OtgHostInfo.DeviceDesCriptor.idVendor;//CFG_FUNC_DETECT_IPHONE
 		return FALSE;
 	}
+	OTG_DBG("idVendor:\t%04X \n",OtgHostInfo.DeviceDesCriptor.idVendor);
+	AppleidVendor = OtgHostInfo.DeviceDesCriptor.idVendor;//CFG_FUNC_DETECT_IPHONE
 	if(OtgHostInfo.DeviceDesCriptor.bNumConfigurations != 1)
 	{
 		return FALSE;
@@ -218,7 +222,7 @@ bool OTG_HostEnumDevice(void)
 	{
 		return FALSE;
 	}
-	
+
 	pBuf = OtgHostInfo.DesCriptorBuffer + 9;
 	OtgHostInfo.UsbInterfaceNum = 0;
 	i = 0;

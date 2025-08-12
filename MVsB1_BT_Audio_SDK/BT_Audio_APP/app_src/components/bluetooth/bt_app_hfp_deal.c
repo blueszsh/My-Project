@@ -252,6 +252,9 @@ void BtHfpDisconnectedDev(BT_HFP_CALLBACK_PARAMS * param)
 		BtReconnectDevAgain(1000);
 		printf("============ delay 1000ms, reconnect a2dp+avrcp\n");
 	}
+	#ifdef RECON_ADD
+	btManager.btReconnectunusual = TRUE;
+	#endif
 }
 
 /*****************************************************************************************
@@ -589,8 +592,7 @@ void BtHfpCallSetupNone(BT_HFP_CALLBACK_PARAMS * param)
 		case BT_HFP_STATE_ACTIVE:
 			if((!GetScoConnectFlag()) && (GetSystemMode() == ModeBtHfPlay))
 			{
-				SetHfpState(param->index, BT_HFP_STATE_CONNECTED);
-				BtHfModeExit();
+				DelayExitBtHfModeSet();
 			}
 			break;
 		case BT_HFP_STATE_3WAY_ATCTIVE_CALL:

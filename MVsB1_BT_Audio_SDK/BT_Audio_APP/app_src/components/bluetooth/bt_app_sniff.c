@@ -241,24 +241,24 @@ void DisconnectFromPhone(void)
 {
 	if((GetA2dpState(BtCurIndex_Get()) < BT_A2DP_STATE_CONNECTED)
 #if (BT_HFP_SUPPORT == ENABLE)
-		||(GetHfpState() < BT_HFP_STATE_CONNECTED)
+		||(GetHfpState(BtCurIndex_Get()) < BT_HFP_STATE_CONNECTED)
 #endif
 		)//已经断开
 		return;
 
 	if(GetA2dpState(BtCurIndex_Get())>BT_A2DP_STATE_NONE)
 	{
-		A2dpDisconnect();//主机连接手机的话就先断开
+		A2dpDisconnect(BtCurIndex_Get());//主机连接手机的话就先断开
 	}
 #if (BT_HFP_SUPPORT == ENABLE)
-	if(GetHfpState() >= BT_HFP_STATE_CONNECTED)
+	if(GetHfpState(BtCurIndex_Get()) >= BT_HFP_STATE_CONNECTED)
 	{
-		BtHfpDisconnect();//主机连接手机的话就先断开
+		BtHfpDisconnect(BtCurIndex_Get());//主机连接手机的话就先断开
 	}
 #endif
 	while((GetA2dpState(BtCurIndex_Get()) >= BT_A2DP_STATE_CONNECTED)
 #if (BT_HFP_SUPPORT == ENABLE)
-		||(GetHfpState() >= BT_HFP_STATE_CONNECTED)
+		||(GetHfpState(BtCurIndex_Get()) >= BT_HFP_STATE_CONNECTED)
 #endif
 		)//等待断开成功
 	{
@@ -411,9 +411,9 @@ void BtStartEnterSniffStep(void)
 			{
 				btEnterSniffCnt=0;
 				if((GetA2dpState(BtCurIndex_Get()) >= BT_A2DP_STATE_CONNECTED)
-				|| (GetAvrcpState() >= BT_AVRCP_STATE_CONNECTED)
+				|| (GetAvrcpState(BtCurIndex_Get()) >= BT_AVRCP_STATE_CONNECTED)
 #if (BT_HFP_SUPPORT == ENABLE)
-				|| (GetHfpState() >= BT_HFP_STATE_CONNECTED) 
+				|| (GetHfpState(BtCurIndex_Get()) >= BT_HFP_STATE_CONNECTED) 
 #endif
 				)
 				{

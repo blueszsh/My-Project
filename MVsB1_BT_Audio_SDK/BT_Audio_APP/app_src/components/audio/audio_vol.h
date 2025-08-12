@@ -21,10 +21,6 @@ extern "C" {
 #include "app_config.h"
 
 extern const uint16_t gSysVolArr[];
-
-extern const int16_t MicGainTable[33];
-
-
 void AudioMusicVol(uint8_t musicVol);
 bool IsAudioPlayerMute(void);
 void AudioPlayerMenu(void);

@@ -27,12 +27,6 @@ typedef enum _PWR_LEVEL
 *					函数声明
 **********************************************************
 */
-
-
-bool IsInCharge(void);
-
-
-
 //电能监视初始化
 //实现系统启动过程中的低电压检测处理，以及配置充电设备接入检测IO等
 void PowerMonitorInit(void);

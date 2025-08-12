@@ -111,6 +111,13 @@ static void BtSetAccessModeApi(BtAccessMode accessMode)
 		{
 			APP_DBG("set access mode: %d\n", accessMode);
 			BTSetAccessMode(accessMode);
+#if defined(BT_TWS_SUPPORT) && (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
+			if( (btManager.twsState == BT_TWS_STATE_NONE && (!btManager.twsSbSlaveDisable) )
+			&& ( (accessMode == BtAccessModeConnectableOnly) || (accessMode == BtAccessModeGeneralAccessible)) )
+			{
+				tws_slave_simple_pairing_ready();
+			}
+#endif
 		}	
 	}
 }
@@ -127,10 +134,30 @@ void BtSetAccessMode_NoDisc_Con(void)
 
 void BtSetAccessMode_Disc_Con(void)
 {
-	if (GetBtManager()->btAccessModeEnable)
+#ifdef POWER_ON_BT_ACCESS_MODE_SET
+	if(GetBtManager()->keysetAccessModeEnable)
+	{
+		GetBtManager()->keysetAccessModeEnable = FALSE;
+		
 		BtSetAccessModeApi(BtAccessModeGeneralAccessible);
-	else
-		BtSetAccessModeApi(BtAccessModeConnectableOnly);
+	}else{
+		if (GetBtManager()->btAccessModeEnable)
+		{
+			if(GetBtManager()->btAccessModeEnable == USER_NOTACCESSIBLE)
+			{
+				BtSetAccessModeApi(BtAccessModeConnectableOnly);
+			}else{
+				BtSetAccessModeApi(BtAccessModeGeneralAccessible);
+			}
+		}
+		else
+		{
+			BtSetAccessModeApi(BtAccessModeNotAccessible);
+		}		
+	}
+#else
+	BtSetAccessModeApi(BtAccessModeGeneralAccessible);
+#endif
 }
 
 /***********************************************************************************
@@ -243,6 +270,9 @@ void BtLinkStateConnect(uint8_t flag, uint8_t index)
 		return ;
 	}
 
+#ifdef BT_PROFILE_BQB_ENABLE
+	if(!btManager.btLinked_env[index].btLinkState
+#else
 	if(((!btManager.btLinked_env[index].btLinkState)
 		&&(btManager.btLinked_env[index].a2dpState >= BT_A2DP_STATE_CONNECTED)
 		&& (btManager.btLinked_env[index].avrcpState >= BT_AVRCP_STATE_CONNECTED))
@@ -250,6 +280,7 @@ void BtLinkStateConnect(uint8_t flag, uint8_t index)
 		/*&& (btManager.btLinked_env[index].hfpState >= BT_HFP_STATE_CONNECTED)*/
 #endif
 		|| (flag)
+#endif//BT_PROFILE_BQB_ENABLE
 		)
 	{
 		btManager.btLinkState = 1;
@@ -398,6 +429,10 @@ void BtLinkStateDisconnect(uint8_t index)
 
 bool GetBtLinkState(uint8_t index)
 {
+	if (index > (BT_LINK_DEV_NUM-1))
+	{
+		return 0;
+	}
 	return btManager.btLinked_env[index].btLinkState;
 }
 

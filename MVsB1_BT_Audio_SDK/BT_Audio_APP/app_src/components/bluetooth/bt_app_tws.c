@@ -103,9 +103,9 @@ static uint32_t error_count = 0;
 #define TWS_CONNECT_MUTE		30
 #define TWS_DISCONNECT_MUTE		50
 TIMER TwsMuteTimer;
-#ifdef BT_TWS_SUPPORT
 TIMER TwsDacOnTimer;
-#endif
+extern uint32_t gBtTwsSniffLinkLoss;
+		
 extern void AudioMusicVol(uint8_t musicVol);
 extern void TwsSlaveFifoMuteTimeSet(void);
 extern void TwsSlaveFifoUnmuteSet(void);
@@ -441,6 +441,12 @@ void tws_peer_repair(void)
 void BtTws_Master_Connected(BT_TWS_CALLBACK_PARAMS * param)
 {
 	APP_DBG("TWS_MASTER_CONNECTED:\n");
+
+#ifdef BT_SNIFF_ENABLE
+		//enable bb enter sleep
+		Set_rwip_sleep_enable(1);
+#endif
+
 	{
 		MessageContext		msgSend;
 		msgSend.msgId		= MSG_BT_TWS_MASTER_CONNECTED;
@@ -481,6 +487,8 @@ void BtTws_Master_Connected(BT_TWS_CALLBACK_PARAMS * param)
 	
 #elif ((TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)||(TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER))
 	BtTwsExitSimplePairingMode();
+
+	BtStackServiceMsgSend(MSG_BTSTACK_ACCESS_MODE_SET);
 #else //CFG_TWS_PEER_SLAVE/CFG_TWS_PEER_MASTER
 	BtTwsExitPeerPairingMode();
 
@@ -488,7 +496,7 @@ void BtTws_Master_Connected(BT_TWS_CALLBACK_PARAMS * param)
 
 #endif
 
-#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER)
+#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER && defined(BT_SNIFF_ENABLE))
 	if(Bt_sniff_sniff_start_state_get())
 	{
 		//再次使从进入sniff
@@ -676,7 +684,9 @@ void BtTwsRecvCmdData(BT_TWS_CALLBACK_PARAMS * param)
 			uint8_t isclear 	  = param->params.twsData[para_offset];
 			if(isclear)
 			{
+#ifdef CFG_FUNC_REMIND_SOUND_EN
 				RemindSoundClearSlavePlay();
+#endif
 			}
 			else
 			{
@@ -712,32 +722,6 @@ void BtTwsRecvCmdData(BT_TWS_CALLBACK_PARAMS * param)
 			}
 
 			APP_DBG("slave rcv cmd_a2dp_state = %d\n", val);
-            if(val == BT_PLAYER_STATE_PLAYING)
-            {
-		        T_TwsSlave_inf.play_state =_Music_play;
-		          #ifdef CFG_DMA_RGB_LED_EN
-					mainAppCt.rgb_mode = RGB_Effect_Bt_Play;
-			        mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
-			      #endif
-			      #if LEDS_mix_RGB_EN
-					    RGB_curr_effect = RGB_Effect_Bt_Play;
-				        Temp_RGB_curr_effect=RGB_curr_effect;
-			      #endif  
-			}
-			else
-			{
-		        T_TwsSlave_inf.play_state =_Music_puse;
-				 #ifdef CFG_DMA_RGB_LED_EN
-					mainAppCt.rgb_mode = RGB_Effect_Bt_Pause;
-			        mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
-			      #endif
-			      #if LEDS_mix_RGB_EN
-				    RGB_curr_effect = RGB_Effect_Bt_Pause;
-			        Temp_RGB_curr_effect=RGB_curr_effect;
-			      #endif 
-				  
-	        }
-			PA_contral();
 		}
 		break;
 #ifdef CFG_FUNC_MUSIC_EQ_MODE_EN
@@ -828,6 +812,12 @@ void BtTwsRecvCmdData(BT_TWS_CALLBACK_PARAMS * param)
 void BtTws_Slave_Connected(BT_TWS_CALLBACK_PARAMS * param)
 {
 	APP_DBG("TWS_SLAVE_CONNECTED:\n");
+
+#ifdef BT_SNIFF_ENABLE
+	//enable bb enter sleep
+	Set_rwip_sleep_enable(1);
+#endif
+
 	{
 		MessageContext		msgSend;
 		msgSend.msgId		= MSG_BT_TWS_SLAVE_CONNECTED;
@@ -889,13 +879,16 @@ void BtTws_Slave_Disconnected(BT_TWS_CALLBACK_PARAMS * param)
 	btManager.twsState = BT_TWS_STATE_NONE;
 	
 #if (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
+#ifdef BT_SNIFF_ENABLE
 	if(Bt_sniff_sniff_start_state_get())
 	{
 		//BleScanParamConfig_Sniff();
 		BtTwsConnectApi();
 		gBtTwsSniffLinkLoss = 1;
 	}
-	else if(!btManager.twsSbSlaveDisable)
+	else
+#endif
+	if(!btManager.twsSbSlaveDisable)
 	{
 		tws_slave_simple_pairing_ready();
 	}
@@ -966,7 +959,7 @@ bool tws_state_audiocore_assort(TWS_SYNC_STATE State, TWS_SYNC_STATE LastState)
 			case TWS_HW_INIT:
 				if(AudioCoreSinkIsInit(TWS_SINK_NUM))
 				{
-					AudioCoreSinkDepthChange(TWS_SINK_NUM, TWS_STATRT_PLAY_FRAM * 128);
+					AudioCoreSinkDepthChange(TWS_SINK_NUM, TWS_FIFO_FRAMES * 128);
 				}
 				AudioCoreSourceUnmute(TWS_SOURCE_NUM, TRUE, TRUE);//for test
 				break;
@@ -988,6 +981,9 @@ bool tws_state_audiocore_assort(TWS_SYNC_STATE State, TWS_SYNC_STATE LastState)
 				}
 				SoftFlagDeregister(SoftFlagTwsRemind);
 #endif
+				if(IsAudioPlayerMute() == TRUE){
+					HardWareMuteOrUnMute();
+				}
 				break;
 
 			default:

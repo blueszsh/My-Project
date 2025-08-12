@@ -55,7 +55,6 @@
 #include "audio_effect_flash_param.h"
 #include "Bt_interface.h"
 
-
 #ifdef CFG_APP_BT_MODE_EN
 
 #define BT_PLAY_DECODER_SOURCE_NUM		1 
@@ -70,7 +69,6 @@ typedef struct _btPlayContext
 
 	uint32_t			btCurPlayStateMaskCnt;//从通话模式恢复到播放音乐模式,延时大概1s多时间来确认是否恢复到播放状态
 }BtPlayContext;
-
 
 
 /**根据appconfig缺省配置:DMA 8个通道配置**/
@@ -94,19 +92,29 @@ static const uint8_t DmaChannelMap[29] =
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
 
-#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN) && !defined (CFG_FUNC_RECORDER_EN)
 	255,//PERIPHERAL_ID_SDIO_RX,		//3
 	255,//PERIPHERAL_ID_SDIO_TX,		//4
+#elif defined (CFG_FUNC_RECORDER_EN) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+	5,//PERIPHERAL_ID_SDIO_RX,			//3
+	5,//PERIPHERAL_ID_SDIO_TX,			//4
 #else
-	255,/////4,//PERIPHERAL_ID_SDIO_RX,			//3
-	255,/////4,//PERIPHERAL_ID_SDIO_TX,			//4
+	4,//PERIPHERAL_ID_SDIO_RX,			//3
+	4,//PERIPHERAL_ID_SDIO_TX,			//4
 #endif
 
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
+
+#if defined CFG_RES_AUDIO_SPDIFOUT_EN || defined CFG_FUNC_SPDIF_MIX_MODE
+	6,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_TX,		    //8 SPDIF_RX /TX same chanell
+#else
 	255,//PERIPHERAL_ID_SDPIF_RX,		//8 SPDIF_RX /TX same chanell
 	255,//PERIPHERAL_ID_SDPIF_TX,		//8 SPDIF_RX /TX same chanell
+#endif
+
 	255,//PERIPHERAL_ID_SPIM_RX,		//9
 	255,//PERIPHERAL_ID_SPIM_TX,		//10
 	
@@ -123,11 +131,7 @@ static const uint8_t DmaChannelMap[29] =
 	255,//PERIPHERAL_ID_UART1_TX,		//13
 #endif
 
-#ifdef CFG_DMA_RGB_LED_EN
-	4,//PERIPHERAL_ID_TIMER4,			//14
-#else
 	255,//PERIPHERAL_ID_TIMER4,			//14
-#endif
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
 	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
@@ -165,14 +169,10 @@ static const uint8_t DmaChannelMap[29] =
 };
 
 static BtPlayContext	*BtPlayCt;
-
 BT_A2DP_PLAYER			*a2dp_player = NULL;
-
 #ifdef CFG_FUNC_DISPLAY_EN
 uint8_t Bt_link_bak = 0xff;
 #endif
-
-
 extern uint32_t gBtPlaySbcDecoderInitFlag;
 #ifdef BT_TWS_SUPPORT
 extern uint32_t gBtTwsSniffLinkLoss;
@@ -216,9 +216,6 @@ bool GetBtUserVsibilityLock(void)
  ************************************************************************************************************/
 static bool BtPlayInitRes(void)
 {
-	//DMA channel
-	DMA_ChannelAllocTableSet((uint8_t *)DmaChannelMap);
-
 	a2dp_player = (BT_A2DP_PLAYER*)osPortMalloc(sizeof(BT_A2DP_PLAYER));
 	if(a2dp_player == NULL)
 	{
@@ -275,8 +272,8 @@ static bool BtPlayInitRes(void)
 	}
 
 #if (BT_AVRCP_SONG_TRACK_INFOR == ENABLE)
-	extern void GetBtMediaInfo(void *params);
-	BtAppiFunc_GetMediaInfo(GetBtMediaInfo);
+	extern void BtMediaInfoCallback(void *params);
+	BtAppiFunc_GetMediaInfo(BtMediaInfoCallback);
 #else
 	BtAppiFunc_GetMediaInfo(NULL);
 #endif	
@@ -328,14 +325,6 @@ void BtPlayRun(uint16_t msgId)
 		}
 	}
 
-#if fun_idle_en
-    if(power_down_zx_flag==0 && Machine_state != Machine_run)
-    {
-        Machine_state = Machine_run;
-	}
-#endif
-
-
 	BtPlayRunning(msgId);
 
 	ChangePlayer();
@@ -347,7 +336,9 @@ void BtPlayRun(uint16_t msgId)
 			msgId = MSG_DISPLAY_SERVICE_BT_LINKED;
 		else
 			msgId = MSG_DISPLAY_SERVICE_BT_UNLINK;
-		MessageSend(GetSysModeMsgHandle(), &msgRecv);
+#ifdef CFG_FUNC_DISPLAY_TASK_EN
+		MsgSendToDisplayTask(msgId);
+#endif
 	}
 	Bt_link_bak = GetA2dpState(BtCurIndex_Get());
 	#endif
@@ -407,7 +398,7 @@ void BtAutoPlayMusicProcess(void)
 				break;
 			case 2:
 				// 1秒延时以后判断当前播放状态
-				if(gSysTick > (auto_play.delay_cnt + 1000))	
+				if((gSysTick > (auto_play.delay_cnt + 1000)) && (!RemindSoundIsPlay()))
 				{
 					auto_play.state 	= 0;
 					APP_DBG("BtCurPlayState %d %d\n", GetBtPlayState(),auto_play.play_state);
@@ -424,19 +415,19 @@ void BtAutoPlayMusicProcess(void)
 void BtPlayVisibilityStatusRun()
 {
 	static BT_USER_STATE CurStatus = BT_USER_STATE_NONE;
-#ifdef BT_USER_PAIR_TTS
+
 	if((GetBtUserState() == BT_USER_STATE_PREPAIR) 
-#ifdef CFG_FUNC_REMIND_SOUND_EN
-	&& (RemindSoundIsPlay() <= 1)
-#endif
-	) //没有播放提示音 
+		#ifdef CFG_FUNC_REMIND_SOUND_EN
+		&& (!RemindSoundIsPlay())
+		#endif
+		) //没有播放提示音 
 	{
 		SetBtUserState(BT_USER_STATE_PAIRING);
-#ifdef CFG_FUNC_REMIND_SOUND_EN
+		#ifdef CFG_FUNC_REMIND_SOUND_EN
 		RemindSoundServiceItemRequest(SOUND_REMIND_BTPAIR, REMIND_PRIO_NORMAL);
-#endif
+		#endif
 	}
-#endif
+
 	if(CurStatus != GetBtUserState())
 	{
 		switch (GetBtUserState())
@@ -508,7 +499,7 @@ static void BtPlayRunning(uint16_t msgId)
 			APP_DBG("BT:MSG_DECODER_SERVICE_DISK_ERROR!!!\n");
 			break;
 #endif
-/////////////////////////////////////////////////////////////////////////////////
+
 		//AVRCP CONTROL
 		case MSG_PLAY_PAUSE:
 			if(!IsAvrcpConnected(BtCurIndex_Get()) || ChangePlayerStateGet())//ChangePlayerStateGet() :抢占时过滤掉播放暂停消息
@@ -517,7 +508,10 @@ static void BtPlayRunning(uint16_t msgId)
 			if(((GetBtPlayState() == BT_PLAYER_STATE_PLAYING)
 				||(GetBtPlayState() == BT_PLAYER_STATE_FWD_SEEK)
 				||(GetBtPlayState() == BT_PLAYER_STATE_REV_SEEK))
-				&&(GetA2dpState(BtCurIndex_Get()) != BT_A2DP_STATE_CONNECTED))
+#ifndef BT_PROFILE_BQB_ENABLE
+				&&(GetA2dpState(BtCurIndex_Get()) != BT_A2DP_STATE_CONNECTED)
+#endif
+				)
 			{
 				//pause
 				BtStackServiceMsgSend(MSG_BTSTACK_MSG_BT_PAUSE);
@@ -611,21 +605,6 @@ static void BtPlayRunning(uint16_t msgId)
 				BTSetAccessMode(BtAccessModeConnectableOnly);
 			}
 			break;
-
-		case MSG_BT_DIS_CTRL:
-			if((GetA2dpState(BtCurIndex_Get()) >= BT_A2DP_STATE_CONNECTED)
-				|| (GetAvrcpState(BtCurIndex_Get()) >= BT_AVRCP_STATE_CONNECTED)
-#if (BT_HFP_SUPPORT == ENABLE)
-				|| (GetHfpState(BtCurIndex_Get()) >= BT_HFP_STATE_CONNECTED)
-#endif
-				)
-			{
-				//手动断开
-				BtStackServiceMsgSend(MSG_BTSTACK_MSG_BT_DISCONNECT_DEV_CTRL);
-			}
-
-			break;
-			
 		case MSG_BT_CONNECT_CTRL:
 			if((GetA2dpState(BtCurIndex_Get()) >= BT_A2DP_STATE_CONNECTED)
 				|| (GetAvrcpState(BtCurIndex_Get()) >= BT_AVRCP_STATE_CONNECTED)
@@ -684,35 +663,39 @@ bool BtPlayInit(void)
 {
 	bool		ret = TRUE;
 #ifdef BT_TWS_SUPPORT
-	tws_delay = BT_TWS_DELAY_DEFAULT;
+//	tws_delay = BT_TWS_DELAY_DEFAULT;
 #endif
-#ifdef CFG_FUNC_AUDIO_EFFECT_EN
-	//音效参数遍历，确定系统帧长，待修改，sam, mark
-#endif
+
+	//DMA channel
+	DMA_ChannelAllocTableSet((uint8_t *)DmaChannelMap);
+
 	if(!ModeCommonInit())
 	{
 		return FALSE;
 	}
 
-	if(sys_parameter.bt_BackgroundType == BT_BACKGROUND_FAST_POWER_ON_OFF)
-		BtFastPowerOn();
-	else if(sys_parameter.bt_BackgroundType == BT_BACKGROUND_DISABLE)
+	if(sys_parameter.bt_BackgroundType == BT_BACKGROUND_DISABLE)
+	{
 		BtPowerOn();
+	}
+	else if (sys_parameter.bt_BackgroundType == BT_BACKGROUND_POWER_ON)
+	{
+		if((mainAppCt.SysPrevMode != ModeBtHfPlay)&&(mainAppCt.SysPrevMode != ModeTwsSlavePlay))
+		{
+			BtFastPowerOn();
+		}
+	}
+	else
+	{
+		BtFastPowerOn();
+	}
 	
 	ret = BtPlayInitRes();
 	APP_DBG("Bt Play mode\n");
-    Save_task_state(Task_bt);
-    BT_state = BT_master;// 蓝牙进入配对状态//zsh A2
-     PA_contral();
-    if(GetA2dpState(0)==BT_A2DP_STATE_STREAMING)
-	     BT_state = BT_A2DP_Start;
-	else if(GetA2dpState(0)==BT_A2DP_STATE_CONNECTED)
-		 BT_state = BT_A2DP_Suspend;
-	
-	
+
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 #ifdef CFG_EFFECT_PARAM_IN_FLASH_EN
-	//mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
+	mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
 #else
 	mainAppCt.EffectMode = EFFECT_MODE_NORMAL;
 #endif
@@ -727,16 +710,7 @@ bool BtPlayInit(void)
 		SetBtPlayState(BT_PLAYER_STATE_STOP);
 
 	btManager.btTwsPairingStartDelayCnt = 0;
-
 	btManager.hfp_CallFalg = 0;
-
-#ifdef BT_TWS_SUPPORT
-	if(gBtTwsSniffLinkLoss)
-	{
-		tws_sync_reinit();
-		gBtTwsSniffLinkLoss= 0;
-	}
-#endif
 
 	if(SoftFlagGet(SoftFlagBtCurPlayStateMask))
 	{
@@ -747,20 +721,7 @@ bool BtPlayInit(void)
 #ifdef CFG_FUNC_REMIND_SOUND_EN
 	if(mainAppCt.SysPrevMode != ModeBtHfPlay)
 	{
-	    
-		#ifdef CFG_DMA_RGB_LED_EN
-		mainAppCt.rgb_mode = RGB_Effect_Bt_Dis;
-        mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
-        #endif
-        #if LEDS_mix_RGB_EN
-		 RGB_curr_effect = RGB_Effect_Bt_Dis;
-         Temp_RGB_curr_effect=RGB_curr_effect; 
-        #endif
-		if(BtPairTonePlay==0)
-		{
-            BtPairTonePlay=1;
-		}
-		if(RemindSoundServiceItemRequest(SOUND_REMIND_MODE_BT, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS) == FALSE)
+		if(RemindSoundServiceItemRequest(SOUND_REMIND_BTMODE, REMIND_PRIO_NORMAL) == FALSE)
 		{
 			if(IsAudioPlayerMute() == TRUE)
 			{
@@ -769,37 +730,24 @@ bool BtPlayInit(void)
 		}
 	}
 	else
+#endif
 	{
 		if(IsAudioPlayerMute() == TRUE)
 		{
 			HardWareMuteOrUnMute();
 		}
 	}
-#endif
 
 	btManager.HfpCurIndex = 0xff;//赋初值
 
-#ifndef CFG_FUNC_REMIND_SOUND_EN
-	if(IsAudioPlayerMute() == TRUE)
-	{
-		HardWareMuteOrUnMute();
-	}
+#ifdef CFG_FUNC_LINE_MIX_MODE
+	AudioCoreSourceUnmute(LINE_SOURCE_NUM,1,1);
 #endif
+
 #ifdef BT_AUDIO_AAC_ENABLE
 	DecoderServiceInit(GetSysModeMsgHandle(),DECODER_MODE_CHANNEL, DECODER_BUF_SIZE, DECODER_FIFO_SIZE_FOR_MP3);// decode step1
 #endif
-    Machine_state=Machine_run;//zsh A2
 
-#if fun_idle_en
-
-	if(Idle_sw.idle_mode == on_line)
-	{
-        Idle_sw.idle_mode = off_line;
-	}
-
-#endif
-
- 
 	return ret;
 }
 
@@ -815,13 +763,6 @@ bool BtPlayDeinit(void)
 	
 	APP_DBG("Bt Play mode Deinit\n");
 
-
-    T_bt_inf.play_state =_Music_stop;
-	PA_contral();
-
-	
-//注意此处，如果在TaskStateCreating发起stop，它尚未init.
-//	BtPlayerDeinitialize();
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();
@@ -829,17 +770,11 @@ bool BtPlayDeinit(void)
 	PauseAuidoCore();
 	
 	AudioCoreProcessConfig((void*)AudioNoAppProcess);
-//	AudioCoreSourceMute(BT_PLAY_DECODER_SOURCE_NUM, TRUE, TRUE);
-//	while(!AudioCoreSourceReadyForClose(BT_PLAY_DECODER_SOURCE_NUM))
-//	{
-//		vTaskDelay(1);
-//	}
 	AudioCoreSourceUnmute(APP_SOURCE_NUM,TRUE,TRUE);
 	AudioCoreSourceDisable(BT_PLAY_DECODER_SOURCE_NUM);
 
 	AudioCoreSourceDeinit(BT_PLAY_DECODER_SOURCE_NUM);
-	ModeCommonDeinit();//通路全部释放
-	//AudioCoreSourceUnmute(BT_PLAY_DECODER_SOURCE_NUM, 1, 1);
+	ModeCommonDeinit();//通路全部释放   通路清理 待下一个模式重配
 
 #ifndef CFG_FUNC_MIXER_SRC_EN
 #ifdef CFG_RES_AUDIO_DACX_EN
@@ -849,20 +784,20 @@ bool BtPlayDeinit(void)
 	AudioDAC_SampleRateChange(DAC0, CFG_PARA_SAMPLE_RATE);//恢复
 #endif
 #endif
-	
-	//ModeCommonDeinit(); 通路清理 待下一个模式重配
-	
+		
 	osMutexLock(SbcDecoderMutex);
 	osPortFree(a2dp_player);
 	a2dp_player = NULL;
 	osMutexUnlock(SbcDecoderMutex);
 	
 	APP_DBG("!!BtPlayCt\n");
-	if(  sys_parameter.bt_BackgroundType == BT_BACKGROUND_FAST_POWER_ON_OFF
-	  || sys_parameter.bt_BackgroundType == BT_BACKGROUND_DISABLE	)
+
+	if(GetSysModeState(ModeBtHfPlay) != ModeStateInit && GetSysModeState(ModeTwsSlavePlay) != ModeStateInit)
 	{
-		if(GetSysModeState(ModeBtHfPlay) != ModeStateInit && GetSysModeState(ModeTwsSlavePlay) != ModeStateInit)
+		if( sys_parameter.bt_BackgroundType != BT_BACKGROUND_POWER_ON)
 		{
+			GetBtManager()->btReconnectDelayCount = 0;
+			
 			uint8_t i;
 			for(i=0; i<BT_LINK_DEV_NUM;i++)
 				BTDisconnect(i);
@@ -874,16 +809,27 @@ bool BtPlayDeinit(void)
 				if(i++ >= 200)
 					break;
 			}
+		}
 
-			if(sys_parameter.bt_BackgroundType == BT_BACKGROUND_FAST_POWER_ON_OFF)
-				BtFastPowerOff();
-			else
-				BtPowerOff();
+		if(sys_parameter.bt_BackgroundType == BT_BACKGROUND_DISABLE)
+		{
+			BtPowerOff();
+		}
+		else if (sys_parameter.bt_BackgroundType == BT_BACKGROUND_FAST_POWER_ON_OFF)
+		{
+			BtFastPowerOff();
 		}
 		else
 		{
-			BtStackServiceWaitResume();
+			#if (defined(BT_TWS_SUPPORT) && ((CFG_TWS_ONLY_IN_BT_MODE == ENABLE)))
+			BtReconnectTwsStop();
+			BtTwsDeviceDisconnectExt();
+			#endif
 		}
+	}
+	else if( sys_parameter.bt_BackgroundType != BT_BACKGROUND_POWER_ON)
+	{
+		BtStackServiceWaitResume();
 	}
 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
@@ -899,7 +845,8 @@ bool BtPlayDeinit(void)
 #endif
 	osTaskDelay(10);// for printf 
 #ifdef BT_TWS_SUPPORT
-	tws_delay = BT_TWS_DELAY_DEINIT;
+//	tws_delay = BT_TWS_DELAY_DEINIT;
+//	tws_delay_set(tws_delay);
 #endif
 	return TRUE;
 }
@@ -917,20 +864,6 @@ void SetBtPlayState(uint8_t state)
 		BtPlayCt->curPlayState = state;
 		//APP_DBG("BtPlayState[%d]", BtPlayCt->curPlayState);
 	}
-
-    if(BtPlayCt->curPlayState == BT_PLAYER_STATE_PLAYING)
-    {
-        T_bt_inf.play_state =_Music_play;
-          
-	}
-	else
-	{
-        T_bt_inf.play_state =_Music_puse;
-
-	}
-	tws_master_a2dp_send();
-	PA_contral();
-	
 }
 
 BT_PLAYER_STATE GetBtPlayState(void)
@@ -948,7 +881,5 @@ bool GetBtCurPlayState(void)
 	else
 		return (BtPlayCt->curPlayState == BT_PLAYER_STATE_PLAYING);
 }
-
-
 
 #endif//#ifdef CFG_APP_BT_MODE_EN

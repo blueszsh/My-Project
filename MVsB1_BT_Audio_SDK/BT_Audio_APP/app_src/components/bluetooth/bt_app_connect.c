@@ -134,11 +134,13 @@ void BtCancelReconnect(void)
 	}
 	else
 	{
+		btManager.btReconPhoneSt.DelayStartTime = 3000;
+
 		//´ÓÁ´±íÖÐÒÆ³ý
-		btstack_list_remove(&btManager.btReconHandle, &btManager.btReconPhoneSt.item);
-		btManager.btReconPhoneSt.excute = NULL;
-		btManager.btReconPhoneSt.ConnectionTimer.timerFlag = TIMER_UNUSED;
-		btManager.btReconPhoneSt.profile = 0;
+//		btstack_list_remove(&btManager.btReconHandle, &btManager.btReconPhoneSt.item);
+//		btManager.btReconPhoneSt.excute = NULL;
+//		btManager.btReconPhoneSt.ConnectionTimer.timerFlag = TIMER_UNUSED;
+//		btManager.btReconPhoneSt.profile = 0;
 	}
 }
 
@@ -460,6 +462,13 @@ void BtReconnectTwsCreate(uint8_t *addr, uint8_t tryCount, uint8_t interval, uin
 		return;
     }
 	
+	if(((addr[0]==0x00)&&(addr[1]==0x00)&&(addr[2]==0x00)&&(addr[3]==0x00)&&(addr[4]==0x00)&&(addr[5]==0x00))
+			|| ((addr[0]==0xff)&&(addr[1]==0xff)&&(addr[2]==0xff)&&(addr[3]==0xff)&&(addr[4]==0xff)&&(addr[5]==0xff)))
+	{
+		printf("tws addr is null, return\n");
+		return;
+	}
+			
 	APP_DBG("BtReconnectTwsCreate\n");
 	btManager.btReconTwsSt.ConnectionTimer.timerFlag = TIMER_UNUSED;
 	memcpy(btManager.btReconTwsSt.RemoteDevAddr, addr, BT_ADDR_SIZE);
@@ -789,25 +798,24 @@ void BtScanPageStateCheck(void)
 
 		case BT_SCAN_PAGE_STATE_OPENING:
 			APP_DBG("BT_SCAN_PAGE_STATE_OPENING\n");
-			BtScanPageStateSet(BT_SCAN_PAGE_STATE_ENABLE);
 
+			BtScanPageStateSet(BT_SCAN_PAGE_STATE_ENABLE);
 			btManager.BtPowerOnFlag = 0;
-#ifdef BT_TWS_SUPPORT
+			#ifdef BT_TWS_SUPPORT
 			btManager.TwsPowerOnFlag = 0;
-#endif
+			#endif
 
 #if ((CFG_TWS_ONLY_IN_BT_MODE == ENABLE) || defined(TWS_SLAVE_MODE_SWITCH_EN))
 		#if ((TWS_PAIRING_MODE == CFG_TWS_PEER_MASTER)||(TWS_PAIRING_MODE == CFG_TWS_ROLE_RANDOM))
 			if(sys_parameter.bt_TwsReconnectionEnable && btManager.twsFlag)
 			{
-				btManager.btConStateProtectCnt = 1;
-				if(btManager.twsRole == BT_TWS_SLAVE)
+				if (IsBtAudioMode())
 				{
-					BtReconnectTws_Slave();
-				}
-				else
-				{
-					BtReconnectTws();
+					btManager.btConStateProtectCnt = 1;
+					if(btManager.twsRole == BT_TWS_SLAVE)
+						BtReconnectTws_Slave();
+					else
+						BtReconnectTws();
 				}
 			}
 			if(sys_parameter.bt_ReconnectionEnable)
@@ -849,7 +857,16 @@ void BtScanPageStateCheck(void)
 			}
 		#endif
 #endif
-			BtSetAccessMode_Disc_Con();
+			#if (defined(BT_TWS_SUPPORT) && (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE))
+			if (!btManager.twsSoundbarSlaveTestFlag)
+			{
+				BtSetAccessMode_NoDisc_Con();
+			}
+			else
+			#endif
+			{
+				BtSetAccessMode_Disc_Con();
+			}
 			break;
 			
 		case BT_SCAN_PAGE_STATE_ENABLE:

@@ -268,6 +268,14 @@ SPI_FLASH_ERR_CODE SpiFlashIOCtrl(IOCTL_FLASH_T Cmd, ...);
  */
 uint8_t IsFlashBusy(void);
 
+/**
+ * @brief	读取flash 唯一序列号到内存缓冲区
+ * @param	Buffer    内存缓冲区地址
+ * @param	BufLen    缓冲区长度
+ * @return	DATALEN_LESS_THEN_ZERO_ERR-缓冲区长度错误; FLASH_NONE_ERR-成功
+ * @note
+ */
+SPI_FLASH_ERR_CODE SpiFlashReadUniqueID(uint8_t* Buffer, uint8_t BufLen);
 
 #ifdef __cplusplus
 }

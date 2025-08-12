@@ -18,7 +18,11 @@
 #define A52_INPUT_BUFFER_CAPACITY 2560
 #define SIZEOF_A52Context 16696
 #define AAC_INPUT_BUFFER_CAPACITY 2560
+#ifdef AAC_ENABLE_SBR
+#define SIZEOF_AACContext 88516
+#else
 #define SIZEOF_AACContext 25440
+#endif
 #define AIF_INPUT_BUFFER_CAPACITY 2560
 #define SIZEOF_AIFContext 8232
 #define AMR_INPUT_BUFFER_CAPACITY 256   // 256 is enough!
@@ -30,7 +34,11 @@
 #define DTS_INPUT_BUFFER_CAPACITY 2560
 #define SIZEOF_DTSContext 25152
 #define FLAC_INPUT_BUFFER_CAPACITY 2048
+#ifdef FLAC_HIGH_RESOLUTION
+#define SIZEOF_FLACContext 38520
+#else
 #define SIZEOF_FLACContext 20088
+#endif
 #define MP3_INPUT_BUFFER_CAPACITY 2560
 #define SIZEOF_MPXContext 16132
 #define SBC_INPUT_BUFFER_CAPACITY 1028	// 513*2 and round up to 4's multiples
@@ -66,14 +74,18 @@ int32_t sbc_decoder_seek(AudioDecoderContext *audio_decoder, uint32_t seek_time)
 
 #ifdef  USE_WAV_DECODER
 int32_t wav_decoder_initialize(AudioDecoderContext *audio_decoder);
+int32_t wav_decoder_initializeHR(AudioDecoderContext *audio_decoder);
 int32_t wav_decoder_decode(AudioDecoderContext *audio_decoder);
+int32_t wav_decoder_decodeHR(AudioDecoderContext *audio_decoder);
 int32_t wav_decoder_can_continue(AudioDecoderContext *audio_decoder);
 int32_t wav_decoder_seek(AudioDecoderContext *audio_decoder, uint32_t seek_time);
 #endif
 
 #ifdef  USE_FLAC_DECODER
 int32_t flac_decoder_initialize(AudioDecoderContext *audio_decoder);
+int32_t flac_decoder_initializeHR(AudioDecoderContext *audio_decoder);
 int32_t flac_decoder_decode(AudioDecoderContext *audio_decoder);
+int32_t flac_decoder_decodeHR(AudioDecoderContext *audio_decoder);
 int32_t flac_decoder_can_continue(AudioDecoderContext *audio_decoder);
 int32_t flac_decoder_seek(AudioDecoderContext *audio_decoder, uint32_t seek_time);
 #endif
@@ -101,7 +113,9 @@ int32_t amrnb_decoder_seek(AudioDecoderContext *audio_decoder, uint32_t seek_tim
 
 #ifdef  USE_APE_DECODER
 int32_t ape_decoder_initialize(AudioDecoderContext *audio_decoder);
+int32_t ape_decoder_initializeHR(AudioDecoderContext *audio_decoder);
 int32_t ape_decoder_decode(AudioDecoderContext *audio_decoder);
+int32_t ape_decoder_decodeHR(AudioDecoderContext *audio_decoder);
 int32_t ape_decoder_can_continue(AudioDecoderContext *audio_decoder);
 int32_t ape_decoder_seek(AudioDecoderContext *audio_decoder, uint32_t seek_time);
 #endif
@@ -134,7 +148,7 @@ int32_t mp2_decoder_can_continue(AudioDecoderContext *audio_decoder);
 int32_t mp2_decoder_seek(AudioDecoderContext *audio_decoder, uint32_t seek_time);
 #endif
 
-static const uint8_t audio_decoder_lib_version[] = AUDIO_DECODER_LIBRARY_VERSION;// " build @ " __DATE__ " " __TIME__;
+static const uint8_t audio_decoder_lib_version[] = AUDIO_DECODER_LIBRARY_VERSION " build @ " __DATE__ " " __TIME__;
 const uint8_t* audio_decoder_get_lib_version(void)
 {
 	return audio_decoder_lib_version;
@@ -261,21 +275,31 @@ int32_t audio_decoder_initialize(uint8_t *ram_addr, void *io_handle, int32_t io_
         
 #ifdef  USE_WAV_DECODER
     case WAV_DECODER:
+#ifdef WAV_HIGH_RESOLUTION
+		audio_decoder->initialize = wav_decoder_initializeHR;
+		audio_decoder->decode = wav_decoder_decodeHR;
+#else
         audio_decoder->initialize   = wav_decoder_initialize;
         audio_decoder->decode       = wav_decoder_decode;
+#endif
         audio_decoder->can_continue = wav_decoder_can_continue;
         audio_decoder->seek         = wav_decoder_seek;
         break;
-    #endif
+#endif
     
 #ifdef  USE_FLAC_DECODER
     case FLAC_DECODER:
+#ifdef FLAC_HIGH_RESOLUTION
+		audio_decoder->initialize = flac_decoder_initializeHR;
+		audio_decoder->decode = flac_decoder_decodeHR;
+#else
         audio_decoder->initialize   = flac_decoder_initialize;
         audio_decoder->decode       = flac_decoder_decode;
+#endif
         audio_decoder->can_continue = flac_decoder_can_continue;
         audio_decoder->seek         = flac_decoder_seek;
         break;
-    #endif
+#endif
 
 #ifdef  USE_AAC_DECODER
     case AAC_DECODER:
@@ -306,8 +330,13 @@ int32_t audio_decoder_initialize(uint8_t *ram_addr, void *io_handle, int32_t io_
 
 #ifdef  USE_APE_DECODER
 	case APE_DECODER:
+#ifdef APE_HIGH_RESOLUTION
+		audio_decoder->initialize = ape_decoder_initializeHR;
+		audio_decoder->decode = ape_decoder_decodeHR;
+#else
 		audio_decoder->initialize = ape_decoder_initialize;
 		audio_decoder->decode = ape_decoder_decode;
+#endif
 		audio_decoder->can_continue = ape_decoder_can_continue;
 		audio_decoder->seek = ape_decoder_seek;
 		break;

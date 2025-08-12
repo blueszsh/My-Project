@@ -5,7 +5,7 @@
 typedef struct _SYS_PARAMETER_
 {
 	char	bt_LocalDeviceName[40];
-	char	ble_LocalDeviceName[40];
+	char	ble_LocalDeviceName[22];
 	uint8_t	bt_TxPowerLevel;
 	uint8_t	bt_PagePowerLevel;
 	uint8_t	BtTrimECO0;

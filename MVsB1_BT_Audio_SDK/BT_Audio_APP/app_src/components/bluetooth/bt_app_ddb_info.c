@@ -596,7 +596,9 @@ int8_t BtDdb_LoadBtConfigurationParams(BT_CONFIGURATION_PARAMS *params)
 	ret = SpiFlashRead(BTDB_CONFIG_ADDR, (uint8_t*)params, sizeof(BT_CONFIGURATION_PARAMS), 0);
 
 	memcpy(params->bt_LocalDeviceName,sys_parameter.bt_LocalDeviceName,BT_NAME_SIZE);
+
 	memcpy(params->ble_LocalDeviceName,sys_parameter.ble_LocalDeviceName,BLE_NAME_SIZE);	
+
 	
 	if(ret != FLASH_NONE_ERR)
 		return -3;	//flash ∂¡»°¥ÌŒÛ

@@ -18,6 +18,7 @@
 #include "spi_flash.h"
 #include "audio_effect_flash_param.h"
 #include "audio_effect_user.h"
+#include "audio_effect_class.h"
 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 
@@ -51,6 +52,9 @@ PCM_DATA_TYPE * pcm_buf_2;
 PCM_DATA_TYPE * pcm_buf_3;
 PCM_DATA_TYPE * pcm_buf_4;
 PCM_DATA_TYPE * pcm_buf_5;
+PCM_DATA_TYPE * pcm_buf_6;
+PCM_DATA_TYPE * DynamicEQBuf;
+PCM_DATA_TYPE * DynamicEQWatchBuf;
 
 typedef enum
 {
@@ -147,14 +151,14 @@ void EffectPcmBufMalloc(uint32_t SampleLen)
 	}
 
     #ifdef CFG_FUNC_ECHO_DENOISE
-//	if(EchoAudioBuf == NULL){
-//		EchoAudioBuf = (int16_t*)osPortMallocFromEnd(SampleLen * 2 * 2);
-//	}
-//  if(EchoAudioBuf == NULL){
-//		APP_DBG("EchoAudioBuf malloc err\n");
-//	}else{
-//		memset(EchoAudioBuf, 0, SampleLen * 2 * 2);
-//	}
+	if(EchoAudioBuf == NULL){
+		EchoAudioBuf = (int16_t*)osPortMallocFromEnd(SampleLen * 2 * 2);
+	}
+  	if(EchoAudioBuf == NULL){
+		APP_DBG("EchoAudioBuf malloc err\n");
+	}else{
+		memset(EchoAudioBuf, 0, SampleLen * 2 * 2);
+	}
     #endif
 #endif
 
@@ -176,6 +180,32 @@ void EffectPcmBufMalloc(uint32_t SampleLen)
 			return;
 		}
 	}
+#endif
+#if CFG_AUDIO_EFFECT_VIRTUAL_SURROUND_EN
+	if(pcm_buf_6 == NULL){
+		pcm_buf_6 = (PCM_DATA_TYPE *)osPortMallocFromEnd(SampleLen * sizeof(PCM_DATA_TYPE) * 2);
+	}
+	if(pcm_buf_6 == NULL){
+		APP_DBG("pcm_buf_6 malloc err\n");
+		return;
+	}
+#endif
+
+#if CFG_AUDIO_EFFECT_DYNAMIC_EQ
+	if(DynamicEQBuf == NULL){
+		DynamicEQBuf = (PCM_DATA_TYPE *)osPortMallocFromEnd(SampleLen * sizeof(PCM_DATA_TYPE) * 2);
+	}
+	if(DynamicEQBuf == NULL){
+		APP_DBG("DynamicEQBuf malloc err\n");
+		return;
+	}
+	if(DynamicEQWatchBuf == NULL){
+		DynamicEQWatchBuf = (PCM_DATA_TYPE *)osPortMallocFromEnd(SampleLen * sizeof(PCM_DATA_TYPE) * 2);
+	}
+	if(DynamicEQWatchBuf == NULL){
+		APP_DBG("DynamicEQWatchBuf malloc err\n");
+		return;
+	}	
 #endif
 }
 
@@ -206,12 +236,27 @@ void EffectPcmBufRelease(void)
 		osPortFree(pcm_buf_5);
 		pcm_buf_5 = NULL;
 	}
+	if(pcm_buf_6 != NULL)
+	{
+		osPortFree(pcm_buf_6);
+		pcm_buf_6 = NULL;
+	}
+	if(DynamicEQBuf != NULL)
+	{
+		osPortFree(DynamicEQBuf);
+		DynamicEQBuf = NULL;
+	}
+	if(DynamicEQWatchBuf != NULL)
+	{
+		osPortFree(DynamicEQWatchBuf);
+		DynamicEQWatchBuf = NULL;
+	}	
     #ifdef CFG_FUNC_ECHO_DENOISE
-//  if(EchoAudioBuf != NULL)
-//	{
-//		osPortFree(EchoAudioBuf);
-//		EchoAudioBuf = NULL;
-//	}
+	if(EchoAudioBuf != NULL)
+	{
+		osPortFree(EchoAudioBuf);
+		EchoAudioBuf = NULL;
+	}
     #endif
 }
 
@@ -236,6 +281,18 @@ void EffectPcmBufClear(uint32_t SampleLen)
 	if(pcm_buf_5 != NULL)
 	{
 		memset(pcm_buf_5, 0, SampleLen * sizeof(PCM_DATA_TYPE) * 2);
+	}
+	if(pcm_buf_6 != NULL)
+	{
+		memset(pcm_buf_6, 0, SampleLen * sizeof(PCM_DATA_TYPE) * 2);
+	}
+	if(DynamicEQBuf != NULL)
+	{
+		memset(DynamicEQBuf, 0, SampleLen * sizeof(PCM_DATA_TYPE) * 2);
+	}	
+	if(DynamicEQWatchBuf != NULL)
+	{
+		memset(DynamicEQWatchBuf, 0, SampleLen * sizeof(PCM_DATA_TYPE) * 2);
 	}
 }
 
@@ -311,6 +368,10 @@ void AudioEffectsInit(void)
 	uint32_t ChannelNum;
 	EffectNode*  pNode = NULL;
 	uint32_t SampleRate;
+	uint8_t NodeType;
+#if	CFG_AUDIO_EFFECT_DYNAMIC_EQ
+	DynamicEqUnit *unit;
+#endif
 	//音效处理music通路时
 	SampleRate = AudioCoreMixSampleRateGet(AudioCoreSourceMixNetGet(APP_SOURCE_NUM));
 	DBG("!!!sampleRate = %ld\n", SampleRate);
@@ -538,11 +599,87 @@ void AudioEffectsInit(void)
 				AudioEffectHowlingSuppressorFineInit((HowlingFineUnit *)pNode->EffectUnit,SampleRate);
 				break;
 #endif
+#if CFG_AUDIO_EFFECT_VIRTUAL_SURROUND_EN
+			case VIRTUAL_SURROUND:
+				AudioEffectVirtualSurroundInit((VirtualSurroundUnit *)pNode->EffectUnit, ChannelNum, SampleRate);
+				break;
+#endif
+#if	CFG_AUDIO_EFFECT_DYNAMIC_EQ
+			case DynamicEQ:
+				AudioEffectDynamicEqInit((DynamicEqUnit *)pNode->EffectUnit, ChannelNum, SampleRate);
+				break;
+#endif
+#if CFG_AUDIO_EFFECT_BUTTERWORTH
+			case Butterworth:
+				AudioEffectButterWorthInit((ButterWorthUnit *)pNode->EffectUnit, ChannelNum, SampleRate);
+				break;
+#endif
 			default:
 				break;
 			}
 		}
 	}
+//--------------ACP dynamic seting,must reinit----------------------//
+#if	CFG_AUDIO_EFFECT_DYNAMIC_EQ
+	uint8_t disable=0;
+	for(i=0; i<AUDIO_EFFECT_GROUP_NUM; i++)
+	{
+		for(j=0; j<AUDIO_EFFECT_NODE_NUM; j++)
+		{
+	        pNode = &gEffectNodeList[i].EffectNode[j];
+	        ChannelNum = gEffectNodeList[i].Channel;
+	        NodeType = pNode->NodeType;
+
+	        //------------------------//
+	        if(pNode->Enable == FALSE)//eq filter
+			{
+				//------------------------//
+				if((NodeType == NodeType_DynamicEqGroup0_LP)||(NodeType == NodeType_DynamicEqGroup0_HP))
+				{
+					disable = NodeType_DynamicEqGroup0;
+				}
+				//------------------------//
+				if((NodeType == NodeType_DynamicEqGroup1_LP)||(NodeType == NodeType_DynamicEqGroup1_HP))
+				{
+					disable = NodeType_DynamicEqGroup1;
+				}
+				//------------------------//
+			}
+	        else
+			{
+				//------------------------//
+				if(NodeType == NodeType_DynamicEqGroup0)
+				{
+					if(disable==NodeType_DynamicEqGroup0)
+					{
+						pNode->Enable = 0;
+						unit =(DynamicEqUnit *)pNode->EffectUnit;
+						unit->enable = 0;
+					}
+					else
+					{
+						AudioEffectDynamicEqInit((DynamicEqUnit *)pNode->EffectUnit, ChannelNum, SampleRate);
+					}
+				}
+				//------------------------//
+				if(NodeType == NodeType_DynamicEqGroup1)
+				{
+					if(disable==NodeType_DynamicEqGroup1)
+					{
+						pNode->Enable = 0;
+						unit =(DynamicEqUnit *)pNode->EffectUnit;
+						unit->enable = 0;
+					}
+					else
+					{
+						AudioEffectDynamicEqInit((DynamicEqUnit *)pNode->EffectUnit, ChannelNum, SampleRate);
+					}
+				}
+			}
+		}
+	}
+#endif
+//-----------------------------------------------//
 }
 
 // 音效模块反初始化
@@ -695,6 +832,16 @@ void AudioEffectNoteParamBackup(void* pstr, uint8_t effect_index, uint16_t Len, 
 }
 
 //音效解析
+
+#if CFG_AUDIO_EFFECT_DYNAMIC_EQ
+typedef struct _DynamicEQ_H_L_
+{
+	EQContext *Dynamic_eq_low;
+	EQContext *Dynamic_eq_high;
+	uint8_t    DynamicEqGroup;
+}DynamicEq_Filter_Get;
+#endif
+
 __attribute__((optimize("Og")))
 bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommParam, bool IsReload)
 {
@@ -710,6 +857,10 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 	uint16_t Len = 0;
 	uint8_t j = 0;
 	uint8_t effect_index = 0;
+    #if CFG_AUDIO_EFFECT_DYNAMIC_EQ
+	DynamicEq_Filter_Get DynamicEq_Filter;
+	DynamicEq_Filter.DynamicEqGroup = 0;
+    #endif
 
 	volatile EffectComCt* AudioEffectComCt;
 	AudioEffectComCt = (EffectComCt*)CommParam;
@@ -756,7 +907,17 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 		{
 			EffectType = AudioEffectComCt[effect_index].AudioEffectType;//add[Len+1];
 			EffectFlag = add[Len+1];
-			EffectGroup = AudioEffectComCt[effect_index].EffectName[0] - 48;//add[Len+3];
+
+            if(AudioEffectComCt[effect_index].EffectName[1] == ':')
+            {
+            	EffectGroup = AudioEffectComCt[effect_index].EffectName[0] - 48;//add[Len+3];
+            }
+            else
+            {
+            	EffectGroup = (AudioEffectComCt[effect_index].EffectName[0] - 48) * 10;//add[Len+3];
+            	EffectGroup += AudioEffectComCt[effect_index].EffectName[1] - 48;
+            }
+
 			EffectNodeType = AudioEffectComCt[effect_index].AudioNodeType;//add[Len+4];
 			EffectIndex = AudioEffectComCt[effect_index].Index;
 			EffectWidth = AudioEffectComCt[effect_index].EffectWidth;
@@ -941,7 +1102,6 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 							if(EffectWidth == 24)
 							{
 								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectEQApply24;
-
 							}
 							else
 #endif
@@ -950,19 +1110,85 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 							}
 							AudioEffectNoteParamAssign(&pTemp->param, &add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(EQParam), IsReload);
 
-							//for user config
-//						#ifdef CFG_FUNC_MUSIC_TREB_BASS_EN
-//							if(EffectIndex == 0x8E)//不为0xFF,也可以直接使用index编号为判断条件
-//							{
-//								music_trebbass_eq_unit = pTemp;//Treb/bass
-//							}
-//						#endif
-						#ifdef CFG_FUNC_MUSIC_EQ_MODE_EN
-							if(EffectIndex == 0x8F)//不为0xFF,也可以直接使用index编号为判断条件
+#if CFG_AUDIO_EFFECT_DYNAMIC_EQ
+						  	//-----------------group 0------------------------------------//
+					      	if(EffectNodeType==NodeType_DynamicEqGroup0_LP)
+							{
+							  	DynamicEq_Filter.DynamicEqGroup = NodeType_DynamicEqGroup0;
+							  	DynamicEq_Filter.Dynamic_eq_low = &pTemp->ct;
+								#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(EffectWidth == 24)
+								{
+									pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectEQApplyNull24;
+
+								}
+								else
+								#endif
+								{
+									pNode->FuncAudioEffect =(AudioEffectApplyFunc)AudioEffectEQApplyNull;
+								}
+							}
+					    	if(EffectNodeType == NodeType_DynamicEqGroup0_HP)
+					        {
+						    	 DynamicEq_Filter.DynamicEqGroup = NodeType_DynamicEqGroup0;
+						    	 DynamicEq_Filter.Dynamic_eq_high = &pTemp->ct;
+								 #ifdef CFG_AUDIO_WIDTH_24BIT
+								 if(EffectWidth == 24)
+								 {
+									pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectEQApplyNull24;
+								 }
+								 else
+								 #endif
+								 {
+									pNode->FuncAudioEffect =(AudioEffectApplyFunc)AudioEffectEQApplyNull;
+								 }
+					        }
+					     	//------------------group 1------------------------------------------------------//
+					      	if(EffectNodeType==NodeType_DynamicEqGroup1_LP)
+					        {
+					    	  	DynamicEq_Filter.DynamicEqGroup = NodeType_DynamicEqGroup1;
+					    	  	DynamicEq_Filter.Dynamic_eq_low = &pTemp->ct;
+								#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(EffectWidth == 24)
+								{
+									pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectEQApplyNull24;
+								}
+								else
+								#endif
+								{
+									pNode->FuncAudioEffect =(AudioEffectApplyFunc)AudioEffectEQApplyNull;
+								}
+					        }
+					     	if(EffectNodeType==NodeType_DynamicEqGroup1_HP)
+					        {
+					    	 	DynamicEq_Filter.DynamicEqGroup = NodeType_DynamicEqGroup1;
+					    	 	DynamicEq_Filter.Dynamic_eq_high = &pTemp->ct;
+								#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(EffectWidth == 24)
+								{
+									pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectEQApplyNull24;
+								}
+								else
+								#endif
+								{
+									pNode->FuncAudioEffect =(AudioEffectApplyFunc)AudioEffectEQApplyNull;
+								}
+					        }
+#endif
+							#ifdef CFG_FUNC_MUSIC_EQ_MODE_EN
+							if(EffectIndex == 0x94)//不为0xFF,也可以直接使用index编号为判断条件
 							{
 								music_mode_eq_unit = pTemp;//Treb/bass
 							}
-						#endif
+							#endif
+
+							//for user config
+							#ifdef CFG_FUNC_MUSIC_TREB_BASS_EN
+							if(EffectIndex == 0x96)//不为0xFF,也可以直接使用index编号为判断条件
+							{
+								music_trebbass_eq_unit = pTemp;//Treb/bass
+							}
+							#endif
 						}
 					}
 					//备份参数
@@ -1319,7 +1545,17 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 							pTemp = pNode->EffectUnit;
 							pTemp->enable = 1;
 
-							pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectVocalCutApply;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+							if(EffectWidth == 24)
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectVocalCutApply24;
+
+							}
+							else
+#endif
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectVocalCutApply;
+							}
 							AudioEffectNoteParamAssign(&pTemp->param, &add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(VocalCutParam), IsReload);
 						}
 					}
@@ -1411,6 +1647,7 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 							{
 								osPortFree(pNode->EffectUnit);
 								DBG("malloc ReverbPro Ct err\n");
+								pNode->EffectUnit = NULL;
 								//return FALSE;
 								pNode->Enable = FALSE;
 							}
@@ -1596,17 +1833,38 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 						{
 							pTemp = pNode->EffectUnit;
 							pTemp->enable = 1;
-
-							pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectPcmDelayApply;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+							if(EffectWidth == 24)
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectPcmDelayApply24;
+							}
+							else
+#endif
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectPcmDelayApply;
+							}
+							
 							AudioEffectNoteParamAssign(&pTemp->param, &add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(PcmDelayParam), IsReload);
 							//malloc delay buf
 							max_delay_samples = pTemp->param.max_delay * gCtrlVars.sample_rate/1000;
-							buf_size = pTemp->param.high_quality ? max_delay_samples*2*channel : ceil(max_delay_samples/32)*19*channel+64;
+
+#ifdef CFG_AUDIO_WIDTH_24BIT
+							if(EffectWidth == 24)
+							{
+								buf_size = pTemp->param.high_quality ? max_delay_samples*2*channel*2 : ceil(max_delay_samples/32)*19*channel+64;
+							}
+							else
+#endif
+							{	
+								buf_size = pTemp->param.high_quality ? max_delay_samples*2*channel : ceil(max_delay_samples/32)*19*channel+64;
+							}
+
 							pTemp->s_buf = osPortMallocFromEnd(buf_size);
 							if(pTemp->s_buf == NULL)
 							{
 								DBG("malloc err\n");
 								osPortFree(pNode->EffectUnit);
+								pNode->EffectUnit = NULL;
 								//return FALSE;
 								pNode->Enable = FALSE;
 							}
@@ -1782,6 +2040,7 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 							{
 								DBG("malloc err\n");
 								osPortFree(pNode->EffectUnit);
+								pNode->EffectUnit = NULL;
 								//return FALSE;
 								pNode->Enable = FALSE;
 							}
@@ -1985,13 +2244,14 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectEQDRCApply;
 							}
 							AudioEffectNoteParamAssign(&pTemp->param, &add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(EQDRCParam), IsReload);
+
 							//for user config
-						#ifdef CFG_FUNC_MUSIC_TREB_BASS_EN
-							if(EffectIndex == 0x8E)//不为0xFF,也可以直接使用index编号为判断条件
+							#ifdef CFG_FUNC_MUSIC_EQ_MODE_EN
+							if(EffectIndex == 0x95)//不为0xFF,也可以直接使用index编号为判断条件
 							{
-								music_trebbass_eq_unit = pTemp;//Treb/bass
+								music_mode_eq_drc_unit = pTemp;
 							}
-						#endif
+							#endif
 						}
 					}
 					AudioEffectNoteParamBackup(&add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(EQDRCParam), IsReload);
@@ -2193,6 +2453,131 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 					Len = Len + EFFECT_PARAM_OFFSET + sizeof(HowlingFineParam);
 					}
 					break;
+#if CFG_AUDIO_EFFECT_VIRTUAL_SURROUND_EN
+				case VIRTUAL_SURROUND:
+					{
+					VirtualSurroundUnit* pTemp = NULL;
+					if(pNode->Enable == TRUE)
+					{
+						pNode->EffectUnit = osPortMallocFromEnd(sizeof(VirtualSurroundUnit));
+						if(pNode->EffectUnit == NULL)
+						{
+							DBG("malloc virtual surround Unit err\n");
+							//return FALSE;
+							pNode->Enable = FALSE;
+						}
+						else
+						{
+							pTemp = pNode->EffectUnit;
+							pTemp->enable = 1;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+							if(EffectWidth == 24)
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectVirtualSurroundApply24;
+							}
+							else
+#endif
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectVirtualSurroundApply;
+							}
+
+
+							
+							AudioEffectNoteParamAssign(&pTemp->param, &add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(VirtualSurroundParam), IsReload);
+						}
+					}
+					AudioEffectNoteParamBackup(&add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(VirtualSurroundParam), IsReload);
+
+					Len = Len + EFFECT_PARAM_OFFSET + sizeof(VirtualSurroundParam);
+					}
+					break;
+#endif
+				case DynamicEQ:
+					{
+#if CFG_AUDIO_EFFECT_DYNAMIC_EQ
+					DynamicEqUnit* pTemp = NULL;
+					if(pNode->Enable == TRUE)
+					{
+						pNode->EffectUnit = osPortMallocFromEnd(sizeof(DynamicEqUnit));
+						if(pNode->EffectUnit == NULL)
+						{
+							DBG("malloc DynamicEqUnit Uint err\n");
+							//return FALSE;
+							pNode->Enable = FALSE;
+						}
+						else
+						{
+							pTemp = pNode->EffectUnit;
+							pTemp->enable = 1;
+
+					        if(EffectNodeType == DynamicEq_Filter.DynamicEqGroup)
+					        {
+					    	    if(DynamicEq_Filter.Dynamic_eq_low)
+					    	    {
+                                    pTemp->eq_low =  DynamicEq_Filter.Dynamic_eq_low;
+                                    DynamicEq_Filter.Dynamic_eq_low =NULL;
+					    	    }
+					    	    if(DynamicEq_Filter.Dynamic_eq_high)
+					    	    {
+                                    pTemp->eq_high =  DynamicEq_Filter.Dynamic_eq_high;
+                                    DynamicEq_Filter.Dynamic_eq_high =NULL;
+					    	    }
+					        }
+#ifdef CFG_AUDIO_WIDTH_24BIT
+							if(EffectWidth == 24)
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectDynamicEqApply24;
+							}
+							else
+#endif
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectDynamicEqApply;
+							}
+							AudioEffectNoteParamAssign(&pTemp->param, &add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(DynamicEqParam), IsReload);
+						}
+					}
+					AudioEffectNoteParamBackup(&add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(DynamicEqParam), IsReload);
+#endif
+					Len = Len + EFFECT_PARAM_OFFSET + sizeof(DynamicEqParam);
+					}
+					break;
+
+#if CFG_AUDIO_EFFECT_BUTTERWORTH
+		           case Butterworth:
+		           {
+		        	ButterWorthUnit* pTemp = NULL;
+					if(pNode->Enable == TRUE)
+					{
+						pNode->EffectUnit = osPortMallocFromEnd(sizeof(ButterWorthUnit));
+						if(pNode->EffectUnit == NULL)
+						{
+							DBG("malloc DynamicEqUnit Uint err\n");
+							//return FALSE;
+							pNode->Enable = FALSE;
+						}
+						else
+						{
+							pTemp = pNode->EffectUnit;
+							pTemp->enable = 1;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+							if(EffectWidth == 24)
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectButterWorthApply24;
+							}
+							else
+#endif
+							{
+								pNode->FuncAudioEffect = (AudioEffectApplyFunc)AudioEffectButterWorthApply;
+							}
+							AudioEffectNoteParamAssign(&pTemp->param, &add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(ButterWorthParam), IsReload);
+						}
+					}
+					AudioEffectNoteParamBackup(&add[Len+EFFECT_PARAM_OFFSET], effect_index, sizeof(ButterWorthParam), IsReload);
+		           }
+
+					Len = Len + EFFECT_PARAM_OFFSET + sizeof(ButterWorthParam);
+			        break;
+#endif
 				default:
 					//DBG("other effect\n");
 					//Len += 1;
@@ -2294,7 +2679,9 @@ bool AudioEffectParsePackage(uint8_t* add, uint16_t PackageLen, uint8_t* CommPar
 	}
 	return TRUE;
 }
-
+#ifdef CFG_FUNC_RECORDER_SILENCE_DECTOR
+SilenceDetectorUnit UserSilenceDetector;
+#endif
 __attribute__((optimize("Og")))
 void AudioEffectsLoadInit(bool IsReload, uint8_t mode)
 {
@@ -2369,6 +2756,11 @@ void AudioEffectsLoadInit(bool IsReload, uint8_t mode)
 	}
 
 	AudioEffectsInit();
+
+#ifdef CFG_FUNC_RECORDER_SILENCE_DECTOR
+	UserSilenceDetectorInit(&UserSilenceDetector, 2, 44100);
+#endif
+
 #ifdef FUNC_OS_EN
 	if(AudioEffectMutex != NULL)
 	{

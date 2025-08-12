@@ -17,10 +17,11 @@
 ControlVariablesUserContext gCtrlUserVars;
 
 #ifdef CFG_FUNC_MUSIC_TREB_BASS_EN
-EQDRCUnit 			*music_trebbass_eq_unit = NULL;//trab/bass
+EQUnit 				*music_trebbass_eq_unit = NULL;//trab/bass
 #endif
 #ifdef CFG_FUNC_MUSIC_EQ_MODE_EN
 EQUnit 				*music_mode_eq_unit = NULL;//eq mode
+EQDRCUnit 			*music_mode_eq_drc_unit = NULL;//eq drc mode
 #endif
 #ifdef CFG_FUNC_MIC_AUTOTUNE_STEP_EN
 AutoTuneUnit 		*mic_autotune_unit = NULL;//
@@ -41,52 +42,26 @@ PlateReverbUnit 	*mic_platereverb_unit = NULL;
 ReverbProUnit 		*mic_reverbpro_unit = NULL;
 #endif
 
-
-
-void MicEchoReverbGainAjust(int16_t 	EchoGain,	int16_t ReverbGain)
-{
-#ifdef CFG_FUNC_MIC_ECHO_REVERB_GAIN_EN
-	//int16_t *echo_tmp   	= (int16_t *)pcm_buf_1;
-	//int16_t *reverb_tmp 	= (int16_t *)pcm_buf_2;
-	//uint16_t n = mainAppCt.SamplesPreFrame;
-	
-	gCtrlVars.mic_echo_control_unit.gain =  MicGainTable[EchoGain]; 
-	gCtrlVars.mic_reverb_gain_control_unit.gain = MicGainTable[ReverbGain];
-    DBG("@@ MicEchoReverbGainAjust -->Echo Rverbe Gain= %d \n", MicGainTable[EchoGain]);
-
-   //DACx  
-   //gCtrlVars.rec_effect_gain_control_unit.gain = MicGainTable[ReverbGain];
-#endif
-/*
-	//echo gain
-#if CFG_AUDIO_EFFECT_MIC_ECHO_GAIN_CONTROL_EN
-	AudioEffectMicEchoReverbGainConfig(&gCtrlVars.mic_echo_control_unit, echo_tmp, echo_tmp, n, gCtrlVars.adc_mic_channel_num);
-
-#endif
-	
-	//reverb gain
-#if CFG_AUDIO_EFFECT_MIC_REVERB_GAIN_CONTROL_EN
-	AudioEffectMicEchoReverbGainConfig(&gCtrlVars.mic_reverb_gain_control_unit, reverb_tmp, reverb_tmp, n, gCtrlVars.adc_mic_channel_num);
-
-#endif*/
-
-}
-
-
-
-
 #ifdef CFG_FUNC_MUSIC_EQ_MODE_EN
 
 // EQ 参数加载函数
 void LoadEqMode(const uint8_t *buff)
 {
-	if(music_mode_eq_unit == NULL)
-	{
+#ifndef MUSIC_EQ_DRC
+	if(music_mode_eq_unit == NULL){
 		return;
 	}
 	memcpy(&music_mode_eq_unit->param, buff, EQ_PARAM_LEN);
 	AudioEffectEQFilterConfig(music_mode_eq_unit, gCtrlVars.sample_rate);
 	gCtrlVars.AutoRefresh = 1;//////调音时模式发生改变，上位机会自动读取音效数据，1=允许上位读，0=不需要上位机读取
+#else
+	if(music_mode_eq_drc_unit == NULL){
+		return;
+	}
+	memcpy(&music_mode_eq_drc_unit->param, buff, EQDRC_PARAM_LEN);
+	AudioEffectEQDRCInit(music_mode_eq_drc_unit, 2, gCtrlVars.sample_rate);
+	gCtrlVars.AutoRefresh = 1;//////调音时模式发生改变，上位机会自动读取音效数据，1=允许上位读，0=不需要上位机读取
+#endif	
 }
 
 //EQ Mode调节函数
@@ -94,6 +69,7 @@ void EqModeSet(uint8_t EqMode)
 {
     switch(EqMode)
 	{
+#ifndef MUSIC_EQ_DRC
 		case EQ_MODE_FLAT:
 			LoadEqMode(&Flat[0]);
 			break;
@@ -112,6 +88,26 @@ void EqModeSet(uint8_t EqMode)
 		case EQ_MODE_VOCAL_BOOST:
 			LoadEqMode(&Vocal_Booster[0]);
 			break;
+#else
+		case EQ_MODE_FLAT:
+			LoadEqMode(&Flat_EQDRC[0]);
+			break;
+		case EQ_MODE_CLASSIC:
+			LoadEqMode(&Classical_EQDRC[0]);
+			break;
+		case EQ_MODE_POP:
+			LoadEqMode(&Pop_EQDRC[0]);
+			break;
+		case EQ_MODE_ROCK:
+			LoadEqMode(&Rock_EQDRC[0]);
+			break;
+		case EQ_MODE_JAZZ:
+			LoadEqMode(&Jazz_EQDRC[0]);
+			break;
+		case EQ_MODE_VOCAL_BOOST:
+			LoadEqMode(&Vocal_Booster_EQDRC[0]);
+			break;
+#endif
 		default:
 			break;
 	}
@@ -128,10 +124,10 @@ void MusicBassTrebAjust(int16_t 	BassGain,	int16_t TrebGain)
 		DBG("Tone Var is Null\n");
 		return;
 	}
-	music_trebbass_eq_unit->param.param_eq.eq_params[0].gain =  BassTrebGainTable[BassGain];
-	music_trebbass_eq_unit->param.param_eq.eq_params[1].gain =  BassTrebGainTable[TrebGain];
-#if	CFG_AUDIO_EFFECT_EQDRC_EN
-	AudioEffectEQDRCConfig(music_trebbass_eq_unit, gCtrlVars.sample_rate);
+	music_trebbass_eq_unit->param.eq_params[0].gain =  BassTrebGainTable[BassGain];
+	music_trebbass_eq_unit->param.eq_params[1].gain =  BassTrebGainTable[TrebGain];
+#if	CFG_AUDIO_EFFECT_EQ_EN
+	AudioEffectEQFilterConfig(music_trebbass_eq_unit, gCtrlVars.sample_rate);
 #endif
 	gCtrlVars.AutoRefresh = 1;
 }
@@ -148,10 +144,10 @@ void MicBassTrebAjust(int16_t BassGain,	int16_t TrebGain)
 		DBG("Tone Var is Null\n");
 		return;
 	}
-	music_trebbass_eq_unit->param.param_eq.eq_params[0].gain =  BassTrebGainTable[BassGain];
-	music_trebbass_eq_unit->param.param_eq.eq_params[1].gain =  BassTrebGainTable[TrebGain];
-#if	CFG_AUDIO_EFFECT_EQDRC_EN
-	AudioEffectEQDRCConfig(music_trebbass_eq_unit, gCtrlVars.sample_rate);
+	music_trebbass_eq_unit->param.eq_params[0].gain =  BassTrebGainTable[BassGain];
+	music_trebbass_eq_unit->param.eq_params[1].gain =  BassTrebGainTable[TrebGain];
+#if	CFG_AUDIO_EFFECT_EQ_EN
+	AudioEffectEQFilterConfig(music_trebbass_eq_unit, gCtrlVars.sample_rate);
 #endif
 	gCtrlVars.AutoRefresh = 1;
 }
@@ -389,6 +385,7 @@ void AudioEffectUserNodeInit(void)
 #endif
 #ifdef CFG_FUNC_MUSIC_EQ_MODE_EN
 	music_mode_eq_unit = NULL;//eq mode
+	music_mode_eq_drc_unit = NULL;//eq mode
 #endif
 #ifdef CFG_FUNC_MIC_AUTOTUNE_STEP_EN
 	mic_autotune_unit = NULL;//

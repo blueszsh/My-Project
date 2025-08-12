@@ -56,6 +56,7 @@
 #include "remind_sound.h"
 //#include "audio_adjust.h"
 //#include "audio_common.h"
+#include "audio_effect_flash_param.h"
 
 extern CECInitTypeDef 	*gCecInitDef;
 extern HDMIInfo         *gHdmiCt;
@@ -139,8 +140,18 @@ static const uint8_t DmaChannelMap[29] = {
 #else
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
-	4,//PERIPHERAL_ID_SDIO_RX,		//3
-	4,//PERIPHERAL_ID_SDIO_TX,		//4
+
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN) && !defined (CFG_FUNC_RECORDER_EN)
+	255,//PERIPHERAL_ID_SDIO_RX,		//3
+	255,//PERIPHERAL_ID_SDIO_TX,		//4
+#elif defined (CFG_FUNC_RECORDER_EN) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+	7,//PERIPHERAL_ID_SDIO_RX,			//3
+	7,//PERIPHERAL_ID_SDIO_TX,			//4
+#else
+	4,//PERIPHERAL_ID_SDIO_RX,			//3
+	4,//PERIPHERAL_ID_SDIO_TX,			//4
+#endif
+
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
@@ -167,25 +178,25 @@ static const uint8_t DmaChannelMap[29] = {
 	3,//PERIPHERAL_ID_AUDIO_DAC1_TX,	//20
 
 #if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S0IN_EN)	
-	4,//PERIPHERAL_ID_I2S0_RX,		//21
+	6,//PERIPHERAL_ID_I2S0_RX,		//21
 #else
 	255,//PERIPHERAL_ID_I2S0_RX,		//21
 #endif
 
 #if	((defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 0)) || defined(CFG_RES_AUDIO_I2S0OUT_EN))
-	5,//PERIPHERAL_ID_I2S0_TX,		//22
+	7,//PERIPHERAL_ID_I2S0_TX,		//22
 #else	
 	255,//PERIPHERAL_ID_I2S0_TX,		//22
 #endif	
 
 #if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)	
-	6,//PERIPHERAL_ID_I2S1_RX,		//23
+	4,//PERIPHERAL_ID_I2S1_RX,		//23
 #else
 	255,//PERIPHERAL_ID_I2S1_RX,		//23
 #endif
 
 #if	((defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 1))|| defined(CFG_RES_AUDIO_I2S1OUT_EN))
-	7,	//PERIPHERAL_ID_I2S1_TX,		//24
+	5,	//PERIPHERAL_ID_I2S1_TX,		//24
 #else
 	255,//PERIPHERAL_ID_I2S1_TX,		//24
 #endif
@@ -216,21 +227,21 @@ static void HdmiInPlayRunning(uint16_t msgId);
 
 bool HdmiInPlayResMalloc(uint16_t SampleLen)
 {
-	hdmiInPlayCt->hdmiARCFIFO = (uint32_t*)osPortMallocFromEnd(SampleLen * 2 * 2 * 2 * 2);
+	hdmiInPlayCt->hdmiARCFIFO = (uint32_t*)osPortMalloc(SampleLen * 2 * 2 * 2 * 2);
 	if(hdmiInPlayCt->hdmiARCFIFO == NULL)
 	{
 		return FALSE;
 	}
 	memset(hdmiInPlayCt->hdmiARCFIFO, 0, SampleLen * 2 * 2 * 2 * 2);
 
-	hdmiInPlayCt->sourceBuf_ARC = (uint32_t *)osPortMallocFromEnd(SampleLen * 2 * 2);
+	hdmiInPlayCt->sourceBuf_ARC = (uint32_t *)osPortMalloc(SampleLen * 2 * 2);
 	if(hdmiInPlayCt->sourceBuf_ARC == NULL)
 	{
 		return FALSE;
 	}
 	memset(hdmiInPlayCt->sourceBuf_ARC, 0, SampleLen * 2 * 2);
 
-	hdmiInPlayCt->hdmiARCPcmFifo = (uint32_t *)osPortMallocFromEnd(SampleLen * 2 * 2 * 2 * 2);
+	hdmiInPlayCt->hdmiARCPcmFifo = (uint32_t *)osPortMalloc(SampleLen * 2 * 2 * 2 * 2);
 	if(hdmiInPlayCt->hdmiARCPcmFifo == NULL)
 	{
 		return FALSE;
@@ -381,7 +392,7 @@ bool HdmiInPlayResMalloc(uint16_t SampleLen)
 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 #ifdef CFG_EFFECT_PARAM_IN_FLASH_EN
-	//mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
+	mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
 #else
 	mainAppCt.EffectMode = EFFECT_MODE_NORMAL;
 #endif
@@ -390,6 +401,19 @@ bool HdmiInPlayResMalloc(uint16_t SampleLen)
 	AudioEffectsLoadInit(0, mainAppCt.EffectMode);
 #endif
 
+    if ((gHdmiCt->hdmi_tv_inf.tv_type == TV_SAMSUNG_1670)
+    		|| (gHdmiCt->hdmi_tv_inf.tv_type == TV_POLARIOD_010B)
+			|| (gHdmiCt->hdmi_tv_inf.tv_type == TV_SAMSUNG_170F)
+			|| (gHdmiCt->hdmi_tv_inf.tv_type == TV_TCL_2009)
+			|| (gHdmiCt->hdmi_tv_inf.tv_type == TV_SONY_04A2)
+			|| (gHdmiCt->hdmi_tv_inf.tv_type == TV_SAMSUNG_0371)
+			|| (gHdmiCt->hdmi_tv_inf.tv_type == TV_SAMSUNG_5770)
+			|| (gHdmiCt->hdmi_tv_inf.tv_type == TV_SONY_0571)
+	   )
+    {
+        if(HDMI_HPD_StatusGet())
+            HDMI_CEC_SetSystemAudioModeOn();
+    }
 	//AudioCoreSourceEnable(HDMI_IN_SOURCE_NUM);
 #ifdef CFG_FUNC_REMIND_SOUND_EN
 
@@ -415,14 +439,10 @@ bool HdmiInPlayResMalloc(uint16_t SampleLen)
 	 }
 #endif
 
-	//zsh A2
-	Save_task_state(Task_HDMI_in);
-    T_HDMI_in_inf.play_state = _Music_play;
-    PA_contral();
-   //end
+#ifdef CFG_FUNC_LINE_MIX_MODE
+	AudioCoreSourceUnmute(LINE_SOURCE_NUM,1,1);
+#endif
 
-    Machine_state=Machine_run;//zsh A2
-    
 	return TRUE;
 }
 
@@ -670,21 +690,90 @@ static void HdmiARCScan(void)
 
 bool HdmiInPlayDeinit(void)
 {
+	uint16_t timeout_time = 200;
 	APP_DBG("HdmiIn Play Deinit\n");
 	if(hdmiInPlayCt == NULL)
 	{
 		return FALSE;
 	}
 
-    T_HDMI_in_inf.play_state = _Music_stop;
-    PA_contral();
-	
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();
 	}
 
 	PauseAuidoCore();
+
+	if(gHdmiCt->hdmi_tv_inf.tv_type != TV_SONY_047C)
+	{
+		if(gCecInitDef)
+		{
+			if((gHdmiCt->hdmi_tv_inf.tv_type != TV_POLARIOD_010B)
+					&&(gHdmiCt->hdmi_tv_inf.tv_type != TV_TCL_2009)
+					&& (gHdmiCt->hdmi_tv_inf.tv_type != TV_SAMSUNG_0371)
+					)
+			{
+				hdmiInPlayCt->hdmiRetransCnt = 3;//最大重传3次
+				if(gHdmiCt->hdmi_poweron_flag == -1)//休眠时，会强制将gHdmiCt->hdmi_arc_flag=0
+				{
+					gHdmiCt->hdmi_arc_flag = 1;//收到0xc2时，会把该标志改为0
+					timeout_time = 1000;
+				}
+				while(hdmiInPlayCt->hdmiRetransCnt)
+				{
+					if(HDMI_HPD_NOT_CONNECTED_STATUS == HDMI_HPD_StatusGet())
+					{
+						APP_DBG("HDMI line is inactive\n");
+						break;
+					}
+					while(HDMI_CEC_IsWorking() == CEC_IS_WORKING)
+					{
+						WDG_Feed();
+					}
+
+					HDMI_CEC_TerminationARC();
+					TimeOutSet(&hdmiInPlayCt->hdmiMaxRespondTime, timeout_time);
+					while(!IsTimeOut(&hdmiInPlayCt->hdmiMaxRespondTime))
+					{
+						HDMI_CEC_Scan(1);
+						if(gHdmiCt->hdmi_arc_flag == 0)
+						{
+							APP_DBG("Terminal arc ok, resend cnt: %d\n", 3-hdmiInPlayCt->hdmiRetransCnt);
+							break;
+						}
+						WDG_Feed();
+					}
+					if(gHdmiCt->hdmi_arc_flag == 0)
+					{
+						break;
+					}
+					hdmiInPlayCt->hdmiRetransCnt --;
+				}
+
+				gHdmiCt->hdmi_arc_flag = 0;
+			}
+			if(HDMI_HPD_NOT_CONNECTED_STATUS != HDMI_HPD_StatusGet())
+			{
+				while(HDMI_CEC_IsWorking() == CEC_IS_WORKING)
+				{
+					WDG_Feed();
+				}
+				HDMI_CEC_SetSystemAudioModeoff();
+				while(HDMI_CEC_IsWorking() == CEC_IS_WORKING)
+				{
+					WDG_Feed();
+				}
+				HDMI_CEC_SetSystemAudioModeoff();
+				while(HDMI_CEC_IsWorking() == CEC_IS_WORKING)
+				{
+					WDG_Feed();
+				}
+			}
+		}
+		gHdmiCt->hdmi_audiomute_flag = 0;
+		gHdmiCt->hdmi_poweron_flag = 0;
+	}
+
 	AudioCoreProcessConfig((void*)AudioNoAppProcess);
 	AudioCoreSourceDisable(HDMI_IN_SOURCE_NUM);
 	AudioCoreSourceDeinit(HDMI_IN_SOURCE_NUM);

@@ -29,26 +29,6 @@
 
 #define SoftFlagMask			0xFFFFFFFF
 
-
-#ifdef CFG_DMA_RGB_LED_EN
-
-typedef struct{
-	uint8_t rgb_pwm_cnt;
-	uint8_t buf[32];//
-#ifdef CFG_MORE_GPIO_RGB_CTRL_EN
-	uint8_t buf1[32];
-#endif
-//	int8_t buf_bak[RGB_LED_NUM];
-}RGB_ST;
-
-extern RGB_ST RGB_R;
-extern RGB_ST RGB_G;
-extern RGB_ST RGB_B;
-#endif
-
-
-
-
 #ifdef CFG_RES_IR_NUMBERKEY
 extern bool Number_select_flag;
 extern uint16_t Number_value;
@@ -90,35 +70,32 @@ typedef struct _MainAppContext
 
 #ifdef CFG_RES_AUDIO_I2S0OUT_EN
 	uint32_t			*I2S0_TX_FIFO;
+    uint32_t			I2S0_TX_FIFO_LEN;
 #endif
 
 #ifdef CFG_RES_AUDIO_I2S1OUT_EN
 	uint32_t			*I2S1_TX_FIFO;
+	uint32_t			I2S1_TX_FIFO_LEN;
 #endif
 
 #ifdef CFG_RES_AUDIO_I2S0IN_EN
 	uint32_t			*I2S0_RX_FIFO;
+	uint32_t			I2S0_RX_FIFO_LEN;
 #endif
 
 #ifdef CFG_RES_AUDIO_I2S1IN_EN
 	uint32_t			*I2S1_RX_FIFO;
+	uint32_t			I2S1_RX_FIFO_LEN;
 #endif
 
 	uint32_t			*ADCFIFO;
-#ifdef BT_TWS_SUPPORT
-//	PCM_DATA_TYPE		*PauseFrame;
-#endif
-/******************************************************************/
 
+/******************************************************************/
 	AudioCoreContext 	*AudioCore;
 	uint16_t			SourcesMuteState;//纪录source源mute使能情况,目前只判断left
-
 	uint32_t 			SampleRate;
-
 	bool				AudioCoreSync;
-//#ifdef CFG_FUNC_DISPLAY_EN
-//	bool				DisplaySync;
-//#endif
+
 #ifdef CFG_FUNC_ALARM_EN
 	uint32_t 			AlarmID;//闹钟ID对应bit位
 	bool				AlarmFlag;
@@ -170,34 +147,8 @@ typedef struct _MainAppContext
 	uint8_t     hdmiSourceMuteFlg;
 	uint8_t     hdmiResetFlg;
 #endif
-#ifdef CFG_DMA_RGB_LED_EN 
-	uint8_t             rgb_mode;
-    uint8_t             temp_rgb_mode;
-	uint8_t             r_duty;
-	uint8_t             g_duty;
-	uint8_t             b_duty;
-	uint8_t             rgb_step;
-	uint8_t             r_duty_add;
-	uint8_t             g_duty_add;
-	uint8_t             b_duty_add;
-	uint8_t             rgb_duty_add;
 
-    uint8_t             rgb_colours_flag;
-	
-#ifdef CFG_MORE_GPIO_RGB_CTRL_EN
-	uint8_t				rgb_mode1;
-	uint8_t             r_duty1;
-	uint8_t             g_duty1;
-	uint8_t             b_duty1;
-	uint8_t             rgb_step1;
-
-	uint8_t             r_duty_add1;
-	uint8_t             g_duty_add1;
-	uint8_t             b_duty_add1;
-	uint8_t             rgb_duty_add1;
-#endif
-#endif
-
+	bool        tws_device_init_flag;
 }MainAppContext;
 
 extern MainAppContext	mainAppCt;
@@ -240,7 +191,14 @@ extern MainAppContext	mainAppCt;
 #define SoftFlagDeepSleepMsgIsFromTV 	BIT(21)
 
 //标记本次唤醒源是否为CEC唤醒
-#define SoftFlagWakeUpSouceIsCEC BIT(22)
+#define SoftFlagWakeUpSouceIsCEC 		BIT(22)
+
+//蓝牙AVRCP MEDIA INFO
+#define SoftFlagBtMediInfo 				BIT(23)	//获取到蓝牙的ID3信息后,方便系统应用进行数据的输出
+
+#ifdef BT_SNIFF_ENABLE
+#define SoftFlagIdleModeEnterSniff		BIT(24)//标记进入sniff模式
+#endif
 
 void SoftFlagRegister(uint32_t SoftEvent);
 void SoftFlagDeregister(uint32_t SoftEvent);
@@ -248,6 +206,8 @@ bool SoftFlagGet(uint32_t SoftEvent);
 int32_t MainAppTaskStart(void);
 MessageHandle GetMainMessageHandle(void);
 uint32_t GetSystemMode(void);
+
+uint32_t IsBtHfMode(void);
 
 uint32_t IsBtAudioMode(void);
 

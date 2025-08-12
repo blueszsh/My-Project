@@ -375,18 +375,30 @@ void OTG_DeviceClassRequest()
 #if FLASH_BOOT_EN
 		else if((Setup[3] == 0x03)&&(Setup[0] == 0xA1))//GetReport (Feature Report)
 		{
-			DBG("pc_upgrade start 1\n");
-			if(pc_upgrade)
+#ifdef CFG_FUNC_FLASH_PARAM_ONLINE_TUNING_EN
+			if(Request[3] == 0x01 &&  Request[0] == 0xA1)
 			{
-				DBG("pc_upgrade start 2\n");
-				Setup[0] = 0x55;
-				OTG_DeviceControlSend(Setup,Setup[7]*256+Setup[6],1);
-				start_up_grate(SysResourceUsbDevice);
+				extern bool FlashParamUsb_Tx(void);
+
+				if(!FlashParamUsb_Tx())
+					hid_send_data();  //无数据发送，发送随机数据
 			}
 			else
+#endif
 			{
-				Setup[0] = 0;
-				OTG_DeviceControlSend(Setup,Setup[7]*256+Setup[6],1);
+				DBG("pc_upgrade start 1\n");
+				if(pc_upgrade)
+				{
+					DBG("pc_upgrade start 2\n");
+					Setup[0] = 0x55;
+					OTG_DeviceControlSend(Setup,Setup[7]*256+Setup[6],1);
+					start_up_grate(SysResourceUsbDevice);
+				}
+				else
+				{
+					Setup[0] = 0;
+					OTG_DeviceControlSend(Setup,Setup[7]*256+Setup[6],1);
+				}
 			}
 		}
 		else if((Setup[3] == 0x03)&&(Setup[0] == 0x21))//SetReport (Feature Report)
@@ -448,6 +460,7 @@ void OTG_DeviceOtherRequest()
  * @param  NONE
  * @return NONE
  */
+ uint8_t usb_sleep = 0;
 void OTG_DeviceRequestProcess(void)
 {
 	uint8_t BusEvent = OTG_DeviceBusEventGet();
@@ -455,12 +468,19 @@ void OTG_DeviceRequestProcess(void)
 	uint8_t ReqType;
 	if(BusEvent & 0x04)
 	{
-		OTG_DeviceAddressSet(0);
+		//OTG_DeviceAddressSet(0);
+		usb_sleep = 0;
 #ifdef CFG_APP_USB_AUDIO_MODE_EN
 		UsbAudioMic.InitOk = 0;
 		UsbAudioSpeaker.InitOk = 0;
 #endif
 	}
+
+	if(BusEvent & 0x02)
+	{
+		usb_sleep = 0;
+	}
+	
 	if(OTG_DeviceSetupReceive(Setup, 8, &DataLeng) != DEVICE_NONE_ERR)
 	{
 		return;
@@ -531,6 +551,15 @@ void hid_recive_data(void)
 {
 #ifdef CFG_COMMUNICATION_BY_USB
 	HIDUsb_Rx(Request,256);
+#endif
+#ifdef CFG_FUNC_FLASH_PARAM_ONLINE_TUNING_EN
+	if((Request[0] == 0xA5 && Request[1] == 0x5A) && //帧头
+		Request[2] == 0x20 )  //控制字0x20
+	{
+		extern void FlashSn_Rx(uint8_t *buf,uint16_t buf_len);
+
+		FlashSn_Rx(Request+3,256-3);
+	}
 #endif
 }
 

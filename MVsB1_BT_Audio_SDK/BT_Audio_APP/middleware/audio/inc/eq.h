@@ -4,7 +4,7 @@
  * @brief	Parametric EQ
  *
  * @author	ZHAO Ying (Alfred), Aissen Li
- * @version	v8.2.0
+ * @version	v8.3.1
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -165,15 +165,15 @@ void eq_apply(EQContext* eq, int16_t *pcm_in, int16_t *pcm_out, int32_t n);
 void eq_apply_out32(EQContext* eq, int16_t *pcm_in, int32_t *pcm_out, int32_t n);
 
 /**
-* @brief  Apply EQ effect (24-bit PCM in & out)
-* @param  eq pointer to EQ context
-* @param  pcm_in Address of the PCM input buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
-* @param  pcm_out Address of the PCM output buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
-*         pcm_out can be the same as pcm_in. In this case, the PCM signals are changed in-place.
-* @param  n  Number of PCM samples to process.
-* @param  output_saturation Whether saturation protection is applied to PCM output. 0:no saturation protection and overflow is allowed, 1:saturation is applied to limit each PCM output value to be within 24-bits.
-* @return NONE
-*/
+ * @brief  Apply EQ effect (24-bit PCM in & out)
+ * @param  eq pointer to EQ context
+ * @param  pcm_in Address of the PCM input buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ * @param  pcm_out Address of the PCM output buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ *         pcm_out can be the same as pcm_in. In this case, the PCM signals are changed in-place.
+ * @param  n  Number of PCM samples to process.
+ * @param  output_saturation Whether saturation protection is applied to PCM output. 0:no saturation protection and overflow is allowed, 1:saturation is applied to limit each PCM output value to be within 24-bits.
+ * @return NONE
+ */
 void eq_apply24(EQContext* eq, int32_t *pcm_in, int32_t *pcm_out, int32_t n, int32_t output_saturation);
 
 /**
@@ -183,6 +183,53 @@ void eq_apply24(EQContext* eq, int32_t *pcm_in, int32_t *pcm_out, int32_t n, int
  */
 void eq_clear_delay_buffer(EQContext* eq);
 
+
+// ----------------------------------------------------------------------------------------------------
+// A Single Biquad Filter without Internal Buffer for General Purpose
+// ----------------------------------------------------------------------------------------------------
+typedef struct _BiquadContext
+{
+	int16_t num_channels;
+	int16_t use_float;
+	EQFilterCoefs filter_coef;
+	union {
+		int32_t filter_delay[2][4];
+		float filter_delay_f[2][4];
+	};
+}BiquadContext;
+
+/**
+ * @brief  Initialize biquad filter module
+ * @param  ct Pointer to BiquadContext context
+ * @param  num_channels Number of channels. Only 1 or 2 is supported.
+ * @param  sample_rate Sample rate.
+ * @param  filter_params EQ filter parameters.
+ * @return None
+ */
+void biquad_init(BiquadContext* ct, int32_t num_channels, int32_t sample_rate, EQFilterParams* filter_params, int32_t use_float);
+
+/**
+ * @brief  Apply a single biquad filter
+ * @param  ct Pointer to BiquadContext context
+ * @param  pcm_in Address of the PCM input buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ * @param  pcm_out Address of the PCM output buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ *         pcm_out can be the same as pcm_in. In this case, the PCM signals are changed in-place.
+ * @param  n  Number of PCM samples to process.
+ * @return NONE
+ */
+void biquad_apply(BiquadContext* ct, int16_t *pcm_in, int16_t *pcm_out, int32_t n);
+
+/**
+ * @brief  Apply a single biquad filter (24-bit PCM in & out)
+ * @param  ct Pointer to BiquadContext context
+ * @param  pcm_in Address of the PCM input buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ * @param  pcm_out Address of the PCM output buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ *         pcm_out can be the same as pcm_in. In this case, the PCM signals are changed in-place.
+ * @param  n  Number of PCM samples to process.
+ * @param  output_saturation Whether saturation protection is applied to PCM output. 0:no saturation protection and overflow is allowed, 1:saturation is applied to limit each PCM output value to be within 24-bits.
+ * @return NONE
+ */
+void biquad_apply24(BiquadContext* ct, int32_t *pcm_in, int32_t *pcm_out, int32_t n, int32_t output_saturation);
 
 #ifdef  __cplusplus
 }

@@ -12,6 +12,14 @@
 #define USER_DEFINE_MCLK_112896M_DIV_VALUE  11289600
 #define USER_DEFINE_MCLK_12288M_DIV_VALUE	12288000
 
+#if USE_MCLK_IN_MODE
+	MCLK_CLK_SEL PLL_CLK_SET1 = USE_MCLK_IN_MODE + GPIO_IN0 - 1;
+	MCLK_CLK_SEL PLL_CLK_SET2 = USE_MCLK_IN_MODE + GPIO_IN0 - 1;
+#else
+	MCLK_CLK_SEL PLL_CLK_SET1 = PLL_CLOCK1;
+	MCLK_CLK_SEL PLL_CLK_SET2 = PLL_CLOCK2;
+#endif
+
 void AudioI2S_Init(I2S_MODULE Module, I2SParamCt *ct)
 {
 	Clock_AudioPllClockSet(PLL_CLK_MODE, PLL_CLK_1, USER_DEFINE_MCLK_112896M_DIV_VALUE);
@@ -20,8 +28,16 @@ void AudioI2S_Init(I2S_MODULE Module, I2SParamCt *ct)
 	//tx
 	if(ct->I2sTxRxEnable & 0x1)
 	{
-		DMA_ChannelDisable(ct->TxPeripheralID);
-		DMA_CircularConfig(ct->TxPeripheralID, ct->TxLen/2, ct->TxBuf, ct->TxLen);
+        I2S_ModuleTxDisable(Module);
+        RST_I2SModule(Module);
+        DMA_InterruptFlagClear(ct->TxPeripheralID, DMA_DONE_INT);
+        DMA_InterruptFlagClear(ct->TxPeripheralID, DMA_THRESHOLD_INT);
+        DMA_InterruptFlagClear(ct->TxPeripheralID, DMA_ERROR_INT);
+        DMA_ChannelDisable(ct->TxPeripheralID);
+        DMA_CircularConfig(ct->TxPeripheralID, ct->TxLen/2, ct->TxBuf, ct->TxLen);
+        GIE_DISABLE();
+        DMA_CircularWritePtrSet(ct->TxPeripheralID, ct->TxLen/2);
+        GIE_ENABLE();
 	}
 
 	if(ct->I2sTxRxEnable & 0x2)
@@ -33,9 +49,9 @@ void AudioI2S_Init(I2S_MODULE Module, I2SParamCt *ct)
 	if(Module == I2S0_MODULE)
     {
 		if((ct->SampleRate == 11025) || (ct->SampleRate == 22050) || (ct->SampleRate == 44100) || (ct->SampleRate == 88200))
-			Clock_AudioMclkSel(AUDIO_I2S0, PLL_CLOCK1);
+			Clock_AudioMclkSel(AUDIO_I2S0, PLL_CLK_SET1);
 		else
-			Clock_AudioMclkSel(AUDIO_I2S0, PLL_CLOCK2);
+			Clock_AudioMclkSel(AUDIO_I2S0, PLL_CLK_SET2);
 		
 		I2S_FadeTimeSet(I2S0_MODULE,90);
 		I2S_FadeEnable(I2S0_MODULE);// bkd add 2021.11.09
@@ -43,9 +59,9 @@ void AudioI2S_Init(I2S_MODULE Module, I2SParamCt *ct)
     else if(Module == I2S1_MODULE)
     {
     	if((ct->SampleRate == 11025) || (ct->SampleRate == 22050) || (ct->SampleRate == 44100) || (ct->SampleRate == 88200))
-			Clock_AudioMclkSel(AUDIO_I2S1, PLL_CLOCK1);
+			Clock_AudioMclkSel(AUDIO_I2S1, PLL_CLK_SET1);
 		else
-			Clock_AudioMclkSel(AUDIO_I2S1, PLL_CLOCK2);
+			Clock_AudioMclkSel(AUDIO_I2S1, PLL_CLK_SET2);
 		
 		I2S_FadeTimeSet(I2S1_MODULE,90);
 		I2S_FadeEnable(I2S1_MODULE);//  bkd add 2021.11.09
@@ -165,9 +181,17 @@ uint16_t AudioI2S_DataGet(I2S_MODULE Module, void* Buf, uint16_t Len)
 	{
 		DMA_CircularDataGet(PERIPHERAL_ID_I2S1_RX, Buf, Length & (databits > I2S_LENGTH_16BITS ? 0xFFFFFFF8 : 0xFFFFFFFC));
 	}
-#ifdef	CFG_AUDIO_WIDTH_24BIT
-    if(databits == I2S_LENGTH_24BITS)
-	{
+
+	#if defined(CFG_AUDIO_WIDTH_24BIT) && defined(BT_TWS_SUPPORT)
+    if ((databits == I2S_LENGTH_24BITS)
+		#if defined (CFG_FUNC_I2S0_MIX_RECOD_EN) || (defined (CFG_RES_AUDIO_I2S0IN_EN) && (CFG_FUNC_I2S0_MIX_EN == 0))
+    	&& (Module != I2S0_MODULE)
+		#endif
+		#if defined (CFG_FUNC_I2S1_MIX_RECOD_EN) || (defined (CFG_RES_AUDIO_I2S1IN_EN) && (CFG_FUNC_I2S1_MIX_EN == 0))
+		&& (Module != I2S1_MODULE)
+		#endif
+    	)
+    {
 		uint32_t n;
 		int32_t	*PcmBuf32 = Buf;
 		int16_t	*PcmBuf16 = Buf;
@@ -176,8 +200,9 @@ uint16_t AudioI2S_DataGet(I2S_MODULE Module, void* Buf, uint16_t Len)
 		{
 			PcmBuf16[n] = PcmBuf32[n] >> 8;
 		}
-	}
-#endif
+    }
+	#endif
+
     return databits == I2S_LENGTH_16BITS? Length / 4 : Length / 8;
 }
 
@@ -205,11 +230,11 @@ void AudioI2S_DataSet(I2S_MODULE Module, void *Buf, uint32_t Len)
 
 	if(Module == I2S0_MODULE)
 	{
-		DMA_CircularDataPut(PERIPHERAL_ID_I2S0_TX, Buf, Length & 0xFFFFFFFC);
+		DMA_CircularDataPut(PERIPHERAL_ID_I2S0_TX, Buf, Length & (databits > I2S_LENGTH_16BITS ? 0xFFFFFFF8 : 0xFFFFFFFC));
 	}
 	else
 	{
-		DMA_CircularDataPut(PERIPHERAL_ID_I2S1_TX, Buf, Length & 0xFFFFFFFC);
+		DMA_CircularDataPut(PERIPHERAL_ID_I2S1_TX, Buf, Length & (databits > I2S_LENGTH_16BITS ? 0xFFFFFFF8 : 0xFFFFFFFC));
 	}
 }
 
@@ -262,10 +287,34 @@ uint16_t AudioI2S1_DataSet(void *Buf, uint16_t Len)
 
 uint16_t AudioI2S0_TX_DataLenGet(void)
 {
-	return DMA_CircularDataLenGet(PERIPHERAL_ID_I2S0_TX) / 4;
+	return (I2S_WordlengthGet(I2S0_MODULE) == I2S_LENGTH_16BITS)? DMA_CircularDataLenGet(PERIPHERAL_ID_I2S0_TX) / 4 : DMA_CircularDataLenGet(PERIPHERAL_ID_I2S0_TX) / 8;
 }
 
 uint16_t AudioI2S1_TX_DataLenGet(void)
 {
-	return DMA_CircularDataLenGet(PERIPHERAL_ID_I2S1_TX) / 4;
+	return (I2S_WordlengthGet(I2S1_MODULE) == I2S_LENGTH_16BITS)? DMA_CircularDataLenGet(PERIPHERAL_ID_I2S1_TX) / 4 : DMA_CircularDataLenGet(PERIPHERAL_ID_I2S1_TX) / 8;
 }
+
+
+void AudioI2S_SampleRateChange(I2S_MODULE Module,uint32_t SampleRate)
+{
+	if(Module == I2S0_MODULE)
+    {
+		if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100)
+					|| (SampleRate == 88200) || (SampleRate == 176400))
+			Clock_AudioMclkSel(AUDIO_I2S0, PLL_CLK_SET1);
+		else
+			Clock_AudioMclkSel(AUDIO_I2S0, PLL_CLK_SET2);
+    }
+    else if(Module == I2S1_MODULE)
+    {
+    	if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100)
+    				|| (SampleRate == 88200) || (SampleRate == 176400))
+			Clock_AudioMclkSel(AUDIO_I2S1, PLL_CLK_SET1);
+		else
+			Clock_AudioMclkSel(AUDIO_I2S1, PLL_CLK_SET2);
+    }
+
+	I2S_SampleRateSet(Module, SampleRate);
+}
+

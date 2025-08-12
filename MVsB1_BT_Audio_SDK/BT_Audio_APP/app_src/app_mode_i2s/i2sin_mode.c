@@ -80,13 +80,27 @@ static const uint8_t DmaChannelMap[29] = {
 #else
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
+
+#if (defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)) || (CFG_RES_I2S == 1)
+	255,//PERIPHERAL_ID_SDIO_RX,		//3
+	255,//PERIPHERAL_ID_SDIO_TX,		//4
+#else
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
+#endif
+
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
+
+#if defined CFG_RES_AUDIO_SPDIFOUT_EN || defined CFG_FUNC_SPDIF_MIX_MODE
+	6,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_TX,		    //8 SPDIF_RX /TX same chanell
+#else
 	255,//PERIPHERAL_ID_SDPIF_RX,		//8 SPDIF_RX /TX same chanell
 	255,//PERIPHERAL_ID_SDPIF_TX,		//8 SPDIF_RX /TX same chanell
+#endif
+
 	255,//PERIPHERAL_ID_SPIM_RX,		//9
 	255,//PERIPHERAL_ID_SPIM_TX,		//10
 	255,//PERIPHERAL_ID_UART0_TX,		//11
@@ -99,16 +113,29 @@ static const uint8_t DmaChannelMap[29] = {
 	1,//PERIPHERAL_ID_AUDIO_ADC1_RX,	//18
 	2,//PERIPHERAL_ID_AUDIO_DAC0_TX,	//19
 	3,//PERIPHERAL_ID_AUDIO_DAC1_TX,	//20
-#if (CFG_RES_I2S == 0)
-	6,//PERIPHERAL_ID_I2S0_RX,		//21
-	7,//PERIPHERAL_ID_I2S0_TX,		//22
-	255,//PERIPHERAL_ID_I2S1_RX,		//23
-	255,//PERIPHERAL_ID_I2S1_TX,		//24
+
+#if (defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S0IN_EN)) || (CFG_RES_I2S == 0)
+	6,//PERIPHERAL_ID_I2S0_RX,			//21
 #else
 	255,//PERIPHERAL_ID_I2S0_RX,		//21
+#endif
+
+#if	((defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 0)) || defined(CFG_RES_AUDIO_I2S0OUT_EN))
+	7,//PERIPHERAL_ID_I2S0_TX,			//22
+#else
 	255,//PERIPHERAL_ID_I2S0_TX,		//22
-	6,//PERIPHERAL_ID_I2S1_RX,		//23
-	7,//PERIPHERAL_ID_I2S1_TX,		//24
+#endif
+
+#if (defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)) || (CFG_RES_I2S == 1)
+	4,//PERIPHERAL_ID_I2S1_RX,			//23
+#else
+	255,//PERIPHERAL_ID_I2S1_RX,		//23
+#endif
+
+#if	((defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 1))|| defined(CFG_RES_AUDIO_I2S1OUT_EN))
+	5,	//PERIPHERAL_ID_I2S1_TX,		//24
+#else
+	255,//PERIPHERAL_ID_I2S1_TX,		//24
 #endif
 
 	255,//PERIPHERAL_ID_PPWM,			//25
@@ -138,10 +165,6 @@ void I2SInPlayResFree(void)
 
 	//PortFree
 	sI2SInPlayCt->AudioCoreI2SIn = NULL;
-
-#if	0//defined(CFG_FUNC_REMIND_SOUND_EN)
-	AudioCoreSourceDeinit(REMIND_SOURCE_NUM);
-#endif
 
 	if(sI2SInPlayCt->I2SFIFO1 != NULL)
 	{
@@ -174,6 +197,33 @@ bool I2SInPlayResMalloc(uint16_t SampleLen)
 	memset(sI2SInPlayCt->I2SFIFO1, 0, SampleLen * sizeof(PCM_DATA_TYPE) * 2 * 2);
 
 	return TRUE;
+}
+
+void I2SInDmaFifoRest(void)
+{
+	if(sI2SInPlayCt == NULL)
+		return;
+
+	uint32_t I2S_RX_FIFO_LEN;
+	I2S_RX_FIFO_LEN = AudioCoreFrameSizeGet(DefaultNet) * sizeof(PCM_DATA_TYPE) * 2 * 2;
+
+	memset(sI2SInPlayCt->I2SFIFO1, 0, I2S_RX_FIFO_LEN);
+
+	#if CFG_RES_I2S == 0
+	*(volatile unsigned long *)0x40029000 &= ~0x80;//disable iis0
+	#else
+	*(volatile unsigned long *)0x4002A000 &= ~0x80;//disable iis1
+	#endif
+	RST_I2SModule(I2S0_MODULE + CFG_RES_I2S);
+	DMA_InterruptFlagClear((PERIPHERAL_ID_I2S0_RX + CFG_RES_I2S * 2), DMA_DONE_INT);
+	DMA_InterruptFlagClear((PERIPHERAL_ID_I2S0_RX + CFG_RES_I2S * 2), DMA_THRESHOLD_INT);
+	DMA_InterruptFlagClear((PERIPHERAL_ID_I2S0_RX + CFG_RES_I2S * 2), DMA_ERROR_INT);
+	DMA_ChannelDisable(PERIPHERAL_ID_I2S0_RX + CFG_RES_I2S * 2);
+	DMA_CircularConfig((PERIPHERAL_ID_I2S0_RX + CFG_RES_I2S * 2), I2S_RX_FIFO_LEN/2, sI2SInPlayCt->I2SFIFO1, I2S_RX_FIFO_LEN);
+	GIE_DISABLE();
+	DMA_CircularWritePtrSet((PERIPHERAL_ID_I2S0_RX + CFG_RES_I2S * 2), I2S_RX_FIFO_LEN - sizeof(PCM_DATA_TYPE) * 2);
+	GIE_ENABLE();
+	DMA_ChannelEnable(PERIPHERAL_ID_I2S0_RX + CFG_RES_I2S * 2);
 }
 
 bool I2SInPlayResInit(void)
@@ -214,99 +264,31 @@ bool I2SInPlayResInit(void)
 	i2s_set.I2sTxRxEnable = 3;
 #endif
 
-#if CFG_RES_I2S == 0
-#if CFG_RES_I2S_IO_PORT == 0		//I2S0_MODULE Port0
-#if CFG_RES_I2S_MODE == 0
-	GPIO_PortAModeSet(GPIOA0, 9);// mclk 3:in;9:out
-#else
-	GPIO_PortAModeSet(GPIOA0, 3);
-#endif
-	GPIO_PortAModeSet(GPIOA1, 6);// lrclk
-	GPIO_PortAModeSet(GPIOA2, 5);// bclk
-#ifdef CFG_RES_AUDIO_I2SOUT_EN
-	GPIO_PortAModeSet(GPIOA3, 7);// out
-#endif
-	GPIO_PortAModeSet(GPIOA4, 1);// din
-
-#else								//I2S0_MODULE Port1
-#if CFG_RES_I2S_MODE == 0
-	GPIO_PortAModeSet(GPIOA24, 9);//mclk 3:in;9:out
-#else
-	GPIO_PortAModeSet(GPIOA24, 3);
-#endif
-	GPIO_PortAModeSet(GPIOA20, 6);//lrclk
-	GPIO_PortAModeSet(GPIOA21, 5);//bclk
-#ifdef CFG_RES_AUDIO_I2SOUT_EN
-	GPIO_PortAModeSet(GPIOA22, 10);//do
-#endif
-	GPIO_PortAModeSet(GPIOA23, 3);//di
-#endif
-#else//CFG_RES_I2S == 1
-#if CFG_RES_I2S_IO_PORT == 0		//I2S1_MODULE Port0
-#if CFG_RES_I2S_MODE == 0
-	GPIO_PortAModeSet(GPIOA27, 6);//mclk 1:in;6:out
-#else
-	GPIO_PortAModeSet(GPIOA27, 1);
-#endif
-	GPIO_PortAModeSet(GPIOA28, 1);//lrclk
-	GPIO_PortAModeSet(GPIOA29, 1);//bclk
-	GPIO_PortAModeSet(GPIOA30, 6);//do
-//	GPIO_PortAModeSet(GPIOA31, 2);//di
-
-#elif CFG_RES_I2S_IO_PORT == 1		//I2S1_MODULE Port1
-#if CFG_RES_I2S_MODE == 0
-	GPIO_PortAModeSet(GPIOA7, 5);//mclk 2:in;5:out
-#else
-	GPIO_PortAModeSet(GPIOA7, 2);
-#endif
-	GPIO_PortAModeSet(GPIOA8, 1);//lrclk
-	GPIO_PortAModeSet(GPIOA9, 2);//bclk
-#ifdef CFG_RES_AUDIO_I2SOUT_EN
-	GPIO_PortAModeSet(GPIOA10, 4);//do
-#endif
-	GPIO_PortAModeSet(GPIOA11, 2);//di
-
-#elif CFG_RES_I2S_IO_PORT == 2		//I2S1_MODULE Port2
-	GPIO_PortAModeSet(GPIOA1, 7);//lrclk
-	GPIO_PortAModeSet(GPIOA2, 6);//bclk
-#ifdef CFG_RES_AUDIO_I2SOUT_EN
-	GPIO_PortAModeSet(GPIOA31, 5);//do
-#endif
-	GPIO_PortAModeSet(GPIOA30, 2);//di
-
-#else								//I2S1_MODULE Port3
-	GPIO_PortAModeSet(GPIOA20, 7);//lrclk
-	GPIO_PortAModeSet(GPIOA21, 6);//bclk
-#ifdef CFG_RES_AUDIO_I2SOUT_EN
-	GPIO_PortAModeSet(GPIOA11, 4);//do
-#endif
-	GPIO_PortAModeSet(GPIOA10, 1);//di
-#endif
-#endif//CFG_RES_I2S == 0
-
+	// I2S GPIO配置
+	I2S_GPIO_Port_ModeSet(CFG_RES_I2S_MODULE, CFG_RES_I2S_MODE);
 
 	I2S_ModuleDisable(CFG_RES_I2S_MODULE);
 	I2S_AlignModeSet(CFG_RES_I2S_MODULE, I2S_LOW_BITS_ACTIVE);
 	AudioI2S_Init(CFG_RES_I2S_MODULE,&i2s_set);
 
-//	//note Soure0.和sink0已经在main app中配置，不要随意配置
+	//note Soure0.和sink0已经在main app中配置，不要随意配置
 	//Core Soure1.Para
 	AudioCoreIO	AudioIOSet;
 	memset(&AudioIOSet, 0, sizeof(AudioCoreIO));
-#if CFG_RES_I2S_MODE == 0 || !defined(CFG_FUNC_I2S_IN_SYNC_EN)//master 或者关微调
-#if CFG_PARA_I2S_SAMPLERATE == CFG_PARA_SAMPLE_RATE
+#if CFG_RES_I2S_MODE == 0 || !defined(CFG_FUNC_I2S_IN_SYNC_EN) || (USE_MCLK_IN_MODE != 0)//master 或者关微调
+	#if CFG_PARA_I2S_SAMPLERATE == CFG_PARA_SAMPLE_RATE
 	AudioIOSet.Adapt = STD;
-#else
+	#else
 	AudioIOSet.Adapt = SRC_ONLY;
-#endif
+	#endif
 #else //slave
-#if CFG_PARA_I2S_SAMPLERATE == CFG_PARA_SAMPLE_RATE
+	#if CFG_PARA_I2S_SAMPLERATE == CFG_PARA_SAMPLE_RATE
 	AudioIOSet.Adapt = SRA_ONLY;//CLK_ADJUST_ONLY;//
-#else
+	#else
 	AudioIOSet.Adapt = SRC_SRA;//SRC_ADJUST;//
+	#endif
 #endif
-#endif
-	AudioIOSet.Sync = TRUE;//FALSE;//
+	AudioIOSet.Sync = TRUE; //I2S slave 时候如果master没有接，有可能会导致DAC也不出声音。
 	AudioIOSet.Channels = 2;
 	AudioIOSet.Net = DefaultNet;
 	AudioIOSet.Depth = AudioCoreFrameSizeGet(DefaultNet) * 2;//sI2SInPlayCt->I2SFIFO1 采样点深度
@@ -314,7 +296,7 @@ bool I2SInPlayResInit(void)
 	AudioIOSet.HighLevelCent = 60;
 	AudioIOSet.LowLevelCent = 40;
 	AudioIOSet.SampleRate = CFG_PARA_I2S_SAMPLERATE;//根据实际外设选择
-//	AudioIOSet.CoreSampleRate = CFG_PARA_SAMPLE_RATE;
+
 #if (CFG_RES_I2S == 0)
 	AudioIOSet.DataIOFunc = AudioI2S0_DataGet ;
 	AudioIOSet.LenGetFunc = AudioI2S0_DataLenGet;
@@ -323,12 +305,12 @@ bool I2SInPlayResInit(void)
 	AudioIOSet.LenGetFunc = AudioI2S1_DataLenGet;
 #endif
 #ifdef	CFG_AUDIO_WIDTH_24BIT
+	#ifdef BT_TWS_SUPPORT
 	AudioIOSet.IOBitWidth = 0;//0,16bit,1:24bit
-#ifdef BT_TWS_SUPPORT
+	#else
+	AudioIOSet.IOBitWidth = 1;//0,16bit,1:24bit
+	#endif
 	AudioIOSet.IOBitWidthConvFlag = 0;//tws不需要数据进行位宽扩展，会在TWS_SOURCE_NUM以后统一转成24bit
-#else
-	AudioIOSet.IOBitWidthConvFlag = 1;//需要数据进行位宽扩展
-#endif
 #endif
 	if(!AudioCoreSourceInit(&AudioIOSet, I2SIN_SOURCE_NUM))
 	{
@@ -381,7 +363,7 @@ bool  I2SInPlayInit(void)
 	AudioCoreSourceAdjust(APP_SOURCE_NUM, TRUE);
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 #ifdef CFG_EFFECT_PARAM_IN_FLASH_EN
-	//mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
+	mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
 #else
 	mainAppCt.EffectMode = EFFECT_MODE_NORMAL;
 #endif
@@ -390,22 +372,15 @@ bool  I2SInPlayInit(void)
 	AudioEffectsLoadInit(0, mainAppCt.EffectMode);
 #endif
 
-#ifdef CFG_FUNC_REMIND_SOUND_EN
-	if(RemindSoundServiceItemRequest(SOUND_REMIND_I2SMODE, REMIND_PRIO_NORMAL) == FALSE)
+	#ifdef CFG_FUNC_REMIND_SOUND_EN
+	if(RemindSoundServiceItemRequest(SOUND_REMIND_I2SMODE, REMIND_ATTR_NEED_MUTE_APP_SOURCE) == FALSE)
+	#endif
 	{
 		if(IsAudioPlayerMute() == TRUE)
 		{
 			HardWareMuteOrUnMute();
 		}
 	}
-#endif
-
-#ifndef CFG_FUNC_REMIND_SOUND_EN
-	if(IsAudioPlayerMute() == TRUE)
-	{
-		HardWareMuteOrUnMute();
-	}
-#endif
 
 	return ret;
 }
@@ -444,17 +419,6 @@ void I2SInPlayRun(uint16_t msgId)
 #endif
 	switch(msgId)//警告：在此段代码，禁止新增提示音插播位置。
 	{
-/*	case MSG_REMIND_SOUND_PLAY_START:
-			break;
-
-		case MSG_REMIND_SOUND_PLAY_DONE://提示音播放结束
-		case MSG_REMIND_SOUND_PLAY_REQUEST_FAIL:
-			//AudioCoreSourceUnmute(APP_SOURCE_NUM, TRUE, TRUE);
-			#ifdef BT_TWS_SUPPORT
-				//AudioCoreSourceUnmute(TWS_SOURCE_NUM, TRUE, TRUE);
-			#endif
-			break;
-*/
 		default:
 			CommonMsgProccess(msgId);
 			break;
@@ -472,54 +436,17 @@ bool I2SInPlayDeinit(void)
 	{
 		HardWareMuteOrUnMute();
 	}	
-	//Kill used services
-#if	0//defined(CFG_FUNC_REMIND_SOUND_EN)
-	AudioCoreSourceDisable(REMIND_SOURCE_NUM);
-	AudioCoreSourceDisable(PLAYBACK_SOURCE_NUM);
-	DecoderServiceDeinit(DECODER_REMIND_CHANNEL);
-	while(GetDecoderServiceState()!=TaskStateStopped)
-	{
-		APP_DBG("I2S IN:%d\n",GetDecoderServiceState());
-		osTaskDelay(1);
-	}
-#endif
 
-#if (CFG_RES_I2S == 0)
-//#if (CFG_RES_I2S_IO_PORT==0)
-	GPIO_PortAModeSet(GPIOA0, 0);// mclk out
-	GPIO_PortAModeSet(GPIOA1, 0);// lrclk
-	GPIO_PortAModeSet(GPIOA2, 0);// bclk
-//	GPIO_PortAModeSet(GPIOA3, 0);// dout
-	GPIO_PortAModeSet(GPIOA4, 0);// din
-//i2s0  group_gpio0
-#else //(CFG_RES_I2S == 1)
-#if CFG_RES_I2S_IO_PORT == 1 //i2s1  group_gpio1_1
-	GPIO_PortAModeSet(GPIOA7, 0);//mclk out
-	GPIO_PortAModeSet(GPIOA8, 0);//lrclk
-	GPIO_PortAModeSet(GPIOA9, 0);//bclk
-//	GPIO_PortAModeSet(GPIOA10, 0);//do
-	GPIO_PortAModeSet(GPIOA11, 0);//di
-#elif CFG_RES_I2S_IO_PORT == 0 //i2s1  group_gpio1_0
-//	GPIO_PortAModeSet(GPIOA27, 0);
-	GPIO_PortAModeSet(GPIOA28, 0);//lrclk
-	GPIO_PortAModeSet(GPIOA29, 0);//bclk
-//	GPIO_PortAModeSet(GPIOA30, 0);//do
-	GPIO_PortAModeSet(GPIOA31, 0);//di
-#else //i2s1  group_gpio1_?
-	//...
-#endif
-#endif
 	AudioCoreSourceDisable(I2SIN_SOURCE_NUM);
 	PauseAuidoCore();
 	
 	I2SInPlayResFree();
 	ModeCommonDeinit();//通路全部释放
+	
 #ifdef CFG_RES_AUDIO_I2SOUT_EN
-	{
-		extern void AudioI2sOutParamsSet(void);
-		AudioI2sOutParamsSet();
-	}
+	AudioI2sOutParamsSet();
 #endif
+
 	osPortFree(sI2SInPlayCt);
 	sI2SInPlayCt = NULL;
 

@@ -33,15 +33,17 @@
 #include "bt_manager.h"
 #include "bt_app_sniff.h"
 #include "hdmi_in_api.h"
+#include "adc.h"
+#include "mode_task_api.h"
+#include "i2s.h"
+
 #ifdef CFG_IDLE_MODE_DEEP_SLEEP
 HDMIInfo  			 *gHdmiCt;
 void GIE_ENABLE(void);
 void SystemOscConfig(void);
 void SleepMainAppTask(void);
 void SleepAgainConfig(void);
-
 void WakeupMain(void);
-
 void SleepMain(void);
 void LogUartConfig(bool InitBandRate);
 
@@ -57,6 +59,8 @@ static uint32_t sources;
 #ifdef CFG_PARA_WAKEUP_SOURCE_RTC
 uint32_t alarm = 0;
 #endif
+
+extern uint8_t uart_switch;
 
 __attribute__((section(".driver.isr")))void WakeupInterrupt(void)
 {
@@ -275,8 +279,8 @@ void SystermDeepSleepConfig(void)
 
 	for(IO_cnt = 0;IO_cnt < 32;IO_cnt++)
 	{
-#if (CFG_PARA_WAKEUP_GPIO_CEC != WAKEUP_GPIOA27)
-		if(IO_cnt == 27)
+#ifdef CFG_PARA_WAKEUP_GPIO_CEC
+		if(IO_cnt == CFG_PARA_WAKEUP_GPIO_CEC)
 			continue;
 #endif
 		GPIO_PortAModeSet(GPIOA0 << IO_cnt, 0);
@@ -284,13 +288,25 @@ void SystermDeepSleepConfig(void)
 
 	for(IO_cnt = 0;IO_cnt < 8;IO_cnt++)
 	{
-		GPIO_PortBModeSet(GPIOB0 << IO_cnt, 0);
+		if ((IO_cnt != 0) && (IO_cnt != 1))
+		{
+			GPIO_PortBModeSet(GPIOB0 << IO_cnt, 0);
+		}
 	}
 
 	SleepAgainConfig();//配置相同
 
 	SleepMain();
 
+#if defined(CFG_PARA_WAKEUP_SOURCE_CEC) && defined(CFG_PARA_WAKEUP_GPIO_CEC)
+	if(gHdmiCt == NULL)
+	{
+		HDMI_CEC_DDC_Init();
+		gHdmiCt->hdmiReportStatus = 0;
+	}
+//	osTaskDelay(10);
+	while(!HDMI_CEC_IsReadytoDeepSleep(10));//拉低10ms，保障后续18ms没有通信和中断响应。
+#endif
 #ifdef CFG_PARA_WAKEUP_SOURCE_RTC
 	alarm = 0;
 #else
@@ -322,17 +338,120 @@ void WakeupSourceSet(void)
 #if defined(CFG_PARA_WAKEUP_SOURCE_IR)
 	SystermIRWakeupConfig(CFG_PARA_IR_SEL, CFG_RES_IR_PIN, CFG_PARA_IR_BIT);
 #endif	
+#if defined(CFG_PARA_WAKEUP_SOURCE_CEC) && defined(CFG_PARA_WAKEUP_GPIO_CEC)
+	SystermGPIOWakeupConfig(CFG_PARA_WAKEUP_SOURCE_CEC, CFG_PARA_WAKEUP_GPIO_CEC, SYSWAKEUP_SOURCE_BOTH_EDGES_TRIG);
+#endif	
+}
+
+
+void ModeCommonDeInit_deepsleep(void)
+{
+#if defined(CFG_RES_AUDIO_DAC0_EN)
+	AudioDAC_Disable(DAC0);
+	AudioDAC_FuncReset(DAC0);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC0_TX, DMA_DONE_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC0_TX, DMA_THRESHOLD_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC0_TX, DMA_ERROR_INT);
+	DMA_ChannelDisable(PERIPHERAL_ID_AUDIO_DAC0_TX);
+
+	if(mainAppCt.DACFIFO != NULL)
+	{
+		osPortFree(mainAppCt.DACFIFO);
+		mainAppCt.DACFIFO = NULL;
+	}
+	AudioCoreSinkDeinit(AUDIO_DAC0_SINK_NUM);
+	AudioDAC_PowerDown(DAC0);
+#endif
+
+#if defined(CFG_RES_AUDIO_DACX_EN)
+	AudioCoreSinkDisable(AUDIO_DACX_SINK_NUM);
+	AudioDAC_Disable(DAC1);
+	AudioDAC_FuncReset(DAC1);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_DONE_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_THRESHOLD_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_ERROR_INT);
+	DMA_ChannelDisable(PERIPHERAL_ID_AUDIO_DAC1_TX);
+
+	if(mainAppCt.DACXFIFO != NULL)
+	{
+		osPortFree(mainAppCt.DACXFIFO);
+		mainAppCt.DACXFIFO = NULL;
+	}
+	AudioCoreSinkDeinit(AUDIO_DACX_SINK_NUM);
+	AudioDAC_PowerDown(DAC1);
+#endif
+
+#if defined(CFG_RES_AUDIO_I2SOUT_EN)
+	I2S_ModuleDisable(CFG_RES_I2S_MODULE);
+	RST_I2SModule(CFG_RES_I2S_MODULE);
+
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX + CFG_RES_I2S * 2, DMA_DONE_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX + CFG_RES_I2S * 2, DMA_THRESHOLD_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX + CFG_RES_I2S * 2, DMA_ERROR_INT);
+	DMA_ChannelDisable(PERIPHERAL_ID_I2S0_TX + CFG_RES_I2S * 2);
+
+	if(mainAppCt.I2SFIFO != NULL)
+	{
+		APP_DBG("I2SFIFO\n");
+		osPortFree(mainAppCt.I2SFIFO);
+		mainAppCt.I2SFIFO = NULL;
+	}
+	AudioCoreSinkDeinit(AUDIO_I2SOUT_SINK_NUM);
+#endif
+
+#if defined(CFG_RES_AUDIO_I2S0OUT_EN)
+	I2S_ModuleDisable(I2S0_MODULE);
+	RST_I2SModule(I2S0_MODULE);
+
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX, DMA_DONE_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX, DMA_THRESHOLD_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX, DMA_ERROR_INT);
+	DMA_ChannelDisable(PERIPHERAL_ID_I2S0_TX);
+
+	if(mainAppCt.I2S0_TX_FIFO != NULL)
+	{
+		APP_DBG("I2S0_TX_FIFO\n");
+		osPortFree(mainAppCt.I2S0_TX_FIFO);
+		mainAppCt.I2S0_TX_FIFO = NULL;
+	}
+	AudioCoreSinkDeinit(AUDIO_I2S0_OUT_SINK_NUM);
+#endif
+
+#if defined(CFG_RES_AUDIO_I2S1OUT_EN)
+	I2S_ModuleDisable(I2S1_MODULE);
+	RST_I2SModule(I2S1_MODULE);
+
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S1_TX, DMA_DONE_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S1_TX, DMA_THRESHOLD_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S1_TX, DMA_ERROR_INT);
+	DMA_ChannelDisable(PERIPHERAL_ID_I2S1_TX);
+
+	if(mainAppCt.I2S1_TX_FIFO != NULL)
+	{
+		APP_DBG("I2S1_TX_FIFO\n");
+		osPortFree(mainAppCt.I2S1_TX_FIFO);
+		mainAppCt.I2S1_TX_FIFO = NULL;
+	}
+	AudioCoreSinkDeinit(AUDIO_I2S1_OUT_SINK_NUM);
+#endif
 }
 
 
 void DeepSleeping(void)
 {
-
 	uint32_t GpioAPU_Back,GpioAPD_Back,GpioBPU_Back,GpioBPD_Back;
 
 //	WDG_Disable();
 	WDG_Feed();
 	
+	OTG_DeepSleepBackup();
+	ADC_Disable();//按键扫描
+	AudioADC_PowerDown();
+	//AudioADC_VcomConfig(2);//注意，VCOM会和DAC配置重叠。参数2，PowerDown VCOM
+	SPDIF_AnalogModuleDisable();//spdif,HDMI
+
+	ModeCommonDeInit_deepsleep();
+
 	GpioAPU_Back = GPIO_RegGet(GPIO_A_PU);
 	GpioAPD_Back = GPIO_RegGet(GPIO_A_PD);
 	GpioBPU_Back = GPIO_RegGet(GPIO_B_PU);
@@ -354,6 +473,10 @@ void DeepSleeping(void)
 		WDG_Enable(WDG_STEP_4S);
 	}
 	Power_WakeupDisable(0xff);
+
+#if defined(CFG_PARA_WAKEUP_SOURCE_CEC) && defined(CFG_PARA_WAKEUP_GPIO_CEC)
+	HDMI_CEC_DDC_DeInit();
+#endif
 	//GPIO恢复上下拉
 	GPIO_RegSet(GPIO_A_PU, GpioAPU_Back);
 	GPIO_RegSet(GPIO_A_PD, GpioAPD_Back);
@@ -370,12 +493,19 @@ void DeepSleeping(void)
 	WakeupMain();
 	SysTickInit();
 	WDG_Feed();
+	uart_switch = 1;
+
 #if defined(CFG_RES_ADC_KEY_SCAN) || defined(CFG_RES_IR_KEY_SCAN) || defined(CFG_RES_CODE_KEY_USE)|| defined(CFG_ADC_LEVEL_KEY_EN) || defined(CFG_RES_IO_KEY_SCAN)
 	KeyInit();//Init keys
 #endif	
 #ifdef BT_TWS_SUPPORT
 	tws_time_init();
 #endif
+
+	OTG_WakeupResume();
+
+	ModeCommonInit();
+
 #ifdef CFG_FUNC_LED_REFRESH
 	//默认优先级为0，旨在提高刷新速率，特别是断点记忆等写flash操作有影响刷屏，必须严格遵守所有timer6中断调用都是TCM代码，含调用的driver库代码
 	//已确认GPIO_RegOneBitSet、GPIO_RegOneBitClear在TCM区，其他api请先确认。
@@ -404,7 +534,6 @@ bool SystermWackupSourceCheck(void)
 
 #ifdef CFG_PARA_WAKEUP_SOURCE_IR
 	IRKeyMsg IRKeyMsg;
-
 #endif
 	TIMER WaitScan;
 
@@ -412,7 +541,7 @@ bool SystermWackupSourceCheck(void)
 	SarADC_Init();
 	AdcKeyInit();
 #endif
-
+	uart_switch = 0;
 //********************
 	//串口IO设置
 	LogUartConfig(FALSE);//此处如果重配clk波特率，较为耗时，不重配。
@@ -439,8 +568,16 @@ bool SystermWackupSourceCheck(void)
 	}
 #endif
 
+#if defined(CFG_PARA_WAKEUP_SOURCE_CEC) && defined(CFG_PARA_WAKEUP_GPIO_CEC)
+	bool CecRest = FALSE;//cec空闲状态(18ms消抖)。以免影响后续解析和唤醒。
+	HDMI_HPD_CHECK_IO_INIT();
+#endif
+
 	TimeOutSet(&WaitScan, CHECK_SCAN_TIME);
 	while(!IsTimeOut(&WaitScan)
+#if defined(CFG_PARA_WAKEUP_SOURCE_CEC) && defined(CFG_PARA_WAKEUP_GPIO_CEC)
+			|| !CecRest
+#endif
 		)
 	{
 		WDG_Feed();
@@ -491,15 +628,31 @@ bool SystermWackupSourceCheck(void)
 #ifdef CFG_PARA_WAKEUP_SOURCE_IOKEY1
 		if(sources & CFG_PARA_WAKEUP_SOURCE_IOKEY1)
 		{
+			sources = 0;
 			return TRUE;
 		}
 #endif
 #ifdef CFG_PARA_WAKEUP_SOURCE_IOKEY2
 		if(sources & CFG_PARA_WAKEUP_SOURCE_IOKEY2)
 		{
+			sources = 0;
 			return TRUE;
 		}
 #endif
+#endif
+
+#if defined(CFG_PARA_WAKEUP_SOURCE_CEC) && defined(CFG_PARA_WAKEUP_GPIO_CEC)
+		HDMI_CEC_Scan(0);
+		if(gHdmiCt->hdmi_poweron_flag == 1)
+		{
+			SoftFlagRegister(SoftFlagWakeUpSouceIsCEC);
+			APP_DBG("CEC PowerOn\n");
+			return TRUE;
+		}
+		if(IsTimeOut(&WaitScan))//超时之后等待下拉电平，同时保持scan。
+		{
+			CecRest = HDMI_CEC_IsReadytoDeepSleep(6);
+		}
 #endif
 
 	}
@@ -515,7 +668,11 @@ void SleepAgainConfig(void)
 	GPIO_RegSet(GPIO_A_IE,0x00000000);
 	GPIO_RegSet(GPIO_A_OE,0x00000000);
 	GPIO_RegSet(GPIO_A_OUTDS,0x00000000);//bkd GPIO_A_REG_OUTDS
-	GPIO_RegSet(GPIO_A_PD,0xffffffff);
+	GPIO_RegSet(GPIO_A_PD,0xffffffff
+#if defined(CFG_PARA_WAKEUP_GPIO_CEC) && defined(CFG_PARA_WAKEUP_SOURCE_CEC)//cec端口不做上下拉配置，需要cec状态保障。
+			& ~ BIT(CFG_PARA_WAKEUP_GPIO_CEC)
+#endif
+			);
 	GPIO_RegSet(GPIO_A_PU,0x00000000);//此时的flash的CS必须拉高0x00400000
 	GPIO_RegSet(GPIO_A_ANA_EN,0x00000000);
 	GPIO_RegSet(GPIO_A_PULLDOWN0,0x00000000);//bkd
@@ -614,10 +771,28 @@ void UartClkChange(CLK_MODE clk_change)//蓝牙唤醒配置入口
 #endif
 }
 
+#ifdef CFG_APP_HDMIIN_MODE_EN
+//cec退出sniff
+void CecWakeupProcess(void)
+{
+	HDMI_CEC_Scan(0);
+	if((gHdmiCt->hdmi_poweron_flag == 1) && (GetSystemMode() == ModeHdmiAudioPlay))
+	{
+		//APP_DBG("CEC waked!!!!\n");
+		SoftFlagRegister(SoftFlagWakeUpSouceIsCEC);
+		extern void BtSniffExit_process(void);
+		sources = 0;
+		BtSniffExit_process();
+	}
+}
+#endif
+
 uint8_t sniffiocnt = 0;
 uint8_t sniff_wakeup_check()
 {
-//	bool CecRest = FALSE;
+#if defined(CFG_PARA_WAKEUP_SOURCE_CEC) && defined(CFG_APP_HDMIIN_MODE_EN)
+	bool CecRest = FALSE;
+#endif
 
 //	if(!GPIO_RegOneBitGet(GPIO_A_IN,GPIOA23))
 //	{//唤醒流程，按键大于两个sniff周期就唤醒。如果用时间判断可能导致sniff功能不正常
@@ -691,6 +866,30 @@ uint8_t sniff_wakeup_check()
 	}
 #endif
 
+#if defined(CFG_PARA_WAKEUP_SOURCE_CEC) && defined(CFG_APP_HDMIIN_MODE_EN)
+	if(sources & (CFG_PARA_WAKEUP_SOURCE_CEC))
+	{
+		//while(!IsTimeOut(&waitCECTime))
+		{
+#if defined(CFG_PARA_WAKEUP_SOURCE_IR)
+			IrWakeupProcess();
+#endif
+			CecWakeupProcess();
+		}
+		if(IsTimeOut(&waitCECTime))//超时之后等待下拉电平，同时保持scan。
+			CecRest = HDMI_CEC_IsReadytoDeepSleep(6);
+		else
+			return 1;
+
+		if(!CecRest)
+		{
+			return 1;
+		}
+		sources = 0;
+		return 1;
+	}
+#endif
+	sources = 0;
 	return 0;
 
 }
@@ -740,7 +939,8 @@ void BtDeepSleepForUsr(void)//蓝牙休眠配置入口，目前没做处理
 	GIE_DISABLE();
 //	Clock_PllQuicklock(288000, K1, OS, NDAC, FC, SLOPE);
 #ifdef BT_TWS_SUPPORT
-    Clock_PllLock(320000);
+	Clock_PllLock(SYS_CORE_DPLL_FREQ / 10);
+	*(uint32_t*)0x40026008 = ((uint64_t)8192 * SYS_CORE_DPLL_FREQ / 10000);  // 0x2BBF48--349M    0x27837B--316M
 #else
     Clock_PllLock(288000);
 #endif
@@ -752,7 +952,7 @@ void BtDeepSleepForUsr(void)//蓝牙休眠配置入口，目前没做处理
 
 	SysTickInit();//开始OS 打开全局时钟
 
-	UartClkChange(PLL_CLK_MODE);
+	//UartClkChange(PLL_CLK_MODE);
 
 //	GPIO_PortAModeSet(GPIOA30, 0x0005);//调试口 SW恢复 方便下载
 //	GPIO_PortAModeSet(GPIOA31, 0x0004);
@@ -831,6 +1031,7 @@ void tws_sniff_check_adda_process()
 
 TIMER   sniffrerequsettimer;
 #define RESEND_SCAN_TIME				2000		//醒来确认有效唤醒源 扫描限时ms。
+uint32_t deepsleep_count = 0;
 void DeepSleeping_BT(void)
 {
 	uint32_t GpioAPU_Back,GpioAPD_Back,GpioBPU_Back,GpioBPD_Back;
@@ -838,12 +1039,32 @@ void DeepSleeping_BT(void)
 	//Efuse_ReadDataDisable();
 //	SysDeepsleepStart();
 
+
+	OTG_DeepSleepBackup();
+	ADC_Disable();//按键扫描
+	AudioADC_PowerDown();
+	//AudioADC_VcomConfig(2);//注意，VCOM会和DAC配置重叠。参数2，PowerDown VCOM
+	SPDIF_AnalogModuleDisable();//spdif,HDMI
+
+	#ifdef CFG_RES_AUDIO_DAC0_EN
+		AudioCoreSinkDeinit(AUDIO_DAC0_SINK_NUM);
+		AudioDAC_PowerDown(DAC0);
+	#endif
+
+	#ifdef CFG_RES_AUDIO_DACX_EN
+		AudioCoreSinkDeinit(AUDIO_DACX_SINK_NUM);
+		AudioDAC_PowerDown(DAC1);
+	#endif
+
+
+	deepsleep_count = 1;
+
 	BtStartEnterSniffMode();
 	TimeOutSet(&sniffrerequsettimer, RESEND_SCAN_TIME);
 	while((Bt_sniff_sniff_start_state_get() == 0) ||
 			(Bt_sniff_sleep_state_get() == 0))
 	{
-
+		WDG_Feed();
 		if(IsTimeOut(&sniffrerequsettimer))
 		{
 			APP_DBG("LMP sniff state ERR!!!\r\n");
@@ -851,6 +1072,13 @@ void DeepSleeping_BT(void)
 #ifdef BT_TWS_SUPPORT
 			//断开连接后，跳出等待siff req，然后进入低功耗扫描
 			if(GetBtManager()->twsState != BT_TWS_STATE_CONNECTED)
+			{
+				Bt_sniff_sniff_start();
+				break;
+			}
+
+			deepsleep_count++;
+			if(deepsleep_count > 3)
 			{
 				Bt_sniff_sniff_start();
 				break;
@@ -891,6 +1119,7 @@ void DeepSleeping_BT(void)
 #endif
 	BTSniffSet();//准备进入sniff
 
+	WDG_Feed();
 	while(Bt_sniff_sniff_start_state_get())//没退出sniff消息，进入sniff休眠轮询。
 	{
 		vTaskDelay(1);
@@ -903,13 +1132,24 @@ void DeepSleeping_BT(void)
 				//此项目从机无UI，所以注释掉了从机唤醒的逻辑
 				if(sniff_wakeup_check())// 如果出现唤醒标志次周期不睡，并且函数内部可以跳出sniff
 				{
+					Bt_sniff_sleep_exit();
 					continue;
 				}
 			}
 #endif
 			BtDeepSleepForUsr();
+
+			if(sources & (0x1fff)) //except bt source
+			{
+				if(sniff_wakeup_check()) //非蓝牙唤醒后,优先处理其他唤醒源
+				{
+					Bt_sniff_sleep_exit();
+					continue;
+				}
+			}
 		}
 	}
+	WDG_Feed();
 
 #ifdef BT_TWS_SUPPORT
 	if(tws_get_role() == BT_TWS_MASTER)
@@ -943,6 +1183,28 @@ void DeepSleeping_BT(void)
 #endif
 	UartClkChange(APLL_CLK_MODE);
 
+//	WDG_Feed();
+//	WakeupMain();
+//	WDG_Feed();
+
+#ifdef BT_TWS_SUPPORT
+	tws_time_init();//TWS RTC校准
+#endif
+
+#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE || TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER)
+
+	WDG_Feed();
+#if defined(CFG_RES_ADC_KEY_SCAN) || defined(CFG_RES_IR_KEY_SCAN) || defined(CFG_RES_CODE_KEY_USE)|| defined(CFG_ADC_LEVEL_KEY_EN) || defined(CFG_RES_IO_KEY_SCAN)
+//vTaskDelay(1000);
+	SarADC_Init();
+	KeyInit();//Init keys
+#endif
+
+#endif//(TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
+
+	WDG_Feed();
+	ModeCommonInit();
+	WDG_Feed();
 
 #ifdef CFG_FUNC_LED_REFRESH
 	//默认优先级为0，旨在提高刷新速率，特别是断点记忆等写flash操作有影响刷屏，必须严格遵守所有timer6中断调用都是TCM代码，含调用的driver库代码
@@ -959,6 +1221,11 @@ void DeepSleeping_BT(void)
 #if defined(CFG_FUNC_DISPLAY_EN)
     DispInit(0);
 #endif
+
+#ifdef BT_SNIFF_ENABLE
+	sniff_lmpsend_set(0);
+#endif
+
 }
 
 #else

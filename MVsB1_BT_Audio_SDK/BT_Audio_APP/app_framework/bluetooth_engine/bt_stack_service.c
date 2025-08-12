@@ -102,9 +102,13 @@ typedef struct _BtUserServiceContext
 static BtStackServiceContext	*btStackServiceCt = NULL;
 BT_CONFIGURATION_PARAMS		*btStackConfigParams = NULL;
 
-#ifdef TWS_CODE_BACKUP
+BtStackServiceContext		gBtStackServiceContext;
+BT_CONFIGURATION_PARAMS		gBtConfigParams;
+
+
+//#ifdef TWS_CODE_BACKUP
 uint32_t g_tws_need_init;
-#endif
+//#endif
 extern uint8_t tws_slave_cap;
 
 static void BtRstStateCheck(void);
@@ -113,6 +117,26 @@ extern int8_t ME_CancelInquiry(void);
 extern void SlowDevice_MsgSend(uint16_t msgId);
 #endif
 
+/***********************************************************************************
+ * TWS CLK
+ **********************************************************************************/
+#define		PLL_CNT_PER_500MSEC_ACT		((SYS_CORE_DPLL_FREQ / 10) * 1000 / 2)
+#define		PLL_CNT_PER_SEC				((SYS_CORE_DPLL_FREQ / 10) * 1000)
+#define		PLL_CNT_PER_500MSEC			(PLL_CNT_PER_SEC/2)
+
+uint32_t GetPllCntPer500msecAct(void)
+{
+	return PLL_CNT_PER_500MSEC_ACT;
+}
+uint32_t GetPllCntPerSec(void)
+{
+	return PLL_CNT_PER_SEC;
+}
+
+uint32_t GetPllCntPer500msec(void)
+{
+	return PLL_CNT_PER_500MSEC;
+}
 
 /***********************************************************************************
  *
@@ -168,7 +192,7 @@ void BtStack_BtDisconnectProcess(void)
 }
 
 /***********************************************************************************
- * 蓝牙AVRCP快速连接状态确认
+ * 蓝牙A2DP连接成功后,主动发起一次AVRCP连接
  **********************************************************************************/
 extern FUNC_BT_AVRCP_CON_PROCESS BtAvrcpConProcess;
 static uint32_t btAvrcpConIndex = 0;
@@ -177,7 +201,7 @@ void BtStack_BtAvrcpConProcess(void)
 	static uint32_t btAvrcpConCnt = 0;
 
 	btAvrcpConCnt++;
-	if(btAvrcpConCnt>=200) //200ms
+	if(btAvrcpConCnt>=1500) //1500ms//时间太短,会导致部分手机音量同步功能不生效
 	{
 		btAvrcpConCnt=0;
 		if((btManager.btLinked_env[btAvrcpConIndex].a2dpState >= BT_A2DP_STATE_CONNECTED)
@@ -199,6 +223,42 @@ void BtStack_BtAvrcpConRegister(uint8_t index)
 	{
 		btAvrcpConIndex = index;
 		BtAppiFunc_BtAvrcpConProcess(BtStack_BtAvrcpConProcess);
+	}
+}
+
+/***********************************************************************************
+ * 蓝牙A2DP断链后,主动发起一次AVRCP断开
+ * A2DP断开后，开启检测AVRCP断开机制(3S超时)
+ **********************************************************************************/
+extern FUNC_BT_AVRCP_DISCON_PROCESS BtAvrcpDisconProcess;
+static uint32_t btAvrcpDisconIndex = 0;
+void BtStack_BtAvrcpDisconProcess(void)
+{
+	static uint32_t btAvrcpDisconCnt = 0;
+
+	btAvrcpDisconCnt++;
+	if(btAvrcpDisconCnt>=3000) //3s
+	{
+		btAvrcpDisconCnt=0;
+		if((btManager.btLinked_env[btAvrcpDisconIndex].a2dpState == BT_A2DP_STATE_NONE)
+			&&(btManager.btLinked_env[btAvrcpDisconIndex].avrcpState != BT_AVRCP_STATE_NONE))
+		{
+			AvrcpDisconnect(btAvrcpDisconIndex);
+		}
+		//else
+		{
+			//注销
+			BtAppiFunc_BtAvrcpDisconProcess(NULL);
+		}
+	}
+}
+
+void BtStack_BtAvrcpDisconRegister(uint8_t index)
+{
+	if(btAvrcpDisconIndex < BT_LINK_DEV_NUM)
+	{
+		btAvrcpDisconIndex = index;
+		BtAppiFunc_BtAvrcpDisconProcess(BtStack_BtAvrcpDisconProcess);
 	}
 }
 
@@ -237,6 +297,10 @@ void BtFreqOffsetAdjustComplete(unsigned char offset)
 #endif
 	}
 
+	#if defined(CFG_TWS_ROLE_SLAVE_TEST) && (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
+	btManager.twsSoundbarSlaveTestFlag = 0;
+	#endif
+
 	//清除所有的配对记录
 	BtDdb_EraseBtLinkInforMsg();
 }
@@ -267,13 +331,13 @@ void BtMidMessageManage(BtMidMessageId messageId, uint8_t Param)
 			{
 				//APP_DBG("MSG_BT_MID_STACK_INIT\n");
 				//此处配置协议栈初始化完成后，是否进入到蓝牙可被搜索可被连接状态;
-				//1=进入到可被搜索可被连接状态;  0=进入到不可被搜索不可被连接状态
+				//2=进入到不可被搜索可被连接状态;1=进入到可被搜索可被连接状态;  0=进入到不可被搜索不可被连接状态;
 				#ifdef POWER_ON_BT_ACCESS_MODE_SET
-				GetBtManager()->btAccessModeEnable = 0;
+				GetBtManager()->btAccessModeEnable = USER_ANYNOT;
+				GetBtManager()->keysetAccessModeEnable = FALSE;
 				#else
-				GetBtManager()->btAccessModeEnable = 1;
-				#endif
-				
+				GetBtManager()->btAccessModeEnable = USER_ACCESSIBLECONNECT;
+				#endif		
 #ifdef BT_TWS_SUPPORT
 			#if (CFG_TWS_ONLY_IN_BT_MODE == DISABLE)
 				if(GetBtManager()->twsFlag)
@@ -439,7 +503,7 @@ static void CheckBtEventTimer(void)
 			GetBtManager()->btReconnectDelayCount++;
 			if((GetBtManager()->btReconnectDelayCount>200)//&&(btManager.btReconTwsSt.ConnectionTimer.timerFlag == TIMER_UNUSED)
 	#ifdef CFG_FUNC_REMIND_SOUND_EN
-				&&(RemindSoundIsPlay() <= 1 )
+				&&(!RemindSoundIsPlay())
 	#endif
 				)
 			{
@@ -449,6 +513,20 @@ static void CheckBtEventTimer(void)
 		}
 	}
 
+#ifdef RECON_ADD
+	if(GetBtManager()->btReconnectunusual && btManager.btReconPhoneSt.ConnectionTimer.timerFlag && (GetSystemMode() == ModeBtAudioPlay))
+	{
+		APP_DBG("--- btReconnectunusual need recon again!\n");
+		GetBtManager()->btReconnectunusual = FALSE;
+		extern void BtReconnectDevExcute(void);
+		BtReconnectDevExcute();
+	}
+	else
+	{
+		GetBtManager()->btReconnectunusual = FALSE;
+	}
+#endif
+
 	BtScanPageStateCheck();
 
 	BtRstStateCheck();
@@ -456,6 +534,10 @@ static void CheckBtEventTimer(void)
 #ifdef	BT_SNIFF_ENABLE
 	BtStartEnterSniffStep();
 	BtExitSniffReconnectPhone();
+#endif
+
+#if (BT_AVRCP_SONG_TRACK_INFOR == ENABLE)
+	BtMediaInfoRunloop(); //间隔获取歌曲信息
 #endif
 
 }
@@ -664,7 +746,6 @@ static void BtStackMsgProcess(uint16_t msgId)
 			}
 #endif
 			APP_DBG("[BT_STACK_APP]:tws pairing start\n");
-
 			BtTwsPairingStart();
 			break;
 
@@ -1007,9 +1088,6 @@ static void BtStackServiceEntrance(void * param)
 	BTStackMemAlloc(BT_STACK_MEM_SIZE, gBtHostStackMemHeap, 0);
 
 	APP_DBG("BtStackServiceEntrance.\n");
-
-
-
 	
 #if ( BT_SUPPORT == ENABLE )
 	//BR/EDR init
@@ -1040,8 +1118,10 @@ static void BtStackServiceEntrance(void * param)
 		{
 			APP_DBG("error ble stack init\n");
 		}
-
-		BleAdvSet(); 
+		if(g_playcontrol_app_context.ble_device_role == PERIPHERAL_DEVICE)
+		{
+			BleAdvSet();
+		}
 		APP_DBG("ble stack init success\n");
 	}
 #endif
@@ -1055,8 +1135,11 @@ static void BtStackServiceEntrance(void * param)
 		MessageRecv(btStackServiceCt->msgHandle, &msgRecv, 1);
 		
 #if BT_HFP_SUPPORT
-		extern void BtModeEnterDetect(void);
-		BtModeEnterDetect();
+		if (GetSystemMode() != ModeBtHfPlay)
+		{
+			extern void BtModeEnterDetect(void);
+			BtModeEnterDetect();
+		}
 #endif
 #ifdef SOFT_WACTH_DOG_ENABLE
 		little_dog_feed(DOG_INDEX3_BtStackTask);
@@ -1116,6 +1199,9 @@ static void BtStackServiceEntrance(void * param)
 		if(BtAvrcpConProcess)
 			BtAvrcpConProcess();
 
+		if(BtAvrcpDisconProcess)
+			BtAvrcpDisconProcess();
+
 		if(BtScoSendProcess)
 			BtScoSendProcess();
 
@@ -1134,28 +1220,31 @@ static void BtStackServiceEntrance(void * param)
 		}
 
 		CheckBtEventTimer();
-#ifdef	TWS_CODE_BACKUP
+
 #ifdef BT_TWS_SUPPORT
-		if(g_tws_need_init == 1)
+		if (g_tws_need_init > 0)
+		{
+			g_tws_need_init--;
+		}
+		if((g_tws_need_init <= 4000) && (g_tws_need_init != 0))
 		{
 			if(GetBtManager()->twsState == BT_TWS_STATE_CONNECTED)
 			{
 				#ifdef CFG_FUNC_REMIND_SOUND_EN			
-				if(RemindSoundIsPlay() <= 1 ) //没有播放提示音 
+				if(!RemindSoundIsPlay()) //没有播放提示音
 				#endif				
 				{
+					if(IsAudioPlayerMute() == FALSE){
+						HardWareMuteOrUnMute();
+					}
 					APP_DBG("tws_audio_init_sync...\n");
-
-					
-					g_tws_need_init = 2;
-					tws_audio_init_sync();
+					g_tws_need_init = 0;
+					//tws_audio_init_sync();
+					tws_sync_reinit();
 				}
 			}
 		}
 #endif
-		//先去掉同步标志位，会导致无声问题
-		g_tws_need_init = 0;
-#endif //TWS_CODE_BACKUP
 
 		extern uint32_t a2dp_pause_delay_cnt;
 		if(a2dp_pause_delay_cnt)
@@ -1184,14 +1273,16 @@ static bool BtStackServiceInit(void)
 {
 	APP_DBG("bluetooth stack service init.\n");
 
-	btStackServiceCt = (BtStackServiceContext*)osPortMalloc(sizeof(BtStackServiceContext));
+	//btStackServiceCt = (BtStackServiceContext*)osPortMalloc(sizeof(BtStackServiceContext));
+	btStackServiceCt = &gBtStackServiceContext;
 	if(btStackServiceCt == NULL)
 	{
 		return FALSE;
 	}
 	memset(btStackServiceCt, 0, sizeof(BtStackServiceContext));
 	
-	btStackConfigParams = (BT_CONFIGURATION_PARAMS*)osPortMalloc(sizeof(BT_CONFIGURATION_PARAMS));
+	//btStackConfigParams = (BT_CONFIGURATION_PARAMS*)osPortMalloc(sizeof(BT_CONFIGURATION_PARAMS));
+	btStackConfigParams = &gBtConfigParams;
 	if(btStackConfigParams == NULL)
 	{
 		return FALSE;
@@ -1310,13 +1401,13 @@ bool BtStackServiceKill(void)
 
 	if(btStackConfigParams)
 	{
-		osPortFree(btStackConfigParams);
+		//osPortFree(btStackConfigParams);
 		btStackConfigParams = NULL;
 	}
 	//
 	if(btStackServiceCt)
 	{
-		osPortFree(btStackServiceCt);
+		//osPortFree(btStackServiceCt);
 		btStackServiceCt = NULL;
 	}
 	APP_DBG("!!btStackServiceCt\n");
@@ -1497,16 +1588,19 @@ void BtPowerOff(void)
 		}
 
 		//快速在BT模式和其他模式(共2个模式)切换，需要delay(500);避免蓝牙初始化和反初始化状态未完成导致的错误
-		//vTaskDelay(500);
 		vTaskDelay(50);
 	}
 	
+#ifdef BT_TWS_SUPPORT
+	BtReconnectTwsStop();
+	BtTwsDeviceDisconnectExt();
+	vTaskDelay(10);
+#endif
+
 	if(GetBtDeviceConnState() == BT_DEVICE_CONNECTION_MODE_NONE)
 	{
-
 		BTDisconnect(0);
 		BTDisconnect(1);
-
 	}
 
 	//在蓝牙回连时,需要先取消蓝牙回连行为
@@ -1561,18 +1655,18 @@ void BtEnterDutModeFunc(void)
 	{
 		btManager.btDutModeEnable = 1;
 		
-		if(GetBtDeviceConnState() == BT_DEVICE_CONNECTION_MODE_NONE)
+		if(btManager.btLinkState)
 		{
-
 			BTDisconnect(0);
 			BTDisconnect(1);
-
 		}
 		if(sys_parameter.bt_ReconnectionEnable)
+		{
 			BtReconnectDevStop();
+		}
 		
 		APP_DBG("confirm bt disconnect\n");
-		while(GetBtDeviceConnState() == BT_DEVICE_CONNECTION_MODE_NONE)
+		while(GetBtDeviceConnState() != BT_DEVICE_CONNECTION_MODE_ALL)
 		{
 			//2s timeout
 			vTaskDelay(100);
@@ -1606,7 +1700,16 @@ void BtFastPowerOn(void)
 		//从机从tws slave模式退出,无连接手机,则开启可被搜索可被连接
 		if(!btManager.btLinkState)
 		{
-			BtSetAccessMode_Disc_Con();
+			#if (defined(BT_TWS_SUPPORT) && (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE))
+			if (!btManager.twsSoundbarSlaveTestFlag)
+			{
+				BtSetAccessMode_NoDisc_Con();
+			}
+			else
+			#endif
+			{
+				BtSetAccessMode_Disc_Con();
+			}
 		}
 		
 		btStackServiceCt->serviceWaitResume = 0;

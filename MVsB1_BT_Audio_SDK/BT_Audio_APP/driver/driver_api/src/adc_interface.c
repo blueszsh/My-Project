@@ -12,6 +12,9 @@
 #define USER_DEFINE_MCLK_112896M_DIV_VALUE	11289600
 #define USER_DEFINE_MCLK_12288M_DIV_VALUE	12288000
 
+extern MCLK_CLK_SEL PLL_CLK_SET1;
+extern MCLK_CLK_SEL PLL_CLK_SET2;
+
 void AudioADC_DMARestart(ADC_MODULE Module, void* Buf, uint16_t Len)
 {
 	if(Module == ADC0_MODULE)
@@ -36,8 +39,13 @@ void AudioADC_DigitalInit(ADC_MODULE Module, uint32_t SampleRate, void* Buf, uin
 {
 	//音频时钟使能，其他模块可能也会开启
 
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN
+	Clock_AudioPllClockSet(APLL_CLK_MODE, PLL_CLK_1, USER_DEFINE_MCLK_112896M_DIV_VALUE);
+	Clock_AudioPllClockSet(APLL_CLK_MODE, PLL_CLK_2, USER_DEFINE_MCLK_12288M_DIV_VALUE);
+#else
 	Clock_AudioPllClockSet(PLL_CLK_MODE, PLL_CLK_1, USER_DEFINE_MCLK_112896M_DIV_VALUE);
 	Clock_AudioPllClockSet(PLL_CLK_MODE, PLL_CLK_2, USER_DEFINE_MCLK_12288M_DIV_VALUE);
+#endif
 
 	if(Module == ADC0_MODULE)
     {
@@ -57,11 +65,11 @@ void AudioADC_DigitalInit(ADC_MODULE Module, uint32_t SampleRate, void* Buf, uin
         
     	if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100))
     	{
-    		Clock_AudioMclkSel(AUDIO_ADC0, PLL_CLOCK1);
+    		Clock_AudioMclkSel(AUDIO_ADC0, PLL_CLK_SET1);
     	}
     	else
     	{
-    		Clock_AudioMclkSel(AUDIO_ADC0, PLL_CLOCK2);
+    		Clock_AudioMclkSel(AUDIO_ADC0, PLL_CLK_SET2);
     	}
     	AudioADC_SampleRateSet(ADC0_MODULE, SampleRate);
         
@@ -97,11 +105,11 @@ void AudioADC_DigitalInit(ADC_MODULE Module, uint32_t SampleRate, void* Buf, uin
         
     	if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100))
     	{
-    		Clock_AudioMclkSel(AUDIO_ADC1, PLL_CLOCK1);
+    		Clock_AudioMclkSel(AUDIO_ADC1, PLL_CLK_SET1);
     	}
     	else
     	{
-    		Clock_AudioMclkSel(AUDIO_ADC1, PLL_CLOCK2);
+    		Clock_AudioMclkSel(AUDIO_ADC1, PLL_CLK_SET2);
     	}
     	AudioADC_SampleRateSet(ADC1_MODULE, SampleRate);
 
@@ -241,3 +249,27 @@ uint16_t AudioADC1DataGet(void* Buf, uint16_t Len)
 
     return Length / 4;
 }
+
+
+void AudioADC_SampleRateChange(ADC_MODULE Module,uint32_t SampleRate)
+{
+	if(Module == ADC0_MODULE)
+    {
+    	if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100))
+    		Clock_AudioMclkSel(AUDIO_ADC0, PLL_CLK_SET1);
+    	else
+    		Clock_AudioMclkSel(AUDIO_ADC0, PLL_CLK_SET2);
+
+    	AudioADC_SampleRateSet(AUDIO_ADC0, SampleRate);
+    }
+    else if(Module == ADC1_MODULE)
+    {
+    	if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100))
+    		Clock_AudioMclkSel(AUDIO_ADC1, PLL_CLK_SET1);
+    	else
+    		Clock_AudioMclkSel(AUDIO_ADC1, PLL_CLK_SET2);
+
+    	AudioADC_SampleRateSet(ADC1_MODULE, SampleRate);
+    }
+}
+

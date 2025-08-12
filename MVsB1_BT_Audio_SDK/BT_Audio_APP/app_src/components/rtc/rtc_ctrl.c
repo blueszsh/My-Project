@@ -23,6 +23,11 @@
 #include "rtc_ctrl.h"
 #include "rtos_api.h"
 #include "timeout.h"
+#ifdef CFG_FUNC_OSC32K_STARTUP_DETECT
+#include "backup.h"
+#include "sys.h"
+#endif
+
 #ifdef CFG_FUNC_RTC_EN
 uint8_t  RtcAutOutTimeCount = 0;
 RTC_STATE RtcState = 0;
@@ -940,6 +945,63 @@ void RtcMsgPro(MessageContext MsgId)
 #endif
 }
 
+#ifdef CFG_FUNC_OSC32K_STARTUP_DETECT
+extern OSC_SPEED_MODE BACKUP_OSCSpeedModeGet(void);
+extern void BACKUP_OSCSpeedModeSelect(OSC_SPEED_MODE OscSpeedMode);
+
+int RTC_DetectOSC32KWorkState(void)
+{
+	int count = 0;
+	int toggleCount = -1;
+	int orgSet = BACKUP_OSCSpeedModeGet();
+
+	BACKUP_OSCSpeedModeSelect(1);
+    while(count < 5000)  //waiting OSC32K work
+    {
+    	if (BACKUP_IsOscClkToggle())
+    	{
+    		if (toggleCount < 0)
+    		{
+    			toggleCount = 1;
+    		}
+    		else if ((toggleCount & 0x01) == 0)
+    		{
+    			toggleCount++;
+    		}
+    	}
+    	else
+    	{
+    		if (toggleCount < 0)
+    		{
+    			toggleCount = 0;
+    		}
+    		else if (toggleCount & 0x01)
+    		{
+    			toggleCount++;
+    		}
+    	}
+
+    	if (toggleCount >= 10)
+    	{
+    		APP_DBG("Waiting OSC32K work OK, toggleCount=%d, count=%d\n", toggleCount, count);
+    		break;
+    	}
+
+    	count++;
+    }
+
+    BACKUP_OSCSpeedModeSelect(orgSet);
+
+    if (count >= 5000)
+	{
+		APP_DBG("Waiting OSC32K to work state timeout, toggleCount=%d, count=%d!!\n", toggleCount, count);
+		return 1;
+	}
+
+    return 0;
+}
+#endif
+
 void RTC_ServiceInit(uint16_t RstFflag)
 {
 	APP_DBG("Rtc init------------------\n");
@@ -953,6 +1015,18 @@ void RTC_ServiceInit(uint16_t RstFflag)
     gpAlarmList = AlarmList;
     gpAlarmList_temp = AlarmList;
     #endif
+
+#ifdef CFG_FUNC_OSC32K_STARTUP_DETECT
+    if (RTC_DetectOSC32KWorkState())
+    {
+    	APP_DBG("OSC32K not working , do System Reset now!!!!\n");
+
+    	DelayMs(2000); //wait 2s
+    	NVIC_SystemReset();
+    	while(1){};
+    }
+#endif
+
     if(RstFflag==0) return;//not power on
 
 	gRtcTime.Year = 2001;

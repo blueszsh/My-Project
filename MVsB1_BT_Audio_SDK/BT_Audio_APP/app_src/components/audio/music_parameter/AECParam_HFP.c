@@ -1,6 +1,5 @@
-//ACPWorkbench Version: 2.34.0
-const unsigned char AECParam_HFP[328] = {
-                        
+const unsigned char AECParam_HFP[328]={
+                       
 
 0x03,/*PGA0*/
 0x00, 0x00,/*line1_left_enable*/
@@ -33,12 +32,12 @@ const unsigned char AECParam_HFP[328] = {
 0x01, 0x00,/*dc_blocker*/
 
 0x06,/*PGA1*/
-0x01, 0x00,/*line3_left_mic1_enable*/
-0x01, 0x00,/*line3_right_mic2_enable*/
-0x11, 0x00,/*line3_left_mic1_gain*/
-0x02, 0x00,/*line3_left_mic1_gain_boost*/
-0x10, 0x00,/*line3_right_mic2_gain*/
-0x03, 0x00,/*line3_right_mic2_gain_boost*/
+0x00, 0x00,/*line3_left_mic1_enable*/
+0x00, 0x00,/*line3_right_mic2_enable*/
+0x1F, 0x00,/*line3_left_mic1_gain*/
+0x00, 0x00,/*line3_left_mic1_gain_boost*/
+0x1F, 0x00,/*line3_right_mic2_gain*/
+0x00, 0x00,/*line3_right_mic2_gain_boost*/
 0x00, 0x00,/*mic_line_sel*/
 
 0x07,/*ADC1*/
@@ -73,7 +72,7 @@ const unsigned char AECParam_HFP[328] = {
 0x00, 0x10,/*right_volume*/
 0x00, 0x00,/*dither*/
 0x00, 0x00,/*scramble*/
-0x03, 0x00,/*mode*/
+0x00, 0x00,/*mode*/
 
 0x0A,/*DAC1*/
 0x01, 0x00,/*enable*/
@@ -83,14 +82,13 @@ const unsigned char AECParam_HFP[328] = {
 0x00, 0x00,/*scramble*/
 
 0xFC,/*USER_TAG*/
-0x05,
+0x05,/*length*/
 0xFF,
 0x01,
 0x02,
 0x03,
 0x04,
-
-0x81,/*1:Noise Suppressor	*/
+0x81,/*1:Noise Suppressor	*/
 0x01,/*enable*/
 0x6C, 0xEE,/*threshold*/
 0x03, 0x00,/*ratio*/
@@ -100,7 +98,7 @@ const unsigned char AECParam_HFP[328] = {
 0x82,/*1:EQ        		*/
 0x01,/*enable*/
 0x00, 0x00,/*pregain*/
-0x00, 0x00,/*calculation_type*/
+0x00, 0x00,/*reserved*/
 0x01, 0x00,/*filter1_enable*/
 0x00, 0x00,/*filter1_type*/
 0x64, 0x00,/*filter1_f0*/
@@ -110,7 +108,7 @@ const unsigned char AECParam_HFP[328] = {
 0x00, 0x00,/*filter2_type*/
 0xE8, 0x03,/*filter2_f0*/
 0xD4, 0x02,/*filter2_Q*/
-0x00, 0x00,/*filter2_gain*/
+0x00, 0x00,/*fi lter2_gain*/
 0x01, 0x00,/*filter3_enable*/
 0x00, 0x00,/*filter3_type*/
 0x88, 0x13,/*filter3_f0*/
@@ -154,9 +152,8 @@ const unsigned char AECParam_HFP[328] = {
 
 0x83,/*1:AEC       		*/
 0x01,/*enable*/
-0x01, 0x00,/*echo_level*/
-0x00, 0x00,/*noise_level*/
-
+0x04, 0x00, /* cur value*/
+0x00, 0x00, /* min value*/
 
 0x84,/*1:Gain      		*/
 0x01,/*enable*/

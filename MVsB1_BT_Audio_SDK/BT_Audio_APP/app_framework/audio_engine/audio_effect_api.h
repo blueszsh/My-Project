@@ -33,7 +33,7 @@ extern "C" {
 #include "voice_changer.h"
 #include "voice_changer_pro.h"
 #include "reverb_pro.h"
-#include "plate_reverb.h"
+#include "reverb_plate.h"
 #include "vocalcut.h"
 #include "reverb.h"
 #include "pitch_shifter.h"
@@ -51,9 +51,10 @@ extern "C" {
 #include "distortion_ds1.h"
 #include "overdrive_poly.h"
 #include "howling_suppressor_fine.h"
-
+#include "virtual_surround.h"
 #include "audio_effect_user_config.h"
 
+#include "audio_effect_class.h"
 ////以下宏考虑到需要经常修改，配置到 audio_effect_user_config.h 中
 //////****************************************************************************************
 //////。。。说明。。。
@@ -142,6 +143,16 @@ typedef enum _EffectType
 	HOWLING_FINE,
 	CUSTOMER = 100,////用户自定义音效，固定为100
 	//注意，用户自定义音效，参数往后增加
+	
+#ifndef CFG_EFFECT_PARAM_UPDATA_BY_ACPWORKBENCH
+	VIRTUAL_SURROUND,
+	HowlingGuard,
+	PhaseShifter,
+	DC_Blocker,
+	Butterworth,
+#endif
+	DynamicEQ,
+	
 	EFFECT_NUM_MAX
 } EffectType;
 
@@ -154,7 +165,7 @@ typedef struct __AutoTuneParam
 } AutoTuneParam;
 typedef struct __AutoTuneUnit
 {
-	AutoTuneContext ct;
+	AutoTuneContext16 ct;
 	AutoTuneParam	param;
 	uint8_t			enable;
 	uint8_t			channel;
@@ -268,7 +279,7 @@ typedef struct __PitchShifterParam
 } PitchShifterParam;
 typedef struct __PitchShifterUnit
 {
-	PSContext			ct;
+	PitchShifterContext24			ct;
 	PitchShifterParam	param;
 	uint8_t				enable;
 	uint8_t				channel;
@@ -285,7 +296,7 @@ typedef struct __ReverbParam
 } ReverbParam;
 typedef struct __ReverbUnit
 {
-	ReverbContext	ct;
+	ReverbContext24	ct;
 	ReverbParam		param;
 	uint8_t			enable;
 	uint8_t			channel;
@@ -378,7 +389,7 @@ typedef struct __PlateReverbParam
 } PlateReverbParam;
 typedef struct __PlateReverbUnit
 {
-	PlateReverbContext 	ct;
+	ReverbPlateContext24 	ct;
 	PlateReverbParam	param;
 	uint8_t				enable;
 	uint8_t				channel;
@@ -442,7 +453,7 @@ typedef struct __VocalRemoverParam
 } VocalRemoverParam;
 typedef struct __VocalRemoveUnit
 {
-	VocalRemoverContext 	ct;
+	VocalRemoverContext24 	ct;
 	VocalRemoverParam		param;
 	uint8_t					enable;
 	uint8_t					channel;
@@ -600,7 +611,7 @@ typedef struct __FlangerParam
 } FlangerParam;
 typedef struct __FlangerUnit
 {
-	FlangerContext	ct;
+	FlangerContext16	ct;
 	FlangerParam	param;
 	uint8_t			enable;
 	uint8_t			channel;
@@ -769,6 +780,28 @@ typedef struct __HowlingFineUnit
 	uint8_t				channel;
 } HowlingFineUnit;
 
+//-----------------------------------------//
+typedef struct __VirtualSurroundDescribe
+{
+	ParaNumbers          numbers;//totals
+	TypeContinue         P1;//reserve
+}VirtualSurroundDescribe;
+
+typedef struct __VirtualSurroundParam
+{
+//	int16_t 			    reserve;
+//	uint32_t                SampleRate;
+} VirtualSurroundParam;
+
+typedef struct __VirtualSurroundUnit
+{
+	VirtualSurroundContext	ct;
+	VirtualSurroundParam	param;
+	uint8_t					enable;
+	uint8_t					channel;
+} VirtualSurroundUnit;
+
+
 #ifdef FUNC_OS_EN
 extern osMutexId AudioEffectMutex;
 #endif
@@ -802,7 +835,7 @@ void AudioEffectHowlingSuppressorApply(HowlingUnit *unit, int16_t *pcm_in, int16
 
 void AudioEffectPitchShifterInit(PitchShifterUnit *unit, uint8_t channel, uint32_t sample_rate);
 void AudioEffectPitchShifterConfig(PitchShifterUnit *unit);
-void AudioEffectPitchShifterApply(PitchShifterUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n);
+void AudioEffectPitchShifterApply(PitchShifterUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n);
 
 void AudioEffectReverbInit(ReverbUnit *unit, uint8_t channel, uint32_t sample_rate);
 void AudioEffectReverbConfig(ReverbUnit *unit);
@@ -811,7 +844,11 @@ void AudioEffectReverbApply(ReverbUnit *unit, int16_t *pcm_in, int16_t *pcm_out,
 void AudioEffectSilenceDetectorInit(SilenceDetectorUnit *unit, uint8_t channel, uint32_t sample_rate);
 void AudioEffectSilenceDetectorApply(SilenceDetectorUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n);
 void AudioEffectSilenceDetectorApply24(SilenceDetectorUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n);
-
+#ifdef CFG_FUNC_RECORDER_SILENCE_DECTOR
+void UserSilenceDetectorInit(SilenceDetectorUnit *unit, uint8_t channel, uint32_t sample_rate);
+void UserSilenceDetectorApply(SilenceDetectorUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n);
+void UserSilenceDetectorApply24(SilenceDetectorUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n);
+#endif
 void AudioEffectThreeDInit(ThreeDUnit *unit, uint8_t channel, uint32_t sample_rate);
 void AudioEffectThreeDApply(ThreeDUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n);
 void AudioEffectThreeDApply24(ThreeDUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n);
@@ -829,6 +866,7 @@ void AudioEffectPregainApply24(GainControlUnit *unit, int32_t *pcm_in, int32_t *
 
 void AudioEffectVocalCutInit(VocalCutUnit *unit, uint8_t channel, uint32_t sample_rate);
 void AudioEffectVocalCutApply(VocalCutUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n);
+void AudioEffectVocalCutApply24(VocalCutUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n);
 
 void AudioEffectPlateReverbInit(PlateReverbUnit *unit, uint8_t channel, uint32_t sample_rate);
 void AudioEffectPlateReverbConfig(PlateReverbUnit *unit);
@@ -855,6 +893,7 @@ void AudioEffectVBClassApply24(VBClassUnit *unit, int32_t *pcm_in, int32_t *pcm_
 
 void AudioEffectPcmDelayInit(PcmDelayUnit *unit, uint8_t channel, uint32_t sample_rate);
 void AudioEffectPcmDelayApply(PcmDelayUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n);
+void AudioEffectPcmDelayApply24(PcmDelayUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n);
 
 void AudioEffectExciterInit(ExciterUnit *unit, uint8_t channel, uint32_t sample_rate);
 void AudioEffectExciterApply(ExciterUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n);
@@ -918,6 +957,14 @@ void AudioEffectLowLevelCompressorApply24(LowLevelCompressorUnit *unit, int32_t 
 
 void AudioEffectHowlingSuppressorFineInit(HowlingFineUnit *unit,uint32_t sample_rate);
 void AudioEffectHowlingSuppressorFineApply(HowlingFineUnit *unit, int16_t *pcm_in, int16_t *pcm_out, int32_t n);
+
+void AudioEffectEQApplyNull(EQUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n);
+void AudioEffectEQApplyNull24(EQUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n);
+
+
+void AudioEffectVirtualSurroundInit(VirtualSurroundUnit *unit, uint8_t channel, uint32_t sample_rate);
+void AudioEffectVirtualSurroundApply(VirtualSurroundUnit *unit, int16_t *pcm_in, int16_t *pcm_out, uint32_t n);
+void AudioEffectVirtualSurroundApply24(VirtualSurroundUnit *unit, int32_t *pcm_in, int32_t *pcm_out, uint32_t n);
 
 #ifdef  __cplusplus
 }

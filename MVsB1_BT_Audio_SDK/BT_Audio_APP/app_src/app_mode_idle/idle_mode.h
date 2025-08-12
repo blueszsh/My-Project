@@ -23,10 +23,6 @@ void SendEnterIdleModeMsg(void);
 void SendQuitIdleModeMsg(void);
 
 
-bool GetPowerOnRemindSoundPlayEnd(void);
-
-
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus 

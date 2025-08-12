@@ -46,18 +46,19 @@
 #include "bt_manager.h"
 #endif
 #include "hdmi_in_api.h"
-//static bool IsBackUpFlag = FALSE;
+#include "otg_host_hcd.h"
+#include "string.h"
+#include "otg_host_standard_enum.h"
+
 static bool MipsLog = TRUE;
-//#ifdef CFG_FUNC_BREAKPOINT_EN
- //TIMER TimerBreakPoint;
-//#endif
+
 #ifdef CFG_FUNC_CARD_DETECT
 volatile DETECT_STATE CardState = DETECT_STATE_IDLE;
 #endif
 #ifdef CFG_FUNC_UDISK_DETECT
 volatile DETECT_STATE UDiskState = DETECT_STATE_IDLE;
 #endif
-#ifdef CFG_FUNC_USB_DEVICE_DETECT
+#ifdef CFG_FUNC_USB_DEVICE_EN
 static DETECT_STATE USB_Device_State = DETECT_STATE_IDLE;
 #endif
 #ifdef CFG_LINEIN_DET_EN
@@ -65,6 +66,9 @@ static DETECT_STATE LineInState = DETECT_STATE_IDLE;
 #endif
 #ifdef CFG_COMMUNICATION_BY_USB
 static uint32_t sDevice_Init_state=0;// 1:inited    0:not init
+#endif
+#ifdef CFG_FUNC_DETECT_IPHONE
+uint8_t IsUdisk = 0;
 #endif
 
 extern uint32_t SysemMipsPercent;
@@ -82,7 +86,7 @@ extern volatile uint32_t gDeviceLineTimer;
 #ifdef HDMI_HPD_CHECK_DETECT_EN
 extern volatile uint32_t gDevicehdmiTimer;
 #endif
-#ifdef CFG_FUNC_USB_DEVICE_DETECT
+#ifdef CFG_FUNC_USB_DEVICE_EN
 extern volatile uint32_t gDeviceUSBDeviceTimer;
 #endif
 #ifdef CFG_FUNC_BREAKPOINT_EN
@@ -242,6 +246,95 @@ void SetUSBDeviceInitState(bool state)
 
 #endif
 
+
+extern void NVIC_DisableIRQ(IRQn_Type IRQn);
+extern uint32_t CmdErrCnt;
+
+extern uint8_t OtgPortLinkState;
+uint32_t temp_tick;
+extern uint32_t gSysTick;
+#define	otg_CommonUSB_Frame				(*(volatile uint16_t*)(0x40000300 + 0x0C))
+uint16_t otg_CommonUSB_Frame_temp = 0;
+extern uint8_t usb_sleep;
+bool usb_device_status()
+{
+	if(OtgPortLinkState == 6)
+	{
+		temp_tick = gSysTick;
+		if(usb_sleep)
+		{
+			uint16_t temp = otg_CommonUSB_Frame;
+			vTaskDelay(2);
+			if(temp != otg_CommonUSB_Frame)
+			{
+				usb_sleep = 0;
+			}
+			return 0;
+		}
+		else
+		{
+			return 1;
+		}
+	}
+	else if(OtgPortLinkState == 7)
+	{
+		if(usb_sleep)
+		{
+			uint16_t temp = otg_CommonUSB_Frame;
+			vTaskDelay(2);
+			if(temp != otg_CommonUSB_Frame)
+			{
+				usb_sleep = 0;
+			}
+			return 0;
+		}
+		if((gSysTick - temp_tick) > 500)
+		{
+			temp_tick = gSysTick;
+			if(otg_CommonUSB_Frame != otg_CommonUSB_Frame_temp)
+			{
+				//printf("%u %u\n",otg_CommonUSB_Frame_temp,otg_CommonUSB_Frame);
+				otg_CommonUSB_Frame_temp = otg_CommonUSB_Frame;
+				//sof变化了 说明处于连接状态
+				return 1;
+			}
+			else
+			{
+				//sof没有变化了
+				if( (OTG_PortGetDP()==1)  && (OTG_PortGetDM()== 0))
+				{
+					//处于sleep
+					return 1;
+				}
+				else
+				{
+					OTG_PortDisableDPPullUp();
+					OTG_PortDisablePullDown();
+					OTG_PortDisableDPPullUp();
+					OTG_PortEnablePullDown();
+					OtgPortLinkState = 0;
+					return 0;
+				}
+			}
+		}
+		else
+		{
+			return 1;
+		}
+	}
+	else
+	{
+		usb_sleep = 0;
+		return 0;
+	}
+}
+
+bool usb_device_link(void)
+{
+	return usb_device_status();
+}
+
+
 void InitDeviceDetect(void)
 {
 #ifdef FUNC_OS_EN
@@ -375,7 +468,7 @@ uint32_t DeviceDetect(void)
 #endif
 DetectCardExit:
 #ifdef CFG_FUNC_UDISK_DETECT
-#ifdef CFG_FUNC_USB_DEVICE_DETECT
+#ifdef CFG_FUNC_USB_DEVICE_EN
 	if(USB_Device_State != DETECT_STATE_IN)
 #endif
 	{
@@ -400,12 +493,16 @@ DetectCardExit:
 			else
 			{
 				Ret |= UDISK_IN_EVENT_BIT;
+				#ifdef CFG_FUNC_DETECT_IPHONE
+				void AppleChangeDected(void);//if mass storage
+				AppleChangeDected();
+                #endif
 			}
 		}
 	}
 #endif
 
-#ifdef CFG_FUNC_USB_DEVICE_DETECT
+#ifdef CFG_FUNC_USB_DEVICE_EN
 #ifdef CFG_FUNC_UDISK_DETECT
 	if(UDiskState != DETECT_STATE_IN)
 #endif
@@ -418,7 +515,8 @@ DetectCardExit:
 		
 		if(gDeviceUSBDeviceTimer <= DEVICE_USB_DEVICE_DETECT_TIMER)
 		{
-			if(OTG_PortDeviceIsLink())
+			//if(OTG_PortDeviceIsLink())
+			if(usb_device_link())
 			{
 				NewUDeviceState = DETECT_STATE_IN;
 			}
@@ -557,12 +655,17 @@ static void DevicePlugEventCheck(void)
 #ifdef CFG_FUNC_UDISK_DETECT	//usb host msg	
 	if(Plug & UDISK_IN_EVENT_BIT)
 	{
-		if(GetSysModeState(ModeUDiskAudioPlay) == ModeStateSusend)
+		#ifdef CFG_FUNC_DETECT_IPHONE
+		if(IsUdisk == TRUE)//if mass storage
+		#endif
 		{
-			SetSysModeState(ModeUDiskAudioPlay,ModeStateReady);
+			if(GetSysModeState(ModeUDiskAudioPlay) == ModeStateSusend)
+			{
+				SetSysModeState(ModeUDiskAudioPlay,ModeStateReady);
+			}
+			msgSend.msgId	= MSG_DEVICE_SERVICE_U_DISK_IN;
+			MessageSend(GetMainMessageHandle(), &msgSend);
 		}
-		msgSend.msgId	= MSG_DEVICE_SERVICE_U_DISK_IN;
-		MessageSend(GetMainMessageHandle(), &msgSend);
 	}
 	else if(Plug & UDISK_OUT_EVENT_BIT)
 	{
@@ -620,14 +723,21 @@ void DeviceServicePocess(uint16_t device_msgId)
 	if(gDeviceCheckTimer == 0)
 	{
 		gDeviceCheckTimer = DEVICE_DETECT_TIMER;
-
+		
 		DevicePlugEventCheck();
 		
 #if defined(CFG_RES_ADC_KEY_SCAN) || defined(CFG_RES_IR_KEY_SCAN) || defined(CFG_RES_CODE_KEY_USE)|| defined(CFG_ADC_LEVEL_KEY_EN) || defined(CFG_RES_IO_KEY_SCAN)
-		msgSend.msgId = KeyScan();
+		if(GetSystemMode() == ModeIdle)
+		{
+			msgSend.msgId = MSG_NONE;
+		}
+		else
+		{
+			msgSend.msgId = KeyScan();
+		}
 		if(msgSend.msgId != MSG_NONE)
 		{
-#if 0///def BT_TWS_SUPPORT	//BOEU
+#ifdef BT_TWS_SUPPORT	
 			if((GetBtManager()->twsState == BT_TWS_STATE_CONNECTED)&&(GetBtManager()->twsRole == BT_TWS_SLAVE))
 			{
 				is_need_send_to_master = TRUE;
@@ -1160,6 +1270,105 @@ void SlowDeviceEventProcess(uint16_t device_msgId)
 
 }
 #endif
+
+#ifdef CFG_FUNC_DETECT_IPHONE
+/**
+ * @brief  设置iPod充电电流
+ * @param  Current 充电电流
+ * @return 1-成功，0-失败
+ * @note
+ */
+uint16_t onlineBack = 0,onlineCnt = 0;
+
+bool UsbHostSetIpodChargeCurrent(int16_t Current)//if mass storage
+{
+	USB_CTRL_SETUP_REQUEST SetupPacket;
+	uint8_t CmdSetCurrent[8] = {0x40, 0x40, 0xf4, 0x01, 0xf4, 0x01, 0x00, 0x00};
+	uint8_t err;
+	CmdSetCurrent[4] = (uint8_t)(Current);
+	CmdSetCurrent[5] = (uint8_t)(Current >> 8);
+
+	memcpy((uint8_t *)&SetupPacket,(uint8_t *)CmdSetCurrent,8);
+
+	err = OTG_HostControlWrite(SetupPacket, NULL,0,200);
+	return err;
+}
+
+void AppleChangeDected(void)//if mass storage
+{
+	uint8_t OTG_HostInit(void);
+	extern uint16_t AppleidVendor;
+	extern bool OTG_HostEnumDevice(void);
+	uint8_t ret;
+	//ret = OTG_HostInit();
+	ret = TRUE;
+
+	OTG_HostControlInit();
+
+	if(!OTG_HostEnumDevice())
+	{
+		printf("APP HostEnumDevice() false!\n");
+		ret =  FALSE;
+	}
+	printf("AppleidVendor:\t%04X \n",AppleidVendor);
+	if(AppleidVendor==0x5ac)
+	{
+		UsbHostSetIpodChargeCurrent(500);
+		onlineBack = 1;
+		ret =  FALSE;
+	}
+
+	if(ret == FALSE)
+	{
+		IsUdisk = 0;
+	}
+	else
+	{
+		IsUdisk = 1;
+	}
+}
+
+void IphoneOnline(void)
+{
+	uint16_t online = 0;
+	if(IsUDiskLink())
+	{
+		online = 1;
+	}
+	else
+	{
+		if(onlineBack)
+		{
+			printf("Usb Remove.....\n");
+			SleepMain();
+			WDG_Disable();
+		}
+		online = 0;
+		onlineCnt = 0;
+		onlineBack = 0;
+	}
+//---------------------------------//
+	if(online != onlineBack)
+	{
+		onlineCnt++;
+		if(onlineCnt > 500)
+		{
+			onlineCnt = 0;
+
+			onlineBack = online;
+			if(onlineBack)
+			{
+			   printf("Usb Insert.....\n");
+			   WakeupMain();
+			   WDG_Disable();
+			   OTG_HostControlInit();
+			   AppleChangeDected();
+			}
+		}
+	}
+}
+#endif
+
 
 
 

@@ -21,7 +21,6 @@ extern "C"{
 void SarADC_Init(void);
 
 int16_t SarADC_LDOINVolGet(void);
-int16_t Get_ADC_SamplingVolGet(void);
 
 
 #ifdef __cplusplus

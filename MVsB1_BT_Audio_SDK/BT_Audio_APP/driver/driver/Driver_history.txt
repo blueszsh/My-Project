@@ -28,6 +28,43 @@ Shanghai Mountain View Silicon Co. Ltd. Copyright 2014, All rights reserved.
 版本历史：（采用倒序排列，最新版置顶）
 
 ------------------------------
+*2024-07-30  【 0.6.8  build @ Jul 30 2024 19:22:40 】
+size:403,424 bytes
+
+更新内容：
+	1. flash 驱动增加 SpiFlashReadUniqueID()/SpiFlashReadUniqueIDWpr() API
+	2. 增加dac快速上下电API AudioDAC_AllPowerDown_FastSafe等；
+	3. 增加时钟获取接口 Clock_AudioMclkGet API；
+
+------------------------------
+*2024-03-04  【 0.6.7  build @ Mar  4 2024 11:18:02 】
+size:398,796 bytes
+
+更新内容：
+	1. DAC增加2个API，AudioDAC_AllPowerOn_FastSafe(),DAC_LowEnergySet()
+		用于解决快速上下电，和低功耗的需求
+
+------------------------------
+*2024-01-29  【 0.6.6  build @ Jan 29 2024 17:15:17 】
+size:394,326 bytes
+
+更新内容：
+	1. i2S和spdif 做为slave时，提高采样率获取函数正确性。
+	2. audioADC提供低功耗API，AudioADC_AnaInitLowEnergy()。
+	3. audioDAC提供低功耗API，AudioDAC_AllPowerOnLowEnergy()。
+	2和3的修改，在音频性能略有损失，一个Channel 音频大约降低一个1mA电流。用户根据自己需要配置。
+
+------------------------------
+*2023-08-28  【 0.6.4  build @ Aug 28 2023 15:17:10 】
+size:389,994 bytes
+
+更新内容：
+	1. 修复spdif的设置采样率函数中采样率变量有可能出错的bug	
+	2. 修复pcm转spdif数据时，高于16bit时按照对其模式去配置
+	3. flash驱动修正初始化频率计算溢出Bug，并优化代码。
+	4. 修改中断源触发方式，目前除了BT和BLE外，其他中断均设置为边沿方式。
+
+------------------------------
 *2023-03-27  【    0.6.3  build @ Mar 27 2023 11:20:49】
 size:389,318 bytes
 更新内容：

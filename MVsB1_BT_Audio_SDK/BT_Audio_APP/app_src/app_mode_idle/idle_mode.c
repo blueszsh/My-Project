@@ -29,7 +29,6 @@
 #include "main_task.h"
 #include "reset.h"
 #include "backup.h"
-
 #include "mode_task_api.h"
 #include "adc.h"
 #include "adc_key.h"
@@ -67,7 +66,6 @@ extern volatile uint32_t gIdleRemindSoundTimeOutTimer;
 #define NEED_POWER_ON				1
 #define WAIT_POWER_ON_REMIND_SOUND	2
 #define ENTER_POWER_ON				3
-
 
 static struct
 {
@@ -272,33 +270,23 @@ void PowerOnRemindSound(void)
 		IdleMode.DeepSleepFlag = FALSE;
 		return; 		
 	}
-#endif	
-    if(update_ok)
-    {
-	   IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_UPDATEOK, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
-    }
-	else
-	{
-	   #if CHARGE_EN && fun_idle_en
-	   if(Idle_sw.idle_mode == on_line)
-	   {
-         IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_MUTE, REMIND_PRIO_SYS);
-         Machine_state=Machine_FakePoweroff;  
-	   }
-	   else
-	   #endif
-	   {
-	     IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_POWER_ON, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
-         Machine_state=Machine_poweron_tone;//zsh A2
-         Idle_sw.idle_mode = off_line;
-	   }
-	}
-	
-	PA_contral();
-	
-	IdleMode.DeepSleepFlag = FALSE;
-	gIdleRemindSoundTimeOutTimer = 0;
 #endif
+
+#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER) && defined(CFG_TWS_SOUNDBAR_APP)
+	if(btManager.twsState == BT_TWS_STATE_CONNECTED)
+	{
+		vTaskDelay(1000); //延时等从机也起来后再一起报提示音
+	}
+#endif
+
+	{
+		IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_KAIJI, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
+		IdleMode.DeepSleepFlag = FALSE;
+		gIdleRemindSoundTimeOutTimer = 0;
+	}
+
+
+#endif//CFG_FUNC_REMIND_SOUND_EN
 }
 
 void PowerDownRemindSound(void)
@@ -311,13 +299,9 @@ void PowerDownRemindSound(void)
 		return;			
 	}
 #endif	
-	IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_MUTE, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
-//	IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_POWER_OF, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
-    //Machine_state=Machine_Poweroff_tone;//zsh A2
-    Idle_sw.idle_mode = on_line;
+	IdleMode.RemindSoundFlag = RemindSoundServiceItemRequest(SOUND_REMIND_GUANJI, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
 	gIdleRemindSoundTimeOutTimer = 0;
-   // RemindSoundItemRequestDisable();//boeu注释
-  
+	RemindSoundItemRequestDisable();
 #endif
 }
 
@@ -333,25 +317,6 @@ bool GetPowerRemindSoundPlayEnd(void)
 #endif
 	return FALSE;
 }
-
-/*
-    boeu 开机提示音是否播放结束   Tone_play_state
-*/
-bool GetPowerOnRemindSoundPlayEnd(void)
-{
-#ifdef  CFG_FUNC_REMIND_SOUND_EN
-	if(IdleMode.RemindSoundFlag)
-	{
-		if(!RemindSoundIsPlay() || Tone_play_state==0)
-			IdleMode.RemindSoundFlag = FALSE;
-		return TRUE;
-	}
-#endif
-	return FALSE;
-}
-
-
-
 #ifdef	CFG_IDLE_MODE_POWER_KEY
 void PowerKeyModeInit(void)
 {
@@ -378,11 +343,6 @@ void IdleModeConfig(void)
 {
 #ifdef	CFG_IDLE_MODE_POWER_KEY
 	PowerKeyModeInit();
-#endif
-
-
-#ifdef CFG_IDLE_MODE_DEEP_SLEEP
-
 #endif
 
 	EnterIdleModeScanInit();
@@ -423,7 +383,7 @@ bool IdleModeInit(void)
 #endif	
 
 #ifdef  CFG_FUNC_REMIND_SOUND_EN	
-	if((!IdleMode.FristPowerOnFlag)||Idle_sw.power_off_tone==tone_start)
+	if(!IdleMode.FristPowerOnFlag)
 	{
 		PowerDownRemindSound();
 	}
@@ -434,17 +394,6 @@ bool IdleModeInit(void)
 		BtFastPowerOff();
 #endif
 	IdleMode.FristPowerOnFlag = FALSE;
-
-#if 0//def CFG_DMA_RGB_LED_EN
-	mainAppCt.rgb_mode=0xff;
-	mainAppCt.temp_rgb_mode = RGB_Effect_PowerOff_Charge;
-#endif
-#if 0//LEDS_mix_RGB_EN
-RGB_curr_effect = RGB_Effect_PowerOff_Charge;
-#endif
-
-		   
-
 	return TRUE;
 }
 
@@ -452,8 +401,6 @@ RGB_curr_effect = RGB_Effect_PowerOff_Charge;
 bool IdleModeDeinit(void)
 {
 	DBG("Idle Mode Deinit\n");
-
-	
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();
@@ -495,7 +442,7 @@ void SendEnterIdleModeMsg(void)
 void SendQuitIdleModeMsg(void)
 {
 	MessageContext		msgSend;
-	
+
 	msgSend.msgId = MSG_QUIT_IDLE_MODE;
 	MessageSend(GetMainMessageHandle(), &msgSend);	
 }
@@ -503,7 +450,6 @@ void SendQuitIdleModeMsg(void)
 
 void IdleModeRun(uint16_t msgId)
 {
-
 #if	defined(CFG_IDLE_MODE_POWER_KEY) && (POWERKEY_MODE != POWERKEY_MODE_PUSH_BUTTON)
 	if(IdleMode.PowerKeyWakeUpCheckFlag)
 	{	
@@ -560,8 +506,12 @@ void IdleModeRun(uint16_t msgId)
 	#endif	
 		PauseAuidoCore();
 		UBaseType_t pri = uxTaskPriorityGet(NULL);
-#if defined(CFG_APP_BT_MODE_EN)
-		if(sys_parameter.bt_BackgroundType != BT_BACKGROUND_DISABLE)
+#ifdef CFG_APP_BT_MODE_EN
+		if(sys_parameter.bt_BackgroundType != BT_BACKGROUND_DISABLE
+#ifdef BT_SNIFF_ENABLE
+				&& !SoftFlagGet(SoftFlagIdleModeEnterSniff)
+#endif
+			)
 		{
 			vTaskDelay(50);
 			//bb reset
@@ -583,19 +533,34 @@ void IdleModeRun(uint16_t msgId)
 		
  		NVIC_DisableIRQ(Timer2_IRQn);
 	
-		DeepSleeping();
-		
+#ifdef BT_SNIFF_ENABLE
+ 		if(SoftFlagGet(SoftFlagIdleModeEnterSniff))
+ 		{
+ 			DeepSleeping_BT();
+ 		}
+ 		else
+#endif
+ 		{
+ 			DeepSleeping();
+ 		}
+
 	 	Timer_Config(TIMER2,1000,0);
 	 	Timer_Start(TIMER2);
 	 	Timer_InterruptFlagClear(TIMER2, UPDATE_INTERRUPT_SRC);
 		NVIC_EnableIRQ(Timer2_IRQn);		
 
-#if defined(CFG_APP_BT_MODE_EN)
-		if(sys_parameter.bt_BackgroundType != BT_BACKGROUND_DISABLE)
-		{
-#ifdef BT_TWS_SUPPORT
-			tws_link_state_set(BT_TWS_STATE_DISCONNECT);
+#ifdef CFG_APP_BT_MODE_EN
+		if(sys_parameter.bt_BackgroundType != BT_BACKGROUND_DISABLE
+#ifdef BT_SNIFF_ENABLE
+				&& !SoftFlagGet(SoftFlagIdleModeEnterSniff)
 #endif
+			)
+		{
+			#ifdef BT_TWS_SUPPORT
+			if (btManager.twsState == BT_TWS_STATE_CONNECTED ){
+				tws_link_state_set(BT_TWS_STATE_DISCONNECT);
+			}
+			#endif
 			WDG_Feed();
 			BtStackServiceStart();
 			WDG_Feed();
@@ -605,16 +570,27 @@ void IdleModeRun(uint16_t msgId)
 		IRKeyInit();//清除多余的按键
 #endif
 
-#ifdef CFG_RES_AUDIO_I2SOUT_EN
-		{
-			extern void AudioI2sOutParamsSet(void);
-			AudioI2sOutParamsSet();
-		}
+//#ifdef CFG_RES_AUDIO_I2SOUT_EN
+//		AudioI2sOutParamsSet();
+//#endif
+
+//#ifdef CFG_FUNC_I2S_MIX_MODE
+//		AudioI2s0ParamsSet();
+//		AudioI2s1ParamsSet();
+//#endif
+
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN		 
+		AudioSpdifOutParamsSet();
 #endif
+
 		vTaskPrioritySet(NULL, pri);
 		AudioCoreServiceResume();
 		osTaskDelay(10);// for printf 
 	
+#ifdef BT_SNIFF_ENABLE
+		SoftFlagDeregister(SoftFlagIdleModeEnterSniff);
+#endif
+
 		IdleMode.AutoPowerOnState = NEED_POWER_ON;
 	}
 #endif	
@@ -622,32 +598,27 @@ void IdleModeRun(uint16_t msgId)
 	switch(IdleMode.AutoPowerOnState)
 	{
 		case NEED_POWER_ON:
+			WDG_Feed();
 			PowerOnRemindSound();
+			WDG_Feed();
+
 			IdleMode.AutoPowerOnState = WAIT_POWER_ON_REMIND_SOUND;
 			break;
 		case WAIT_POWER_ON_REMIND_SOUND:
-			//DBG("WAIT_POWER_ON_REMIND_SOUND\n");
-			//if(!GetPowerRemindSoundPlayEnd())
-			if(!GetPowerOnRemindSoundPlayEnd())//boeu
-			{
-			    DBG("WAIT_POWER_ON_REMIND_SOUND  111\n");
-				//IdleMode.AutoPowerOnState = ENTER_POWER_ON;//原始包
-				#if fun_idle_en && CHARGE_EN
-				  if(Idle_sw.idle_mode == on_line)//插充电开机,停留在IDLE
-				  {
-				     IdleMode.AutoPowerOnState = POWER_ON_IDLE;
-					 DBG("WAIT_POWER_ON_REMIND_SOUND  idle on_line\n");
-				  }
-				  else
-				#endif  
-				  {
-                     IdleMode.AutoPowerOnState = ENTER_POWER_ON;
-					 DBG("WAIT_POWER_ON_REMIND_SOUND  idle off_line\n");
-				  }
-			}
+			if(!GetPowerRemindSoundPlayEnd())
+				IdleMode.AutoPowerOnState = ENTER_POWER_ON;	
 			break;
 		case ENTER_POWER_ON:
 			IdleMode.AutoPowerOnState = POWER_ON_IDLE;
+#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER) && defined(CFG_TWS_SOUNDBAR_APP)
+			if(btManager.twsState == BT_TWS_STATE_CONNECTED)
+			{
+				WDG_Feed();
+				vTaskDelay(1000); //延时等从机也起来后再一起报提示音
+				tws_sync_reinit();
+				WDG_Feed();
+			}
+#endif
 			SendQuitIdleModeMsg();
 			break;
 		case POWER_ON_IDLE:
@@ -662,7 +633,8 @@ void IdleModeRun(uint16_t msgId)
 		case MSG_POWER:
 		case MSG_POWERDOWN:
 		case MSG_DEEPSLEEP:
-#if 0//def CFG_IDLE_MODE_POWER_KEY
+		case MSG_BT_SNIFF:
+#ifdef CFG_IDLE_MODE_POWER_KEY
 			if(SoftFlagGet(SoftFlagIdleModeEnterPowerDown)
 #ifdef	CFG_FUNC_REMIND_SOUND_EN
 			 && (!GetPowerRemindSoundPlayEnd())
@@ -670,12 +642,6 @@ void IdleModeRun(uint16_t msgId)
 			 )
 				break;
 #endif
-
-#ifdef	CFG_FUNC_REMIND_SOUND_EN
-			 if(!GetPowerRemindSoundPlayEnd())
-#endif
-				break;
-
 			if(IdleMode.AutoPowerOnState == POWER_ON_IDLE && (!GetPowerRemindSoundPlayEnd()))
 				IdleMode.AutoPowerOnState = NEED_POWER_ON;
 			break;
@@ -683,7 +649,6 @@ void IdleModeRun(uint16_t msgId)
 			CommonMsgProccess(msgId);
 			break;
 	}
-
 }
 
 
@@ -696,10 +661,7 @@ extern osMutexId SysModeMutex;
 void IdleModeEnter(void)
 {
 	if(GetSysModeState(ModeIdle) == ModeStateInit || GetSysModeState(ModeIdle) == ModeStateRunning )
-	{
-	   APP_DBG("GetSysModeState()==%d  return\n",GetSysModeState(ModeIdle));
 		return;
-	}
 	osMutexLock(SysModeMutex);
 	if(IDLE_NOT_REQUIRED_MODE & BIT(mainAppCt.SysCurrentMode))
 		IdleMode.SavePrevMode = mainAppCt.SysPrevMode;
@@ -712,20 +674,40 @@ void IdleModeEnter(void)
 	SysModeEnter(ModeIdle);
 	osMutexUnlock(SysModeMutex);
 	APP_DBG("enter idle mode\n");
-    Machine_state=Machine_FakePoweroff; 
-    Idle_sw.idle_mode = on_line;
-  
 }
 
 void IdleModeExit(void)
 {
-	if(IDLE_NOT_REQUIRED_MODE & BIT(IdleMode.SavePrevMode))
-		IdleMode.SavePrevMode = ModeBtAudioPlay;
+#if (defined(BT_TWS_SUPPORT) && (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE))
+		if(mainAppCt.SysPrevMode == ModeTwsSlavePlay)
+		{
+			if(btManager.twsState == BT_TWS_STATE_CONNECTED)
+			{
+				IdleMode.SavePrevMode = mainAppCt.SysPrevMode;
+			}
+			else
+			{
+				IdleMode.SavePrevMode = ModeBtAudioPlay;
+			}
+		}
+		printf("CurrMode %d,PrevMode %d,  dd %d\n",mainAppCt.SysCurrentMode,mainAppCt.SysPrevMode,IdleMode.SavePrevMode);
+#else
+		if(IDLE_NOT_REQUIRED_MODE & BIT(IdleMode.SavePrevMode))
+				IdleMode.SavePrevMode = ModeBtAudioPlay;
+#endif
+
 	osMutexLock(SysModeMutex);
 	SysModeEnter(IdleMode.SavePrevMode);
 	osMutexUnlock(SysModeMutex);
 	APP_DBG("exit idle mode\n");
-  
+
+#ifdef BT_SNIFF_ENABLE
+	if(sniff_wakeup_get())
+	{
+		sniff_wakeup_set(0);
+	}
+#endif
+
 }
 
 #else

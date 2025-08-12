@@ -24,6 +24,7 @@
 #include "audio_effect_api.h"
 #include "comm_param.h"
 #include "audio_effect_flash_param.h"
+#include "audio_effect_class.h"
 
 #ifdef CFG_FUNC_MUSIC_EQ_MODE_EN
 uint8_t  EqMode_Addr; 		
@@ -6508,6 +6509,8 @@ void Communication_Effect_HowlingFine(uint8_t Control, EffectNode* addr, uint8_t
 }
 #endif //end of CFG_AUDIO_EFFECT_HOWLING_SUPPRESSOR_FINE_EN
 
+
+
 #include "audio_effect.h"
 EffectNode* FindEffectNode(uint8_t index);
 void Communication_Effect_After_0x80(uint8_t Control, uint8_t *buf, uint32_t len)
@@ -6723,6 +6726,22 @@ void Communication_Effect_After_0x80(uint8_t Control, uint8_t *buf, uint32_t len
 			Communication_Effect_HowlingFine(Control, node, buf, len);
 			break;
 #endif
+#if CFG_AUDIO_EFFECT_VIRTUAL_SURROUND_EN
+		case VIRTUAL_SURROUND:
+			Communication_Effect_VirtualSurround(Control, node, buf, len);
+			break;
+#endif
+#if CFG_AUDIO_EFFECT_BUTTERWORTH
+		case Butterworth:
+			Communication_Effect_ButterWorth(Control, node, buf, len);
+			break;
+#endif
+#if CFG_AUDIO_EFFECT_DYNAMIC_EQ
+		case DynamicEQ:
+			Communication_Effect_DynamicEQ(Control, node, buf, len);
+			break;
+#endif
+
 		default:
 			break;
 	}
@@ -6820,6 +6839,10 @@ void Communication_Effect_Config(uint8_t Control, uint8_t *buf, uint32_t len)
 	{
 		if(len > 0)// if(len = 0) {polling all parameter}
 		{
+			if((len==1)&&(buf[0]==0xf0))//user define,audio class
+			{
+				return;
+			}
 			memset(tx_buf, 0, sizeof(tx_buf));
 			tx_buf[0] = Control;
 			Communication_Effect_Send(tx_buf, 1);
@@ -6885,6 +6908,15 @@ void UsbLoadAudioMode(uint16_t len,uint8_t *buff)
 				position++;
 			}
 	 	}
+#ifdef BT_PROFILE_BQB_ENABLE
+		else if((buff[position] == 'B') && (buff[position+1] == 'T') && (buff[position+2] == '+'))
+		{
+			extern void bt_bqb_cmd_process(uint8_t *data);
+			bt_bqb_cmd_process(&buff[position+3]);
+
+			break;
+		}
+#endif//BT_PROFILE_BQB_ENABLE
 		else // serch start code....
 		{
 			position++;

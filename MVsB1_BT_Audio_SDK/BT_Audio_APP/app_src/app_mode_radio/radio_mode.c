@@ -52,13 +52,11 @@
 #include "audio_effect_flash_param.h"
 #include "mode_task_api.h"
 
-
 #ifdef CFG_APP_RADIOIN_MODE_EN
 
 #define RADIO_PLAY_TASK_STACK_SIZE		512//1024
 #define RADIO_PLAY_TASK_PRIO			3
 #define RADIO_NUM_MESSAGE_QUEUE			10
-
 #define RADIO_SOURCE_NUM				APP_SOURCE_NUM
 
 typedef struct _RadioPlayContext
@@ -76,7 +74,6 @@ typedef struct _RadioPlayContext
 	uint32_t 			SampleRate;
 
 }RadioPlayContext;
-
 
 /**根据appconfig缺省配置:DMA 8个通道配置**/
 /*1、cec需PERIPHERAL_ID_TIMER3*/
@@ -110,8 +107,13 @@ static uint8_t sDmaChannelMap[29] =
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
+#if defined CFG_RES_AUDIO_SPDIFOUT_EN || defined CFG_FUNC_SPDIF_MIX_MODE
+	6,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_TX,		    //8 SPDIF_RX /TX same chanell
+#else
 	255,//PERIPHERAL_ID_SDPIF_RX,		//8 SPDIF_RX /TX same chanell
 	255,//PERIPHERAL_ID_SDPIF_TX,		//8 SPDIF_RX /TX same chanell
+#endif
 	255,//PERIPHERAL_ID_SPIM_RX,		//9
 	255,//PERIPHERAL_ID_SPIM_TX,		//10
 	255,//PERIPHERAL_ID_UART0_TX,		//11
@@ -153,7 +155,6 @@ static uint8_t sDmaChannelMap[29] =
 	255,//PERIPHERAL_ID_ADC,     		//26
 	255,//PERIPHERAL_ID_SOFTWARE,		//27
 };
-
 
 static RadioPlayContext			*sRadioPlayCt = NULL;
 RADIO_CONTROL 					*gRadioControl = NULL;
@@ -217,7 +218,6 @@ uint8_t RadioSearchRead(uint16_t freq)
 	return QN8035SearchRead(freq);
 #endif
 }
-
 
 static uint16_t RadioGetBaseFreq(void)
 {
@@ -403,7 +403,7 @@ void RadioTimerCB(void* unused)
 			}
 			break;
 
-		case RADIO_STATUS_PREVIEW: //
+		case RADIO_STATUS_PREVIEW: 
 
 			break;
 
@@ -461,18 +461,11 @@ void RadioPlayResFree(void)
 		sRadioPlayCt->ADCFIFO = NULL;
 	}
 
-#if 0
-#if	defined(CFG_FUNC_REMIND_SOUND_EN)
-	AudioCoreSourceDeinit(REMIND_SOURCE_NUM);
-#endif
-#endif
 	if(gRadioControl != NULL)
 	{
 		osPortFree(gRadioControl);
 		gRadioControl = NULL;
-	}
-
-	
+	}	
 }
 
 bool RadioPlayResMalloc(uint16_t SampleLen)
@@ -515,7 +508,7 @@ void RadioPlayResInit(void)
 	AudioIOSet.Channels = 2;
 	AudioIOSet.Net = DefaultNet;
 #if (RADIO_INPUT_CHANNEL == ANA_INPUT_CH_LINEIN3)
-	AudioIOSet.DataIOFunct = AudioADC1DataGet;
+	AudioIOSet.DataIOFunc = AudioADC1DataGet;
 	AudioIOSet.LenGetFunc = AudioADC1DataLenGet;
 #else
 	AudioIOSet.DataIOFunc = AudioADC0DataGet;
@@ -533,27 +526,6 @@ void RadioPlayResInit(void)
 	{
 		DBG("Radioplay source error!\n");
 	}
-
-#if 0
-#ifdef CFG_FUNC_REMIND_SOUND_EN
-	//Core Soure2 Para
-
-	DecoderSourceNumSet(REMIND_SOURCE_NUM,DECODER_REMIND_CHANNEL);
-	memset(&AudioIOSet, 0, sizeof(AudioCoreIO));
-	AudioIOSet.Adapt = STD;
-	AudioIOSet.Sync = FALSE;
-	AudioIOSet.Channels = 1;
-	AudioIOSet.Net = DefaultNet;
-	AudioIOSet.DataIOFunct = RemindDecoderPcmDataGet;
-	AudioIOSet.LenGetFunc = ;//需要api
-
-	if(!AudioCoreSourceInit(&AudioIOSet, sMediaPlayCt->SourceNum))
-	{
-		DBG("Remind source error!\n");
-		return FALSE;
-	}
-#endif
-#endif
 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 	sRadioPlayCt->AudioCoreRadio->AudioEffectProcess = (AudioCoreProcessFunc)AudioMusicProcess;
@@ -575,12 +547,8 @@ void RadioPlayResInit(void)
 bool RadioPlayInit(void)
 {
 	APP_DBG("Radio Mode init\n");
-
 	DMA_ChannelAllocTableSet(sDmaChannelMap);//FMIn
 
-#ifdef CFG_FUNC_AUDIO_EFFECT_EN
-	//音效参数遍历，确定系统帧长，待修改，sam, mark
-#endif
 	if(!ModeCommonInit())
 	{
 		return FALSE;
@@ -592,11 +560,10 @@ bool RadioPlayInit(void)
 	}
 	sRadioPlayCt->SampleRate = CFG_PARA_SAMPLE_RATE;	
 	RadioPlayResInit();
-
- 
+	
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 #ifdef CFG_EFFECT_PARAM_IN_FLASH_EN
-	//mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
+	mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
 #else
 	mainAppCt.EffectMode = EFFECT_MODE_NORMAL;
 #endif
@@ -661,11 +628,11 @@ bool RadioPlayInit(void)
 	else
 	{
 		APP_DBG("err: radio 硬件异常!!!\n");
+		AudioCoreSourceEnable(RADIO_SOURCE_NUM);
 		//return FALSE;
 	}
 
 	//FM音频输出到audio core
-	
 #ifdef CFG_FUNC_REMIND_SOUND_EN
 	if(RemindSoundServiceItemRequest(SOUND_REMIND_FMMODE, REMIND_PRIO_NORMAL) == FALSE)
 	{
@@ -674,20 +641,15 @@ bool RadioPlayInit(void)
 			HardWareMuteOrUnMute();
 		}
 	}
-#endif
-
-#ifndef CFG_FUNC_REMIND_SOUND_EN
+#else
 	if(IsAudioPlayerMute() == TRUE)
 	{
 		HardWareMuteOrUnMute();
 	}
 #endif
-
-
-  Save_task_state(Task_fm);
-  T_FM_inf.play_state  =_Music_play;
-  PA_contral();
-  
+#ifdef CFG_FUNC_LINE_MIX_MODE
+	AudioCoreSourceUnmute(LINE_SOURCE_NUM,1,1);
+#endif
 	return TRUE;
 }
 
@@ -802,14 +764,6 @@ void RadioPlayRun(uint16_t msgId)
 			break;
 
 		case MSG_DECODER_STOPPED:
-#if 0//def CFG_FUNC_REMIND_SOUND_EN
-			{
-				MessageContext		msgSend;
-
-				msgSend.msgId = msgId;
-				MessageSend(GetRemindSoundServiceMessageHandle(), &msgSend);//提示音期间转发解码器消息。
-			}
-#endif
 			break;
 
 		default:
@@ -829,9 +783,6 @@ bool RadioPlayDeinit(void)
 	{
 		HardWareMuteOrUnMute();
 	}
-
-  T_FM_inf.play_state  =_Music_stop;
-  PA_contral();
 	
 	PauseAuidoCore();
 	

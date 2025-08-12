@@ -12,13 +12,28 @@ extern BT_CONFIGURATION_PARAMS		*btStackConfigParams;
 
 #include "debug.h"
 #if (BLE_SUPPORT == ENABLE)
+//#ifndef BLE_NAME_TOFLASH
+#if (defined(BT_TWS_SUPPORT) && (TWS_PAIRING_MODE != CFG_TWS_ROLE_RANDOM) && (TWS_PAIRING_MODE != CFG_TWS_PEER_MASTER) && (TWS_PAIRING_MODE != CFG_TWS_PEER_SLAVE))
+extern int32_t BtDeviceBleNameSet(uint8_t* deviceName, uint8_t deviceLen);
+
+//const uint8_t advertisement_data[] = {
+//	0x02, 0x01, 0x02,		//flag:LE General Discoverable
+//	0x03, 0x03, 0x00, 0xab,	//16bit service UUIDs
+//};
+const uint8_t advertisement_data[] = {
+	0x02, 0x01, 0x1A,		//flag:LE General Discoverable
+	16,	 0xff, 0xd9, 0x06, //flag + mac 6Bytes + mac 6bytes
+};
+
+#else
 
 const uint8_t advertisement_data[] = {
 	0x02, 0x01, 0x02,		//flag:LE General Discoverable
 	0x03, 0x03, 0x00, 0xab,	//16bit service UUIDs
-	9,   0x09, 'B', 'P', '1', '0', '-','B','L','E',//
+//	9,   0x09, 'B', 'P', '1', '0', '-','B','L','E',//
 };
 
+#endif
 uint8_t gAdvertisementData[50]; //保存广播数据
 uint8_t gResponseData[50]; //保存广播数据
 	
@@ -116,11 +131,22 @@ int16_t gap_att_write(uint16_t con_handle, uint16_t attribute_handle, uint16_t t
 int8_t InitBlePlaycontrolProfile(void)
 {
 	uint8_t adv_len = 0;
+	uint8_t offset = 0;
 	//register ble callback funciton
 	BleAppCallBackRegister(BLEStackCallBackFunc);
 
 	memcpy(g_playcontrol_app_context.ble_device_addr, btStackConfigParams->ble_LocalDeviceAddr, 6);
+
+#ifdef BT_TWS_SUPPORT
+#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
+	g_playcontrol_app_context.ble_device_role = CENTRAL_DEVICE;
+#else
 	g_playcontrol_app_context.ble_device_role = PERIPHERAL_DEVICE;
+#endif
+
+#else
+	g_playcontrol_app_context.ble_device_role = PERIPHERAL_DEVICE;
+#endif
 
 	g_playcontrol_profile.profile_data 	= (uint8_t *)profile_data;//g_profile_data;
 	g_playcontrol_profile.attr_read		= att_read;
@@ -135,32 +161,82 @@ int8_t InitBlePlaycontrolProfile(void)
 	g_gap_mode.connectable_mode		= UNDIRECTED_CONNECTABLE_MODE;
 	g_gap_mode.bondable_mode		= NON_BONDABLE_MODE;
 	SetGapMode(g_gap_mode);
-
+#ifndef BLE_NAME_TOFLASH
 	adv_len = sizeof(advertisement_data);
 	memcpy(&gAdvertisementData[0], (uint8_t *)advertisement_data, adv_len);
-
-//	gAdvertisementData[offset] = (strlen(btStackConfigParams->ble_LocalDeviceName)+1);
-//	gAdvertisementData[offset+1] = 0x09;
-//	memcpy(&gAdvertisementData[offset+2], btStackConfigParams->ble_LocalDeviceName, strlen(btStackConfigParams->ble_LocalDeviceName));
-//	adv_len += (2+strlen(btStackConfigParams->ble_LocalDeviceName));
-	
+#else
+	offset = adv_len = sizeof(advertisement_data);
+	memcpy(&gAdvertisementData[0], (uint8_t *)advertisement_data, offset);
+	gAdvertisementData[offset] = (strlen(btStackConfigParams->ble_LocalDeviceName)+1);
+	gAdvertisementData[offset+1] = 0x09;
+	memcpy(&gAdvertisementData[offset+2], btStackConfigParams->ble_LocalDeviceName, strlen(btStackConfigParams->ble_LocalDeviceName));
+	adv_len += (2+strlen(btStackConfigParams->ble_LocalDeviceName));
+#endif
 	SetAdvertisingData((uint8_t *)gAdvertisementData, adv_len);
 
 	return 0;
+}
+
+/************************************************************************************
+ * 此函数修改BLE广播内容:更新BLE名称
+ * 注意:此函数请在非蓝牙协议栈任务中调度处理, 因为函数中有调度vTaskDelay延时函数
+ * 安卓手机请使用APP: nRF Connect 来核对BLE广播数据的更新,其他APP可能存在BLE广播内容更新不及时问题
+ ************************************************************************************/
+void BleAdvUpdate(uint8_t *nameStr)
+{
+	uint8_t adv_len = 0;
+	uint8_t offset = 0;
+	uint16_t name_len = 0;
+	
+#ifdef BLE_NAME_TOFLASH
+	if(nameStr == NULL)
+		return;
+	
+	name_len = strlen(nameStr);
+	
+	if((name_len == 0)||(name_len >= (31-sizeof(advertisement_data))))
+		return;
+
+	//1.关闭广播
+	DisableAdvertising();
+	//2.延时
+	vTaskDelay(20);
+	//3.更新广播内容
+	memset(btStackConfigParams->ble_LocalDeviceName, 0, BLE_NAME_SIZE);
+	strcpy((void *)btStackConfigParams->ble_LocalDeviceName, nameStr);
+	
+	memset(gAdvertisementData, 0, 50);
+	
+	offset = adv_len = sizeof(advertisement_data);
+	memcpy(&gAdvertisementData[0], (uint8_t *)advertisement_data, offset);
+	gAdvertisementData[offset] = (strlen(btStackConfigParams->ble_LocalDeviceName)+1);
+	gAdvertisementData[offset+1] = 0x09;
+	memcpy(&gAdvertisementData[offset+2], btStackConfigParams->ble_LocalDeviceName, strlen(btStackConfigParams->ble_LocalDeviceName));
+	adv_len += (2+strlen(btStackConfigParams->ble_LocalDeviceName));
+
+    SetAdvertisingData((uint8_t *)gAdvertisementData, adv_len);
+	//4.重新开启广播
+	EnableAdvertising();
+#endif
 }
 
 
 void BleAdvSet(void)
 {
 	uint8_t adv_len = 0;
+	uint8_t offset = 0;
+
+	#ifndef BLE_NAME_TOFLASH
     adv_len = sizeof(advertisement_data);
     memcpy(&gAdvertisementData[0], (uint8_t *)advertisement_data, adv_len);
-
-//    gAdvertisementData[offset] = (strlen(btStackConfigParams->ble_LocalDeviceName)+1);
-//    gAdvertisementData[offset+1] = 0x09;
-//    memcpy(&gAdvertisementData[offset+2], btStackConfigParams->ble_LocalDeviceName, strlen(btStackConfigParams->ble_LocalDeviceName));
-//    adv_len += (2+strlen(btStackConfigParams->ble_LocalDeviceName));
-
+	#else
+	offset = adv_len = sizeof(advertisement_data);
+	memcpy(&gAdvertisementData[0], (uint8_t *)advertisement_data, offset);
+	gAdvertisementData[offset] = (strlen(btStackConfigParams->ble_LocalDeviceName)+1);
+	gAdvertisementData[offset+1] = 0x09;
+	memcpy(&gAdvertisementData[offset+2], btStackConfigParams->ble_LocalDeviceName, strlen(btStackConfigParams->ble_LocalDeviceName));
+	adv_len += (2+strlen(btStackConfigParams->ble_LocalDeviceName));
+	#endif
     SetAdvertisingData((uint8_t *)gAdvertisementData, adv_len);
 }
 
@@ -210,26 +286,29 @@ int16_t att_write(uint16_t con_handle, uint16_t attribute_handle, uint16_t trans
 			case ATT_CHARACTERISTIC_GAP_DEVICE_NAME_01_VALUE_HANDLE:
 				if((buffer)&&(buffer_size))
 				{
-					//extern int32_t BtDeviceBleNameSet(uint8_t* deviceName, uint8_t deviceLen);
 					//BT_DBG("name: %s\n", buffer);
 
 					if(buffer_size > BT_NAME_SIZE)
 						buffer_size = BT_NAME_SIZE;
 
-					//BtDeviceBleNameSet(buffer, buffer_size);
+					#ifdef BLE_NAME_TOFLASH
+					BtDeviceBleNameSet(buffer, buffer_size);
 
 					{
 						uint8_t offset = 0;
 						uint8_t adv_len = 0;
 						offset = adv_len = sizeof(advertisement_data);
 
-						gAdvertisementData[offset] = (strlen((char*)btStackConfigParams->ble_LocalDeviceName)+1);
+						offset = adv_len = sizeof(advertisement_data);
+						memcpy(&gAdvertisementData[0], (uint8_t *)advertisement_data, offset);
+						gAdvertisementData[offset] = (strlen(btStackConfigParams->ble_LocalDeviceName)+1);
 						gAdvertisementData[offset+1] = 0x09;
-						memcpy(&gAdvertisementData[offset+2], btStackConfigParams->ble_LocalDeviceName, strlen((char*)btStackConfigParams->ble_LocalDeviceName));
-						adv_len += (2+strlen((char*)btStackConfigParams->ble_LocalDeviceName));
+						memcpy(&gAdvertisementData[offset+2], btStackConfigParams->ble_LocalDeviceName, strlen(btStackConfigParams->ble_LocalDeviceName));
+						adv_len += (2+strlen(btStackConfigParams->ble_LocalDeviceName));
 						
 						SetAdvertisingData((uint8_t *)gAdvertisementData, adv_len);
 					}
+					#endif
 				}
 				return 0;
 				
@@ -339,6 +418,85 @@ int16_t app_att_write(uint16_t con_handle, uint16_t attribute_handle, uint16_t t
 			return 0;
 	}
 	return 0;
+}
+
+#if (defined(BT_TWS_SUPPORT)&&(TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER))
+void ble_advertisement_data_update(void)
+{
+	uint8_t offset = 0;
+	uint8_t adv_len = 0;
+
+	if(g_playcontrol_app_context.ble_device_role == CENTRAL_DEVICE)
+		return;
+
+	offset = adv_len = sizeof(advertisement_data);
+//	memcpy(&gAdvertisementData[0], (uint8_t *)advertisement_data, adv_len);
+	gAdvertisementData[0] = 0x02;
+	gAdvertisementData[1] = 0x01;
+	gAdvertisementData[2] = 0x1A;
+
+	gAdvertisementData[3] = 16; //len
+#ifdef TWS_FILTER_USER_DEFINED
+	gAdvertisementData[3] += 6; //len
+#endif
+	gAdvertisementData[4] = 0xff;
+	gAdvertisementData[5] = 0xd9;
+	gAdvertisementData[6] = 0x06;
+
+	//tws:ble info
+	gAdvertisementData[offset] = btManager.twsEnterPairingFlag; //flag:0=normal; 1=pairing
+	//local device mac addr
+	memcpy(&gAdvertisementData[offset+1], btManager.btDevAddr, 6);
+	printf("btDevAddr: %02x:%02x:%02x:%02x:%02x:%02x\n", \
+			btManager.btDevAddr[0], \
+			btManager.btDevAddr[1], \
+			btManager.btDevAddr[2], \
+			btManager.btDevAddr[3], \
+			btManager.btDevAddr[4], \
+			btManager.btDevAddr[5]);
+	//tws device mac addr
+	memcpy(&gAdvertisementData[offset+7], btManager.btTwsDeviceAddr, 6);
+	printf("btTwsDeviceAddr: %02x:%02x:%02x:%02x:%02x:%02x\n", \
+			btManager.btTwsDeviceAddr[0], \
+			btManager.btTwsDeviceAddr[1], \
+			btManager.btTwsDeviceAddr[2], \
+			btManager.btTwsDeviceAddr[3], \
+			btManager.btTwsDeviceAddr[4], \
+			btManager.btTwsDeviceAddr[5]);
+	adv_len += 13;
+
+#ifdef TWS_FILTER_USER_DEFINED
+	//tws filter infor
+	memcpy(&gAdvertisementData[offset+13], btManager.TwsFilterInfor, 6);
+	adv_len += 6;
+#endif
+	DisableAdvertising();
+	if(GetBtManager()->twsState == BT_TWS_STATE_NONE)
+		SetAdvertisingData((uint8_t *)gAdvertisementData, adv_len);
+	EnableAdvertising();
+}
+#endif
+
+//ble scan params
+//default params
+#define BLE_SCAN_TYPE_DEFAULT			0x01//0=passive scan;1=active scan;
+#define BLE_SCAN_INTERVAL_DEFAULT		0xA0
+#define BLE_SCAN_WINDOW_DEFAULT			0x80
+#define BLE_OWN_ADDR_TYPE_DEFAULT		0x00//0=public addr type;1=random addr type;
+#define BLE_SCAN_FILTER_POLICY_DEFAULT	0x00//0=scan policy accept all;1=scan policy accept whitelist;
+//sniff params
+#define BLE_SCAN_TYPE_SNIFF				0x00//0=passive scan;1=active scan;
+#define BLE_SCAN_INTERVAL_SNIFF			0x640
+#define BLE_SCAN_WINDOW_SNIFF			0x80
+#define BLE_OWN_ADDR_TYPE_SNIFF			0x00
+#define BLE_SCAN_FILTER_POLICY_SNIFF	0x00
+void BleScanParamConfig_Default(void)
+{
+	BleScanParamSet(BLE_SCAN_TYPE_DEFAULT, BLE_SCAN_INTERVAL_DEFAULT, BLE_SCAN_WINDOW_DEFAULT, BLE_OWN_ADDR_TYPE_DEFAULT, BLE_SCAN_FILTER_POLICY_DEFAULT);
+}
+void BleScanParamConfig_Sniff(void)
+{
+	BleScanParamSet(BLE_SCAN_TYPE_SNIFF, BLE_SCAN_INTERVAL_SNIFF, BLE_SCAN_WINDOW_SNIFF, BLE_OWN_ADDR_TYPE_SNIFF, BLE_SCAN_FILTER_POLICY_SNIFF);
 }
 
 #endif

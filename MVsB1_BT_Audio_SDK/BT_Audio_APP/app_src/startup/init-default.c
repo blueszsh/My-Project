@@ -222,10 +222,9 @@ void ExceptionCommHandler(unsigned stack, unsigned exception_num)
 	}
 	while(1) ;
 }
-extern void boot_ram_init(void);
+
 void __c_init()
 {
-
 /* Use compiler builtin memcpy and memset */
 #define MEMCPY(des, src, n) __builtin_memcpy ((des), (src), (n))
 #define MEMSET(s, c, n) __builtin_memset ((s), (c), (n))
@@ -233,9 +232,12 @@ void __c_init()
 	extern char _end;
 	extern char __bss_start;
 	int size;
-#ifndef USE_DBG_CODE
+
+#if !defined(CFG_FUNC_STRING_CONVERT_EN) && !defined(USE_DBG_CODE)
+    extern void boot_ram_init(void);
 	boot_ram_init();
 #endif
+
 	/* data section will be copied before we remap.
 	 * We don't need to copy data section here. */
 	extern char __data_lmastart;

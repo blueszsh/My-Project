@@ -4,8 +4,8 @@
  *  Created on: Mar 11, 2021
  *      Author: piwang
  */
-
-
+#include "bt_play_api.h"
+#include "bt_manager.h"
 #include "string.h"
 #include "resampler_polyphase.h"
 #include "clk.h"
@@ -251,7 +251,11 @@ bool AudioCoreSourceInit(AudioCoreIO * AudioIO, uint8_t Index)
 		case   SRC_ONLY:
 		{
 			SRC_ADAPTER * SrcAdapter;
+#ifdef LOSSLESS_DECODER_HIGH_RESOLUTION
+			UsedSize = SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2 + SRC_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels * 2;
+#else
 			UsedSize = SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2 + SRC_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels;
+#endif
 			AdaptBuf = osPortMallocFromEnd(UsedSize);
 			if(AdaptBuf == NULL
 #ifdef AUDIO_CORE_DEBUG
@@ -278,7 +282,11 @@ bool AudioCoreSourceInit(AudioCoreIO * AudioIO, uint8_t Index)
 			{
 				resampler_polyphase_init(&SrcAdapter->SrcCt, AudioIO->Channels, GetRatioEnum(1000 * AudioCore.SampleRate[AudioIO->Net] / SrcAdapter->SampleRate));
 			}
+#ifdef LOSSLESS_DECODER_HIGH_RESOLUTION
+			MCUCircular_Config(&SrcAdapter->SrcBufHandler, AdaptBuf + SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2, SRC_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels * 2);
+#else
 			MCUCircular_Config(&SrcAdapter->SrcBufHandler, AdaptBuf + SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2, SRC_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels);
+#endif
 			Source->SrcAdapter = SrcAdapter;
 			Source->AdjAdapter = NULL;
 			break;
@@ -287,7 +295,7 @@ bool AudioCoreSourceInit(AudioCoreIO * AudioIO, uint8_t Index)
 		case SRA_ONLY:
 		{
 			SRA_ADAPTER *AdjAdapter;
-			UsedSize = SOURCEFRAME(Index)* sizeof(PCM_DATA_TYPE) * 2 + SRA_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels;
+			UsedSize = SOURCEFRAME(Index)* sizeof(PCM_DATA_TYPE) * 2 + SRA_FIFO_SIZE(SOURCEFRAME(Index)) * sizeof(PCM_DATA_TYPE) * AudioIO->Channels;
 			AdaptBuf = osPortMallocFromEnd(UsedSize);
 			if(AdaptBuf == NULL
 #ifdef AUDIO_CORE_DEBUG
@@ -314,7 +322,7 @@ bool AudioCoreSourceInit(AudioCoreIO * AudioIO, uint8_t Index)
 			resampler_farrow_init(&AdjAdapter->SraResFarCt, AudioIO->Channels, POLYNOMIAL_ORDER);
 			MCUCircular_Config(&AdjAdapter->SraBufHandler,
 					AdaptBuf + SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2,
-					SRA_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels);
+					SRA_FIFO_SIZE(SOURCEFRAME(Index)) * sizeof(PCM_DATA_TYPE) * AudioIO->Channels);
 			AdjAdapter->HighLevelCent = AudioIO->HighLevelCent;
 			AdjAdapter->LowLevelCent = AudioIO->LowLevelCent;
 			AdjAdapter->Depth = AudioIO->Depth;
@@ -361,8 +369,8 @@ bool AudioCoreSourceInit(AudioCoreIO * AudioIO, uint8_t Index)
 			SRA_ADAPTER *AdjAdapter;
 			SRC_ADAPTER *SrcAdapter;
 			UsedSize = SOURCEFRAME(Index)* sizeof(PCM_DATA_TYPE) * 2
-					+ SRA_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels
-					+ SRC_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels;
+					+ SRA_FIFO_SIZE(SOURCEFRAME(Index)) * sizeof(PCM_DATA_TYPE) * AudioIO->Channels
+					+ SRC_FIFO_SIZE(SOURCEFRAME(Index)) * sizeof(PCM_DATA_TYPE) * AudioIO->Channels;
 			AdaptBuf = osPortMallocFromEnd(UsedSize);
 			if(AdaptBuf == NULL
 #ifdef AUDIO_CORE_DEBUG
@@ -395,13 +403,13 @@ bool AudioCoreSourceInit(AudioCoreIO * AudioIO, uint8_t Index)
 				resampler_polyphase_init(&SrcAdapter->SrcCt, AudioIO->Channels, GetRatioEnum(1000 * AudioCore.SampleRate[AudioIO->Net] / SrcAdapter->SampleRate));
 			}
 			MCUCircular_Config(&SrcAdapter->SrcBufHandler,
-					AdaptBuf + SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2 + SRA_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels,
-					SRC_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels);
+					AdaptBuf + SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2 + SRA_FIFO_SIZE(SOURCEFRAME(Index)) * sizeof(PCM_DATA_TYPE) * AudioIO->Channels,
+					SRC_FIFO_SIZE(SOURCEFRAME(Index)) * sizeof(PCM_DATA_TYPE) * AudioIO->Channels);
 			//sra_init(&AdjAdapter->SraCt, AudioIO->Channels);
 			resampler_farrow_init(&AdjAdapter->SraResFarCt, AudioIO->Channels, POLYNOMIAL_ORDER);
 			MCUCircular_Config(&AdjAdapter->SraBufHandler,
 					AdaptBuf + SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2,
-					SRA_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels);
+					SRA_FIFO_SIZE(SOURCEFRAME(Index)) * sizeof(PCM_DATA_TYPE) * AudioIO->Channels);
 			AdjAdapter->HighLevelCent = AudioIO->HighLevelCent;
 			AdjAdapter->LowLevelCent = AudioIO->LowLevelCent;
 			AdjAdapter->Depth = AudioIO->Depth;
@@ -415,7 +423,7 @@ bool AudioCoreSourceInit(AudioCoreIO * AudioIO, uint8_t Index)
 		{
 			SRC_ADAPTER *SrcAdapter;
 			CLK_ADJUST_ADAPTER *AdjAdapter;
-			UsedSize = SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2 + SRC_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels;
+			UsedSize = SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2 + SRC_FIFO_SIZE(SOURCEFRAME(Index)) * sizeof(PCM_DATA_TYPE) * AudioIO->Channels;
 			AdaptBuf = osPortMallocFromEnd(UsedSize);
 			if(AdaptBuf == NULL
 #ifdef AUDIO_CORE_DEBUG
@@ -445,7 +453,7 @@ bool AudioCoreSourceInit(AudioCoreIO * AudioIO, uint8_t Index)
 			{
 				resampler_polyphase_init(&SrcAdapter->SrcCt, AudioIO->Channels, GetRatioEnum(1000 * AudioCore.SampleRate[AudioIO->Net] / SrcAdapter->SampleRate));
 			}
-			MCUCircular_Config(&SrcAdapter->SrcBufHandler, AdaptBuf + SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2, SRC_FIFO_SIZE(SOURCEFRAME(Index)) * 2 * AudioIO->Channels);
+			MCUCircular_Config(&SrcAdapter->SrcBufHandler, AdaptBuf + SOURCEFRAME(Index) * sizeof(PCM_DATA_TYPE) * 2, SRC_FIFO_SIZE(SOURCEFRAME(Index)) * sizeof(PCM_DATA_TYPE) * AudioIO->Channels);
 
 			AdjAdapter = (CLK_ADJUST_ADAPTER *)Source->AdjAdapter;
 			AdjAdapter->HighLevelCent = AudioIO->HighLevelCent;
@@ -836,7 +844,11 @@ void AudioCoreSinkDeinit(uint8_t Index)
 }
 
 #ifdef CFG_AUDIO_WIDTH_24BIT
-//#define  RESAMPLER_POLYPHASE_APPLY_24BIT_ENABLE  //sink SRC_ONLY 打开24bit转采样，有问题先不用
+/******
+ * PcmBuf: DataBuf Addr
+ * dataSize: Sample * Channels
+ * BitWidth: Input Pcm Width @PCM_DATA_WIDTH
+ */
 void AudioCorePcmDataBitWidthConv(PCM_DATA_TYPE *PcmBuf,uint16_t dataSize,PCM_DATA_WIDTH BitWidth)
 {
 	uint32_t n;
@@ -845,16 +857,14 @@ void AudioCorePcmDataBitWidthConv(PCM_DATA_TYPE *PcmBuf,uint16_t dataSize,PCM_DA
 
 	if(BitWidth == PCM_DATA_16BIT_WIDTH) //16bit转成24bit
 	{
-		PcmBuf16 += (dataSize / sizeof(int16_t));
-		memcpy(PcmBuf16 ,PcmBuf, dataSize);
-		for(n=0; n < dataSize / sizeof(int16_t); n++)
+		for(n = dataSize; n > 0 ; n--)
 		{
-			PcmBuf32[n] = PcmBuf16[n] << 8;
+			PcmBuf32[n - 1] = PcmBuf16[n - 1] << 8;
 		}
 	}
 	else	//24bit转成16bit
 	{
-		for(n=0; n < dataSize / sizeof(int32_t); n++)
+		for(n=0; n < dataSize; n++)
 		{
 			PcmBuf16[n] = PcmBuf32[n] >> 8;
 		}
@@ -896,7 +906,11 @@ void AudioCoreIOLenProcess(void)
 				case SRC_ADJUST:
 				{
 					SRC_ADAPTER * SrcAdapter = Source->SrcAdapter;
-
+					uint32_t     PcmDataLen = 	2 * Source->Channels;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+					if(Source->BitWidth == PCM_DATA_24BIT_WIDTH)
+						PcmDataLen *= 2;
+#endif
 					do{
 #ifdef CFG_FUNC_MIXER_SRC_EN
 						if(SrcAdapter->SampleRate != AudioCore.SampleRate[AudioCore.AudioSource[Index].Net])
@@ -904,28 +918,32 @@ void AudioCoreIOLenProcess(void)
 							SrcAudioLen = SRCValidLenGet(SrcAdapter->SampleRate,
 												Source->DataLenFunc(),
 												AudioCore.SampleRate[AudioCore.AudioSource[Index].Net],
-												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / (2 * Source->Channels) - 1);
+												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / PcmDataLen - 1);
 							if(SrcAudioLen)
 							{
 								SrcAudioLen = Source->DataGetFunc(AudioCore.AdaptIn, SrcAudioLen);
+						#ifdef CFG_AUDIO_WIDTH_24BIT
+							if(Source->BitWidth == PCM_DATA_24BIT_WIDTH)
+								SrcAudioLen = resampler_polyphase_apply24(&SrcAdapter->SrcCt, (int32_t *)AudioCore.AdaptIn, (int32_t *)AudioCore.AdaptOut, SrcAudioLen);
+							else
+						#endif
 								SrcAudioLen = resampler_polyphase_apply(&SrcAdapter->SrcCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, SrcAudioLen);
-
-								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * (2 * Source->Channels));
+								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * PcmDataLen);
 							}
 						}
 						else
 #endif
 						{
 							SrcAudioLen = Min3(Source->DataLenFunc(),
-												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / (2 * Source->Channels) - 1,
-												sizeof(AudioCore.AdaptOut)/(2 * Source->Channels));
+												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / PcmDataLen - 1,
+												sizeof(AudioCore.AdaptOut)/PcmDataLen);
 							if(SrcAudioLen)
 							{
 								SrcAudioLen = Source->DataGetFunc(AudioCore.AdaptOut, SrcAudioLen);
-								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * (2 * Source->Channels));
+								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * PcmDataLen);
 							}
 						}
-						if(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (2 * Source->Channels) >= SOURCEFRAME(Index))
+						if(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (PcmDataLen) >= SOURCEFRAME(Index))
 						{
 							SOURCE_BIT_EN(AudioCore.FrameReady, Index);
 						}
@@ -939,19 +957,29 @@ void AudioCoreIOLenProcess(void)
 				case SRA_ONLY:
 				{
 					SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Source->AdjAdapter;
+					uint32_t     PcmDataLen = 	2 * Source->Channels;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+					if(Source->BitWidth == PCM_DATA_24BIT_WIDTH)
+						PcmDataLen *= 2;
+#endif
 					if(AdjAdapter->Enable)
 					{
 						do{
 							SraAudioLen = Source->DataLenFunc();
-							SraAudioLen = SRAValidLenGet(SraAudioLen, MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / (2 * Source->Channels));
+							SraAudioLen = SRAValidLenGet(SraAudioLen, MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / PcmDataLen);
 							if(SraAudioLen)
 							{
 								SraAudioLen = Source->DataGetFunc(AudioCore.AdaptIn, SraAudioLen);
 								//sra_apply(&AdjAdapter->SraCt, AudioCore.AdaptIn, AudioCore.AdaptOut, AdjAdapter->AdjustVal);
-								resampler_farrow_apply(&AdjAdapter->SraResFarCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
+							#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Source->BitWidth == PCM_DATA_24BIT_WIDTH)
+									resampler_farrow_apply24(&AdjAdapter->SraResFarCt, (int32_t *)AudioCore.AdaptIn, (int32_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
+								else
+							#endif
+									resampler_farrow_apply(&AdjAdapter->SraResFarCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
 								SraAudioLen += AdjAdapter->AdjustVal;
 								AdjAdapter->AdjustVal = 0;
-								MCUCircular_PutData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * (2 * Source->Channels));
+								MCUCircular_PutData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * PcmDataLen);
 							}
 
 						}while(!SOURCE_BIT_GET(AudioCore.FrameReady, Index) && SraAudioLen);
@@ -959,15 +987,15 @@ void AudioCoreIOLenProcess(void)
 					else
 					{
 						SraAudioLen = Min3(Source->DataLenFunc(),
-											MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / (2 * Source->Channels) - 1,
-											sizeof(AudioCore.AdaptOut)/(2 * Source->Channels));
+											MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / PcmDataLen - 1,
+											sizeof(AudioCore.AdaptOut)/PcmDataLen);
 						if(SraAudioLen)
 						{
 							SraAudioLen = Source->DataGetFunc(AudioCore.AdaptOut, SraAudioLen);
-							MCUCircular_PutData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * (2 * Source->Channels));
+							MCUCircular_PutData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * PcmDataLen);
 						}
 					}
-					if(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / (2 * Source->Channels) >= SOURCEFRAME(Index))
+					if(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / PcmDataLen >= SOURCEFRAME(Index))
 					{
 						SOURCE_BIT_EN(AudioCore.FrameReady, Index);
 					}
@@ -981,6 +1009,11 @@ void AudioCoreIOLenProcess(void)
 				{
 					SRC_ADAPTER * SrcAdapter = Source->SrcAdapter;
 					SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Source->AdjAdapter;
+					uint32_t     PcmDataLen = 	2 * Source->Channels;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+					if(Source->BitWidth == PCM_DATA_24BIT_WIDTH)
+						PcmDataLen *= 2;
+#endif
 					do{
 #ifdef CFG_FUNC_MIXER_SRC_EN
 						if(SrcAdapter->SampleRate != AudioCore.SampleRate[AudioCore.AudioSource[Index].Net])
@@ -988,53 +1021,63 @@ void AudioCoreIOLenProcess(void)
 							SrcAudioLen = SRCValidLenGet(SrcAdapter->SampleRate,
 												Source->DataLenFunc(),
 												AudioCore.SampleRate[AudioCore.AudioSource[Index].Net],
-												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / (2 * Source->Channels));
+												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / PcmDataLen);
 							if(SrcAudioLen)
 							{
 								SrcAudioLen = Source->DataGetFunc(AudioCore.AdaptIn, SrcAudioLen);
-								SrcAudioLen = resampler_polyphase_apply(&SrcAdapter->SrcCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, SrcAudioLen);
-								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * (2 * Source->Channels));
+							#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Source->BitWidth == PCM_DATA_24BIT_WIDTH)
+									SrcAudioLen = resampler_polyphase_apply24(&SrcAdapter->SrcCt, (int32_t *)AudioCore.AdaptIn, (int32_t *)AudioCore.AdaptOut, SrcAudioLen);
+								else
+							#endif
+									SrcAudioLen = resampler_polyphase_apply(&SrcAdapter->SrcCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, SrcAudioLen);
+								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * PcmDataLen);
 							}
 						}
 						else
 #endif
 						{
 							SrcAudioLen = Min3(Source->DataLenFunc(),
-												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / (2 * Source->Channels) - 1,
-												sizeof(AudioCore.AdaptOut)/(2 * Source->Channels));
+												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / PcmDataLen - 1,
+												sizeof(AudioCore.AdaptOut)/PcmDataLen);
 							if(SrcAudioLen)
 							{
 								SrcAudioLen = Source->DataGetFunc(AudioCore.AdaptOut, SrcAudioLen);
-								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * (2 * Source->Channels));
+								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * PcmDataLen);
 							}
 						}
 						if(AdjAdapter->Enable)
 						{
 
-							SraAudioLen = SRAValidLenGet(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (2 * Source->Channels), MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / (2 * Source->Channels));
+							SraAudioLen = SRAValidLenGet(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / PcmDataLen, MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / PcmDataLen);
 							if(SraAudioLen)
 							{
 
-								SraAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptIn, SraAudioLen * (2 * Source->Channels)) / (2 * Source->Channels);
+								SraAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptIn, SraAudioLen * PcmDataLen) / PcmDataLen;
 								//sra_apply(&AdjAdapter->SraCt, AudioCore.AdaptIn, AudioCore.AdaptOut, AdjAdapter->AdjustVal);
-								resampler_farrow_apply(&AdjAdapter->SraResFarCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
+							#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Source->BitWidth == PCM_DATA_24BIT_WIDTH)
+									resampler_farrow_apply24(&AdjAdapter->SraResFarCt, (int32_t *)AudioCore.AdaptIn, (int32_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
+								else
+							#endif
+									resampler_farrow_apply(&AdjAdapter->SraResFarCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
 								SraAudioLen += AdjAdapter->AdjustVal;
 								AdjAdapter->AdjustVal = 0;
-								MCUCircular_PutData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * (2 * Source->Channels));
+								MCUCircular_PutData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * PcmDataLen);
 							}
 						}
 						else
 						{
-							SraAudioLen = Min3(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (2 * Source->Channels),
-												MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / (2 * Source->Channels) - 1,
-												sizeof(AudioCore.AdaptOut)/(2 * Source->Channels));
+							SraAudioLen = Min3(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / PcmDataLen,
+												MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / PcmDataLen - 1,
+												sizeof(AudioCore.AdaptOut)/PcmDataLen);
 							if(SraAudioLen)
 							{
-								SraAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SraAudioLen * (2 * Source->Channels)) / ((2 * Source->Channels));
-								MCUCircular_PutData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * (2 * Source->Channels));
+								SraAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SraAudioLen * PcmDataLen) / PcmDataLen;
+								MCUCircular_PutData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * PcmDataLen);
 							}
 						}
-						if(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / (2 * Source->Channels) >= SOURCEFRAME(Index))
+						if(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / PcmDataLen >= SOURCEFRAME(Index))
 						{
 							SOURCE_BIT_EN(AudioCore.FrameReady, Index);
 						}
@@ -1076,54 +1119,57 @@ void AudioCoreIOLenProcess(void)
 				case SRC_ADJUST:
 				{
 					SRC_ADAPTER * SrcAdapter = Sink->SrcAdapter;
+					uint32_t      PcmDataLen = 2 * Sink->Channels;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+					if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
+						PcmDataLen *= 2;
+#endif
 					do{
 #ifdef CFG_FUNC_MIXER_SRC_EN
 						if(SrcAdapter->SampleRate != AudioCore.SampleRate[AudioCore.AudioSink[Index].Net])
 						{
-#ifndef RESAMPLER_POLYPHASE_APPLY_24BIT_ENABLE
 							SrcAudioLen = SRCValidLenGet(AudioCore.SampleRate[AudioCore.AudioSink[Index].Net],
-												MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (2 * Sink->Channels),
+												MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / PcmDataLen,
 												SrcAdapter->SampleRate,
 												Sink->SpaceLenFunc() - 1);
 							if(SrcAudioLen)
 							{
-								SrcAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptIn, SrcAudioLen * (2 * Sink->Channels)) / (2 * Sink->Channels);
-								SrcAudioLen = resampler_polyphase_apply(&SrcAdapter->SrcCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, SrcAudioLen);
-					#ifdef CFG_AUDIO_WIDTH_24BIT
-								if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH || Sink->BitWidthConvFlag == 1)
+								SrcAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptIn, SrcAudioLen * PcmDataLen) / PcmDataLen;
+				#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
+									SrcAudioLen = resampler_polyphase_apply24(&SrcAdapter->SrcCt, (int32_t *)AudioCore.AdaptIn, (int32_t *)AudioCore.AdaptOut, SrcAudioLen);
+								else
+				#endif
+									SrcAudioLen = resampler_polyphase_apply(&SrcAdapter->SrcCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, SrcAudioLen);
+				#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidthConvFlag == 1)
 								{
-									//转成24bit 输出
-									AudioCorePcmDataBitWidthConv((PCM_DATA_TYPE *)AudioCore.AdaptOut,SrcAudioLen * 2 * Sink->Channels,PCM_DATA_16BIT_WIDTH);
+									AudioCorePcmDataBitWidthConv((int32_t *)AudioCore.AdaptOut,SrcAudioLen * Sink->Channels,Sink->BitWidth);
 								}
-					#endif
+				#endif
 								Sink->DataSetFunc(AudioCore.AdaptOut, SrcAudioLen);
 							}
-#else
-							SrcAudioLen = SRCValidLenGet(AudioCore.SampleRate[AudioCore.AudioSink[Index].Net],
-												MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (sizeof(PCM_DATA_TYPE) * Sink->Channels),
-												SrcAdapter->SampleRate,
-												Sink->SpaceLenFunc() - 1);
-							if(SrcAudioLen)
-							{
-								SrcAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptIn, SrcAudioLen * (sizeof(PCM_DATA_TYPE) * Sink->Channels)) / (sizeof(PCM_DATA_TYPE) * Sink->Channels);
-								SrcAudioLen = resampler_polyphase_apply24(&SrcAdapter->SrcCt, (int32_t *)AudioCore.AdaptIn, (int32_t *)AudioCore.AdaptOut, SrcAudioLen);
-								Sink->DataSetFunc(AudioCore.AdaptOut, SrcAudioLen);
-							}
-#endif
 						}
 						else
 #endif
 						{
-							SrcAudioLen = Min3(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (sizeof(PCM_DATA_TYPE) * Sink->Channels),
+							SrcAudioLen = Min3(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / PcmDataLen,
 												Sink->SpaceLenFunc() - 1,
-												sizeof(AudioCore.AdaptOut)/(sizeof(PCM_DATA_TYPE) * Sink->Channels));
+												sizeof(AudioCore.AdaptOut)/ PcmDataLen);
 							if(SrcAudioLen)
 							{
-								SrcAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * (sizeof(PCM_DATA_TYPE) * Sink->Channels)) / (sizeof(PCM_DATA_TYPE) * Sink->Channels);
+								SrcAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * PcmDataLen) / PcmDataLen;
+
+							#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidthConvFlag == 1)
+								{
+									AudioCorePcmDataBitWidthConv((int32_t *)AudioCore.AdaptOut,SrcAudioLen * Sink->Channels,Sink->BitWidth);
+								}
+							#endif
 								Sink->DataSetFunc(AudioCore.AdaptOut, SrcAudioLen);
 							}
 						}
-						if(MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / (sizeof(PCM_DATA_TYPE) * Sink->Channels) >= SINKFRAME(Index))
+						if(MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / PcmDataLen >= SINKFRAME(Index))
 						{
 							SINK_BIT_EN(AudioCore.FrameReady, Index);
 						}
@@ -1137,35 +1183,56 @@ void AudioCoreIOLenProcess(void)
 				case SRA_ONLY:
 				{
 					SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Sink->AdjAdapter;
-
+					uint32_t      PcmDataLen = 2 * Sink->Channels;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+					if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
+						PcmDataLen *= 2;
+#endif
 					do{
 						if(AdjAdapter->Enable)
 						{
 							SraAudioLen = Sink->SpaceLenFunc();
-							SraAudioLen = SRAValidLenGet(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / (2 * Sink->Channels), SraAudioLen);
+							SraAudioLen = SRAValidLenGet(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / PcmDataLen, SraAudioLen);
 							if(SraAudioLen)
 							{
-								SraAudioLen = MCUCircular_GetData(&AdjAdapter->SraBufHandler, AudioCore.AdaptIn, SraAudioLen * (2 * Sink->Channels)) / (2 * Sink->Channels);
+								SraAudioLen = MCUCircular_GetData(&AdjAdapter->SraBufHandler, AudioCore.AdaptIn, SraAudioLen * PcmDataLen) / PcmDataLen;
 								//sra_apply(&AdjAdapter->SraCt, AudioCore.AdaptIn, AudioCore.AdaptOut, AdjAdapter->AdjustVal);
-								resampler_farrow_apply(&AdjAdapter->SraResFarCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
+			#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
+									resampler_farrow_apply24(&AdjAdapter->SraResFarCt, (int32_t *)AudioCore.AdaptIn, (int32_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
+								else
+			#endif
+									resampler_farrow_apply(&AdjAdapter->SraResFarCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
 								SraAudioLen += AdjAdapter->AdjustVal;
 								AdjAdapter->AdjustVal = 0;
+			#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidthConvFlag == 1)
+								{
+									AudioCorePcmDataBitWidthConv((int32_t *)AudioCore.AdaptOut,SraAudioLen * Sink->Channels,Sink->BitWidth);
+								}
+			#endif
 								Sink->DataSetFunc(AudioCore.AdaptOut, SraAudioLen);
 							}
 						}
 						else
 						{
-							SraAudioLen = Min3(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / (2 * Sink->Channels),
+							SraAudioLen = Min3(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / PcmDataLen,
 												Sink->SpaceLenFunc() - 1,
-											sizeof(AudioCore.AdaptOut)/(2 * Sink->Channels));
+											sizeof(AudioCore.AdaptOut)/PcmDataLen);
 							if(SraAudioLen)
 							{
-								SraAudioLen = MCUCircular_GetData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * (2 * Sink->Channels)) / (2 * Sink->Channels);
+								SraAudioLen = MCUCircular_GetData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * PcmDataLen) / PcmDataLen;
+						#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidthConvFlag == 1)
+								{
+									AudioCorePcmDataBitWidthConv((int32_t *)AudioCore.AdaptOut,SraAudioLen * Sink->Channels,Sink->BitWidth);
+								}
+						#endif
 								Sink->DataSetFunc(AudioCore.AdaptOut, SraAudioLen);
 							}
 						}
 
-						if(MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / (2 * Sink->Channels) >= SINKFRAME(Index))
+						if(MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / PcmDataLen >= SINKFRAME(Index))
 						{
 							SINK_BIT_EN(AudioCore.FrameReady, Index);
 						}
@@ -1180,33 +1247,43 @@ void AudioCoreIOLenProcess(void)
 				{
 					SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Sink->AdjAdapter;
 					SRC_ADAPTER * SrcAdapter = Sink->SrcAdapter;
+					uint32_t      PcmDataLen = 2 * Sink->Channels;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+					if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
+						PcmDataLen *= 2;
+#endif
 					do{
 						if(AdjAdapter->Enable)
 						{
-							SraAudioLen = SRAValidLenGet(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / (2 * Sink->Channels),
-														MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / (2 * Sink->Channels));
+							SraAudioLen = SRAValidLenGet(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / PcmDataLen,
+														MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / PcmDataLen);
 							if(SraAudioLen)
 							{
-								SraAudioLen = MCUCircular_GetData(&AdjAdapter->SraBufHandler, AudioCore.AdaptIn, SraAudioLen * (2 * Sink->Channels)) / (2 * Sink->Channels);
+								SraAudioLen = MCUCircular_GetData(&AdjAdapter->SraBufHandler, AudioCore.AdaptIn, SraAudioLen * PcmDataLen) / PcmDataLen;
 								//sra_apply(&AdjAdapter->SraCt, AudioCore.AdaptIn, AudioCore.AdaptOut, AdjAdapter->AdjustVal);
-								resampler_farrow_apply(&AdjAdapter->SraResFarCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
+				#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
+									resampler_farrow_apply24(&AdjAdapter->SraResFarCt, (int32_t *)AudioCore.AdaptIn, (int32_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
+								else
+				#endif
+									resampler_farrow_apply(&AdjAdapter->SraResFarCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, 128, 128 + AdjAdapter->AdjustVal);
 								SraAudioLen += AdjAdapter->AdjustVal;
 								AdjAdapter->AdjustVal = 0;
-								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SraAudioLen * (2 * Sink->Channels));
+								MCUCircular_PutData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SraAudioLen * PcmDataLen);
 							}
 						}
 						else
 						{
-							SraAudioLen = Min3(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / (2 * Sink->Channels),
-												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / (2 * Sink->Channels) - 1,
-												sizeof(AudioCore.AdaptOut)/(2 * Sink->Channels));
+							SraAudioLen = Min3(MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / PcmDataLen,
+												MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / PcmDataLen - 1,
+												sizeof(AudioCore.AdaptOut)/PcmDataLen);
 							if(SraAudioLen)
 							{
-								SraAudioLen = MCUCircular_GetData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * (2 * Sink->Channels)) / (2 * Sink->Channels);
-								MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SraAudioLen * (2 * Sink->Channels));
+								SraAudioLen = MCUCircular_GetData(&AdjAdapter->SraBufHandler, AudioCore.AdaptOut, SraAudioLen * PcmDataLen) / PcmDataLen;
+								MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SraAudioLen * PcmDataLen);
 							}
 						}
-						if(MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / (2 * Sink->Channels) >= SINKFRAME(Index))
+						if(MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / PcmDataLen >= SINKFRAME(Index))
 						{
 							SINK_BIT_EN(AudioCore.FrameReady, Index);
 						}
@@ -1218,25 +1295,42 @@ void AudioCoreIOLenProcess(void)
 						if(SrcAdapter->SampleRate != AudioCore.SampleRate[AudioCore.AudioSink[Index].Net])
 						{
 							SrcAudioLen = SRCValidLenGet(AudioCore.SampleRate[AudioCore.AudioSink[Index].Net],
-												MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (2 * Sink->Channels),
+												MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / PcmDataLen,
 												SrcAdapter->SampleRate,
 												Sink->SpaceLenFunc());
 							if(SrcAudioLen)
 							{
-								SrcAudioLen= MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptIn, SrcAudioLen * (2 * Sink->Channels)) / (2 * Sink->Channels);
-								SrcAudioLen = resampler_polyphase_apply(&SrcAdapter->SrcCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, SrcAudioLen);
+								SrcAudioLen= MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptIn, SrcAudioLen * PcmDataLen) / PcmDataLen;
+						#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
+									SrcAudioLen = resampler_polyphase_apply24(&SrcAdapter->SrcCt, (int32_t *)AudioCore.AdaptIn, (int32_t *)AudioCore.AdaptOut, SrcAudioLen);
+								else
+						#endif
+									SrcAudioLen = resampler_polyphase_apply(&SrcAdapter->SrcCt, (int16_t *)AudioCore.AdaptIn, (int16_t *)AudioCore.AdaptOut, SrcAudioLen);
+						#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidthConvFlag == 1)
+								{
+									AudioCorePcmDataBitWidthConv((int32_t *)AudioCore.AdaptOut,SrcAudioLen * Sink->Channels,Sink->BitWidth);
+								}
+						#endif
 								Sink->DataSetFunc(AudioCore.AdaptOut, SrcAudioLen);
 							}
 						}
 						else
 #endif
 						{
-							SrcAudioLen = Min3(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (2 * Sink->Channels),
+							SrcAudioLen = Min3(MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / PcmDataLen,
 												Sink->SpaceLenFunc() - 1,
-												sizeof(AudioCore.AdaptOut)/(2 * Sink->Channels));
+												sizeof(AudioCore.AdaptOut)/PcmDataLen);
 							if(SrcAudioLen)
 							{
-								SrcAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * (2 * Sink->Channels)) / (2 * Sink->Channels);
+								SrcAudioLen = MCUCircular_GetData(&SrcAdapter->SrcBufHandler, AudioCore.AdaptOut, SrcAudioLen * PcmDataLen) / PcmDataLen;
+						#ifdef CFG_AUDIO_WIDTH_24BIT
+								if(Sink->BitWidthConvFlag == 1)
+								{
+									AudioCorePcmDataBitWidthConv((int32_t *)AudioCore.AdaptOut,SrcAudioLen * Sink->Channels,Sink->BitWidth);
+								}
+						#endif
 								Sink->DataSetFunc(AudioCore.AdaptOut, SrcAudioLen);
 							}
 						}
@@ -1254,9 +1348,16 @@ uint16_t AudioCoreSinkAdapterDataLenGet(uint8_t Index)
 	AudioCoreSink *Sink = &AudioCore.AudioSink[Index];
 	SRC_ADAPTER *SrcAdapter = Sink->SrcAdapter;
 	uint16_t DataLen = 0;
+	uint32_t PcmDataLen;
 
 	if(!Sink->Enable)
 		return 0;
+
+	PcmDataLen = 2 * Sink->Channels;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+	if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
+		PcmDataLen *= 2;
+#endif
 
 	switch(Sink->Adapt)
 	{
@@ -1268,21 +1369,21 @@ uint16_t AudioCoreSinkAdapterDataLenGet(uint8_t Index)
 		case SRC_ONLY:
 		case SRC_ADJUST:
 		{
-			DataLen = MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (2 * Sink->Channels);
+			DataLen = MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / PcmDataLen;
 			break;
 		}
 
 		case SRA_ONLY:
 		{
 			SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Sink->AdjAdapter;
-			DataLen = MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / (2 * Sink->Channels);
+			DataLen = MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / PcmDataLen;
 			break;
 		}
 
 		case SRC_SRA:
 		{
 			SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Sink->AdjAdapter;
-			DataLen = (MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) + MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler)) / (2 * Sink->Channels);
+			DataLen = (MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) + MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler)) / PcmDataLen;
 			break;
 		}
 	}
@@ -1326,6 +1427,14 @@ void AudioCoreSourceGet(uint8_t Index)
 {
 	AudioCoreSource *Source = &AudioCore.AudioSource[Index];
 	SRC_ADAPTER * SrcAdapter = Source->SrcAdapter;
+	uint32_t PcmDataLen;
+
+	PcmDataLen = 2 * Source->Channels;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+	if(Source->BitWidth == PCM_DATA_24BIT_WIDTH)
+		PcmDataLen *= 2;
+#endif
+
 	switch(Source->Adapt)
 	{
 		case STD:
@@ -1333,20 +1442,20 @@ void AudioCoreSourceGet(uint8_t Index)
 			break;
 		case SRC_ONLY:
 		{
-			MCUCircular_GetData(&SrcAdapter->SrcBufHandler, Source->PcmInBuf, SOURCEFRAME(Index) * 2 * Source->Channels);
+			MCUCircular_GetData(&SrcAdapter->SrcBufHandler, Source->PcmInBuf, SOURCEFRAME(Index) * PcmDataLen);
 			break;
 		}
 		case SRA_ONLY:
 		{
 			SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Source->AdjAdapter;
-			MCUCircular_GetData(&AdjAdapter->SraBufHandler, Source->PcmInBuf, SOURCEFRAME(Index) * 2 * Source->Channels);
+			MCUCircular_GetData(&AdjAdapter->SraBufHandler, Source->PcmInBuf, SOURCEFRAME(Index) * PcmDataLen);
 			if(AdjAdapter->Enable)
 			{
-				AdjAdapter->TotalNum += Source->DataLenFunc() + MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / (2 * Source->Channels);
+				AdjAdapter->TotalNum += Source->DataLenFunc() + MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / PcmDataLen;
 				AdjAdapter->Count++;
 				if(AdjAdapter->Count >= ADJUST_PERIOD / SOURCEFRAME(Index))
 				{
-					uint32_t ValidDepth = AdjAdapter->Depth + AdjAdapter->SraBufHandler.BufDepth / (2 * Source->Channels) - SOURCEFRAME(Index) - SRA_BLOCK;
+					uint32_t ValidDepth = AdjAdapter->Depth + AdjAdapter->SraBufHandler.BufDepth / PcmDataLen - SOURCEFRAME(Index) - SRA_BLOCK;
 					AdjAdapter->AdjustVal = ADJLEVEL(AdjAdapter->TotalNum / AdjAdapter->Count,
 										(ValidDepth * AdjAdapter->LowLevelCent) / 100,
 										(ValidDepth * AdjAdapter->HighLevelCent) / 100);
@@ -1375,26 +1484,90 @@ void AudioCoreSourceGet(uint8_t Index)
 		case SRC_SRA:
 		{
 			SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Source->AdjAdapter;
-			MCUCircular_GetData(&AdjAdapter->SraBufHandler, Source->PcmInBuf, SOURCEFRAME(Index) * 2 * Source->Channels);
+			MCUCircular_GetData(&AdjAdapter->SraBufHandler, Source->PcmInBuf, SOURCEFRAME(Index) * PcmDataLen);
 			if(AdjAdapter->Enable)
 			{
-				AdjAdapter->TotalNum += ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSource[Index].Net] * Source->DataLenFunc()) / SrcAdapter->SampleRate
-										+ MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (2 * Source->Channels)
-										+ MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / (2 * Source->Channels);
-				AdjAdapter->Count++;
-
-				if(AdjAdapter->Count >= ADJUST_PERIOD / SOURCEFRAME(Index))
+				#ifdef BT_AUDIO_AAC_ENABLE
+				static int8_t  AdjustFlag = 0;//方向
+				uint8_t index = btManager.btLinked_env[btManager.cur_index].a2dp_index;
+				if((GetSystemMode() == ModeBtAudioPlay)
+					&& (index < BT_LINK_DEV_NUM)
+					&& (btManager.a2dpStreamType[index] == BT_A2DP_STREAM_TYPE_AAC))
 				{
-					uint32_t ValidDepth = ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSource[Index].Net] * AdjAdapter->Depth) / SrcAdapter->SampleRate
-											+ SrcAdapter->SrcBufHandler.BufDepth / (2 * Source->Channels)
-											+ AdjAdapter->SraBufHandler.BufDepth / (2 * Source->Channels)
+					AdjAdapter->TotalNum += GetValidFrameDataSize();
+					AdjAdapter->Count++;
+
+					if(AdjAdapter->Count >= ADJUST_PERIOD / SOURCEFRAME(Index))
+					{
+						AdjAdapter->TotalNum = AdjAdapter->TotalNum/AdjAdapter->Count;
+
+						if(AdjustFlag == 0)
+						{
+							if(AdjAdapter->TotalNum < BT_AAC_LEVEL_LOW)
+							{
+								AdjustFlag = 1;//正
+							}
+							else if(AdjAdapter->TotalNum  > BT_AAC_LEVEL_HIGH)
+							{
+								AdjustFlag = -1;//负
+							}
+							else
+							{
+								AdjustFlag = 0;
+							}
+						}
+						else if(AdjustFlag == 1)
+						{
+							if(AdjAdapter->TotalNum  < BT_AAC_LEVEL_LOW)
+							{
+								//插点
+								AdjAdapter->AdjustVal = 1;
+								//APP_DBG("!>!");
+							}
+							else
+							{
+								AdjustFlag = 0;
+							}
+						}
+						else if(AdjustFlag == -1)
+						{
+							if(AdjAdapter->TotalNum > BT_AAC_LEVEL_HIGH)
+							{
+								//丢点
+								AdjAdapter->AdjustVal = -1;
+								//APP_DBG("!<!");
+							}
+							else
+							{
+								AdjustFlag = 0;
+							}
+						}
+
+						AdjAdapter->TotalNum = 0;
+						AdjAdapter->Count = 0;
+					}
+				}
+				else
+				#endif
+				{
+					AdjAdapter->TotalNum += ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSource[Index].Net] * Source->DataLenFunc()) / SrcAdapter->SampleRate
+										+ MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / PcmDataLen
+										+ MCUCircular_GetDataLen(&AdjAdapter->SraBufHandler) / PcmDataLen;
+					AdjAdapter->Count++;
+
+					if(AdjAdapter->Count >= ADJUST_PERIOD / SOURCEFRAME(Index))
+					{
+						uint32_t ValidDepth = ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSource[Index].Net] * AdjAdapter->Depth) / SrcAdapter->SampleRate
+											+ SrcAdapter->SrcBufHandler.BufDepth / PcmDataLen
+											+ AdjAdapter->SraBufHandler.BufDepth / PcmDataLen
 											- SOURCEFRAME(Index)
 											- SRA_BLOCK;
-					AdjAdapter->AdjustVal = ADJLEVEL(AdjAdapter->TotalNum / AdjAdapter->Count,
+						AdjAdapter->AdjustVal = ADJLEVEL(AdjAdapter->TotalNum / AdjAdapter->Count,
 										(ValidDepth * AdjAdapter->LowLevelCent) / 100,
 										(ValidDepth * AdjAdapter->HighLevelCent) / 100);
-					AdjAdapter->TotalNum = 0;
-					AdjAdapter->Count = 0;
+						AdjAdapter->TotalNum = 0;
+						AdjAdapter->Count = 0;
+					}
 				}
 			}
 			break;
@@ -1402,15 +1575,15 @@ void AudioCoreSourceGet(uint8_t Index)
 		case SRC_ADJUST:
 		{
 			CLK_ADJUST_ADAPTER * AdjAdapter = (CLK_ADJUST_ADAPTER *)Source->AdjAdapter;
-			MCUCircular_GetData(&SrcAdapter->SrcBufHandler, Source->PcmInBuf, SOURCEFRAME(Index) * 2 * Source->Channels);
+			MCUCircular_GetData(&SrcAdapter->SrcBufHandler, Source->PcmInBuf, SOURCEFRAME(Index) * PcmDataLen);
 			if(AdjAdapter->Enable)
 			{
-				AdjAdapter->TotalNum += ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSource[Index].Net] * Source->DataLenFunc()) / SrcAdapter->SampleRate + MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / (2 * Source->Channels);
+				AdjAdapter->TotalNum += ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSource[Index].Net] * Source->DataLenFunc()) / SrcAdapter->SampleRate + MCUCircular_GetDataLen(&SrcAdapter->SrcBufHandler) / PcmDataLen;
 				AdjAdapter->Count++;
 				if(AdjAdapter->Count >= ADJUST_APLL_PERIOD / SOURCEFRAME(Index))
 				{
 					uint32_t ValidDepth = ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSource[Index].Net] * AdjAdapter->Depth) / SrcAdapter->SampleRate
-											+ SrcAdapter->SrcBufHandler.BufDepth / (2 * Source->Channels)
+											+ SrcAdapter->SrcBufHandler.BufDepth / PcmDataLen
 											- SOURCEFRAME(Index);
 					ClkAdjust(AdjAdapter, ValidDepth, 1);
 				}
@@ -1419,10 +1592,10 @@ void AudioCoreSourceGet(uint8_t Index)
 		}
 	}
 #ifdef CFG_AUDIO_WIDTH_24BIT
-	////source 数据位宽扩展
+	////source 数据位宽
 	if(Source->BitWidthConvFlag)
 	{
-		AudioCorePcmDataBitWidthConv(Source->PcmInBuf,SOURCEFRAME(Index) * 2 * Source->Channels,Source->BitWidth);
+		AudioCorePcmDataBitWidthConv(Source->PcmInBuf,SOURCEFRAME(Index) * Source->Channels,Source->BitWidth);
 	}
 #endif
 }
@@ -1431,51 +1604,40 @@ void AudioCoreSinkSet(uint8_t Index)
 {
 	AudioCoreSink *Sink = &AudioCore.AudioSink[Index];
 	SRC_ADAPTER *SrcAdapter = Sink->SrcAdapter;
+	uint32_t PcmDataLen;
+
+	PcmDataLen = 2 * Sink->Channels;
+#ifdef CFG_AUDIO_WIDTH_24BIT
+	if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
+		PcmDataLen *= 2;
+#endif
 	switch(Sink->Adapt)
 	{
 		case STD:
 #ifdef CFG_AUDIO_WIDTH_24BIT
 			if(Sink->BitWidthConvFlag == 1)
 			{
-				AudioCorePcmDataBitWidthConv(Sink->PcmOutBuf,SINKFRAME(Index) * 2 * Sink->Channels,Sink->BitWidth);
+				AudioCorePcmDataBitWidthConv(Sink->PcmOutBuf,SINKFRAME(Index) * Sink->Channels,Sink->BitWidth);
 			}
 #endif
 			Sink->DataSetFunc(Sink->PcmOutBuf, SINKFRAME(Index));
 			break;
 		case SRC_ONLY:
 		{
-#ifdef CFG_AUDIO_WIDTH_24BIT
-	#ifndef RESAMPLER_POLYPHASE_APPLY_24BIT_ENABLE
-			if(SrcAdapter->SampleRate != AudioCore.SampleRate[AudioCore.AudioSink[Index].Net]
-			 || Sink->BitWidth == PCM_DATA_16BIT_WIDTH)
-			{
-				//转采样需要先将数据转成16 bit
-				if(Sink->BitWidth == PCM_DATA_24BIT_WIDTH)
-					AudioCorePcmDataBitWidthConv(Sink->PcmOutBuf,SINKFRAME(Index) * sizeof(PCM_DATA_TYPE) * Sink->Channels,PCM_DATA_24BIT_WIDTH);
-				MCUCircular_PutData(&SrcAdapter->SrcBufHandler, Sink->PcmOutBuf, SINKFRAME(Index) * 2 * Sink->Channels);
-				break;
-			}
-	#else
-			if(Sink->BitWidth == PCM_DATA_16BIT_WIDTH && Sink->BitWidthConvFlag)
-			{
-				AudioCorePcmDataBitWidthConv(Sink->PcmOutBuf,SINKFRAME(Index) * 2 * Sink->Channels,Sink->BitWidth);
-			}
-	#endif
-#endif
-			MCUCircular_PutData(&SrcAdapter->SrcBufHandler, Sink->PcmOutBuf, SINKFRAME(Index) * sizeof(PCM_DATA_TYPE) * Sink->Channels);
+			MCUCircular_PutData(&SrcAdapter->SrcBufHandler, Sink->PcmOutBuf, SINKFRAME(Index) * PcmDataLen);
 			break;
 		}
 		case SRA_ONLY:
 		{
 			SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Sink->AdjAdapter;
-			MCUCircular_PutData(&AdjAdapter->SraBufHandler, Sink->PcmOutBuf, SINKFRAME(Index) * 2 * Sink->Channels);
+			MCUCircular_PutData(&AdjAdapter->SraBufHandler, Sink->PcmOutBuf, SINKFRAME(Index) * PcmDataLen);
 			if(AdjAdapter->Enable)
 			{
-				AdjAdapter->TotalNum += Sink->SpaceLenFunc() + MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / (2 * Sink->Channels);
+				AdjAdapter->TotalNum += Sink->SpaceLenFunc() + MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / PcmDataLen;
 				AdjAdapter->Count++;
 				if(AdjAdapter->Count >= ADJUST_PERIOD / SINKFRAME(Index))
 				{
-					uint32_t ValidDepth = AdjAdapter->Depth + AdjAdapter->SraBufHandler.BufDepth / (2 * Sink->Channels) - SINKFRAME(Index) - SRA_BLOCK;
+					uint32_t ValidDepth = AdjAdapter->Depth + AdjAdapter->SraBufHandler.BufDepth / PcmDataLen - SINKFRAME(Index) - SRA_BLOCK;
 					AdjAdapter->AdjustVal = -ADJLEVEL(AdjAdapter->TotalNum / AdjAdapter->Count,
 													(ValidDepth * AdjAdapter->LowLevelCent) / 100,
 													(ValidDepth * AdjAdapter->HighLevelCent) / 100);
@@ -1504,18 +1666,18 @@ void AudioCoreSinkSet(uint8_t Index)
 		case SRC_SRA://数据存放于fifo
 		{
 			SRA_ADAPTER * AdjAdapter = (SRA_ADAPTER *)Sink->AdjAdapter;
-			MCUCircular_PutData(&SrcAdapter->SrcBufHandler, Sink->PcmOutBuf, SINKFRAME(Index) * 2 * Sink->Channels);
+			MCUCircular_PutData(&SrcAdapter->SrcBufHandler, Sink->PcmOutBuf, SINKFRAME(Index) * PcmDataLen);
 			if(AdjAdapter->Enable)
 			{
 				AdjAdapter->TotalNum += ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSink[Index].Net] * Sink->SpaceLenFunc()) / SrcAdapter->SampleRate
-										+ MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / (2 * Sink->Channels)
-										+ MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / (2 * Sink->Channels);
+										+ MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / PcmDataLen
+										+ MCUCircular_GetSpaceLen(&AdjAdapter->SraBufHandler) / PcmDataLen;
 				AdjAdapter->Count++;
 				if(AdjAdapter->Count >= ADJUST_PERIOD / SINKFRAME(Index))
 				{
 					uint32_t ValidDepth = ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSink[Index].Net] * AdjAdapter->Depth) / SrcAdapter->SampleRate
-																+ SrcAdapter->SrcBufHandler.BufDepth / (2 * Sink->Channels)
-																+ AdjAdapter->SraBufHandler.BufDepth / (2 * Sink->Channels)
+																+ SrcAdapter->SrcBufHandler.BufDepth / PcmDataLen
+																+ AdjAdapter->SraBufHandler.BufDepth / PcmDataLen
 																- SINKFRAME(Index)
 																- SRA_BLOCK;
 
@@ -1531,16 +1693,16 @@ void AudioCoreSinkSet(uint8_t Index)
 		case SRC_ADJUST:
 		{
 			CLK_ADJUST_ADAPTER * AdjAdapter = (CLK_ADJUST_ADAPTER *)Sink->AdjAdapter;
-			MCUCircular_PutData(&SrcAdapter->SrcBufHandler, Sink->PcmOutBuf, SINKFRAME(Index) * 2 * Sink->Channels);
+			MCUCircular_PutData(&SrcAdapter->SrcBufHandler, Sink->PcmOutBuf, SINKFRAME(Index) * PcmDataLen);
 			if(AdjAdapter->Enable)
 			{
 				AdjAdapter->TotalNum += ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSink[Index].Net] * Sink->SpaceLenFunc()) / SrcAdapter->SampleRate
-										+ MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / (2 * Sink->Channels) ;
+										+ MCUCircular_GetSpaceLen(&SrcAdapter->SrcBufHandler) / PcmDataLen ;
 				AdjAdapter->Count++;
 				if(AdjAdapter->Count >= ADJUST_PERIOD / SINKFRAME(Index))
 				{
 					uint32_t ValidDepth = ((uint64_t)AudioCore.SampleRate[AudioCore.AudioSink[Index].Net] * AdjAdapter->Depth) / SrcAdapter->SampleRate
-																+ SrcAdapter->SrcBufHandler.BufDepth / (2 * Sink->Channels)
+																+ SrcAdapter->SrcBufHandler.BufDepth / PcmDataLen
 																- SINKFRAME(Index);
 					ClkAdjust(AdjAdapter, ValidDepth, 1);
 				}
@@ -1715,6 +1877,8 @@ void AudioCoreSinkChange(uint8_t Index, uint8_t Channels, uint32_t SampleRate)
 		{
 			resampler_polyphase_init(&SrcAdapter->SrcCt, AudioCore.AudioSink[Index].Channels, GetRatioEnum(1000 * SrcAdapter->SampleRate / AudioCore.SampleRate[AudioCore.AudioSink[Index].Net]));
 		}
+		SrcAdapter->SrcBufHandler.R = 0;
+		SrcAdapter->SrcBufHandler.W = 0;
 	}
 }
 
@@ -2105,23 +2269,36 @@ void AudioFadeout(int16_t* pcm_in, uint16_t pcm_length, uint16_t ch)
 	}
 }
 
+#ifdef	CFG_AUDIO_WIDTH_24BIT
+PCM_DATA_WIDTH AudioCoreSourceBitWidthGet(uint8_t Index)
+{
+	return AudioCore.AudioSource[Index].BitWidth;
+}
+#endif
+
 void AudioSinkSetForPause(void)
 {
 	extern uint16_t TwsSinkDataSet(void* Buf, uint16_t Len);
 #ifdef TWS_DAC0_OUT
 	if(AudioCoreSinkIsInit(AUDIO_DAC0_SINK_NUM) && AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].SpaceLenFunc() > AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].Net])
 	{
+#ifdef BT_TWS_SUPPORT
 		TWSDataGet(AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].PcmOutBuf, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].Net]);
+#endif
 #ifdef CFG_AUDIO_WIDTH_24BIT
 		memset(AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].PcmOutBuf, 0, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].Net] * 8);
 #else
 		memset(AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].PcmOutBuf, 0, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].Net] * 4);
 #endif
+#ifdef BT_TWS_SUPPORT
 		TwsSinkDataSet(AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].PcmOutBuf, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].Net]);
+#endif
 		AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].DataSetFunc(AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].PcmOutBuf, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].Net]);
 		AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].MutedCount += AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].Net];
+#ifdef BT_TWS_SUPPORT
 		if(AudioCoreSinkIsInit(TWS_SINK_NUM))
 			AudioCore.AudioSink[TWS_SINK_NUM].MutedCount += AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].Net];
+#endif
 	}
 #endif
 #ifdef TWS_DACX_OUT
@@ -2137,7 +2314,7 @@ void AudioSinkSetForPause(void)
 	}
 #endif
 
-#if defined(TWS_IIS0_OUT) || defined(TWS_IIS1_OUT)
+#if defined(CFG_RES_AUDIO_I2SOUT_EN) && (defined(TWS_IIS0_OUT) || defined(TWS_IIS1_OUT))
 	if(AudioCoreSinkIsInit(AUDIO_I2SOUT_SINK_NUM) && AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].SpaceLenFunc() > AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].Net])
 	{
 	#ifdef CFG_AUDIO_WIDTH_24BIT
@@ -2147,6 +2324,32 @@ void AudioSinkSetForPause(void)
 	#endif
 		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].DataSetFunc(AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].PcmOutBuf, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].Net]);
 		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].MutedCount += AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].Net];
+	}
+#endif
+
+#if defined(CFG_RES_AUDIO_I2S0OUT_EN) && defined(TWS_IIS0_OUT)
+	if(AudioCoreSinkIsInit(AUDIO_I2S0_OUT_SINK_NUM) && AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].SpaceLenFunc() > AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].Net])
+	{
+	#ifdef CFG_AUDIO_WIDTH_24BIT
+		memset(AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].PcmOutBuf, 0, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].Net] * 8);
+	#else
+		memset(AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].PcmOutBuf, 0, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].Net] * 4);
+	#endif
+		AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].DataSetFunc(AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].PcmOutBuf, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].Net]);
+		AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].MutedCount += AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S0_OUT_SINK_NUM].Net];
+	}
+#endif
+
+#if defined(CFG_RES_AUDIO_I2S1OUT_EN) && defined(TWS_IIS1_OUT)
+	if(AudioCoreSinkIsInit(AUDIO_I2S1_OUT_SINK_NUM) && AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].SpaceLenFunc() > AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].Net])
+	{
+	#ifdef CFG_AUDIO_WIDTH_24BIT
+		memset(AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].PcmOutBuf, 0, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].Net] * 8);
+	#else
+		memset(AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].PcmOutBuf, 0, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].Net] * 4);
+	#endif
+		AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].DataSetFunc(AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].PcmOutBuf, AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].Net]);
+		AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].MutedCount += AudioCore.FrameSize[AudioCore.AudioSink[AUDIO_I2S1_OUT_SINK_NUM].Net];
 	}
 #endif
 }

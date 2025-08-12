@@ -4,7 +4,7 @@
  * @brief	Noise gate.
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v1.1.3
+ * @version	v2.1.0
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -32,14 +32,14 @@ typedef struct _NoiseGateCT
 {
 	int32_t sample_rate;
 	int32_t num_channels;
-	int32_t ltrhold;
-	int32_t utrhold;
+	int32_t ltrhold16;
+	int32_t utrhold16;
+	int32_t ltrhold24;
+	int32_t utrhold24;
 	int32_t alpha_attack;
 	int32_t alpha_release;
-	//int32_t alpha_hold;
-	int32_t att, rel, ht;
-	int32_t invatt, invrel;
-	int32_t state, g;
+	int32_t ht;
+	int32_t gs;
 	int32_t lthcnt;
 	int32_t uthcnt;
 
@@ -69,13 +69,25 @@ int32_t noise_gate_init(NoiseGateCT *ct, int32_t num_channels, int32_t sample_ra
 /**
  * @brief Apply noise gate to a frame of PCM data.
  * @param vb Pointer to a NoiseGateCT object.
- * @param pcm_in Address of the PCM input. The PCM layout must be the same as in Microsoft WAVE format for both mono and stereo cases.
- * @param pcm_out Address of the PCM output. The PCM layout must be the same as in Microsoft WAVE format for both mono and stereo cases.
+ * @param pcm_in Address of the PCM input. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ * @param pcm_out Address of the PCM output. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
  *        pcm_out can be the same as pcm_in. In this case, the PCM is changed in-place.
  * @param n Number of PCM samples to process.
  * @return error code. NG_ERROR_OK means successful, other codes indicate error.
  */
 int32_t noise_gate_apply(NoiseGateCT *ct, int16_t *pcm_in, int16_t *pcm_out, int32_t n);
+
+
+/**
+ * @brief Apply noise gate to a frame of PCM data (24-bit).
+ * @param vb Pointer to a NoiseGateCT object.
+ * @param pcm_in Address of the PCM input. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ * @param pcm_out Address of the PCM output. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ *        pcm_out can be the same as pcm_in. In this case, the PCM is changed in-place.
+ * @param n Number of PCM samples to process.
+ * @return error code. NG_ERROR_OK means successful, other codes indicate error.
+ */
+int32_t noise_gate_apply24(NoiseGateCT *ct, int32_t *pcm_in, int32_t *pcm_out, int32_t n);
 
 
 #ifdef __cplusplus

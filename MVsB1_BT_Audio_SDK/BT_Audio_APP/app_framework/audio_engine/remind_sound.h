@@ -52,7 +52,6 @@ uint16_t RemindDataGet(void* Buf, uint16_t Samples);
 uint16_t RemindDataLenGet(void);
 void RemindSoundAudioPlayEnd(void);
 bool RemindSoundWaitingPlay(void);
-void RemindSoundItemRequestEnable(void);
 void RemindSoundItemRequestDisable(void);
 
 #ifndef SOUND_REMIND_0
@@ -150,80 +149,12 @@ void RemindSoundItemRequestDisable(void);
 	#define SOUND_REMIND_BTPAIR NULL
 #endif
 
-//boeu
-#ifndef SOUND_REMIND_BT_CON
-	#define SOUND_REMIND_BT_CON NULL
-#endif
-
-#ifndef SOUND_REMIND_BT_DIS
-	#define SOUND_REMIND_BT_DIS NULL
-#endif
-
-#ifndef SOUND_REMIND_EFFECT_S
-	#define SOUND_REMIND_EFFECT_S NULL
-#endif
-
-#ifndef SOUND_REMIND_LOW_POWE
-	#define SOUND_REMIND_LOW_POWE NULL
-#endif
-
-#ifndef SOUND_REMIND_MODE_AUX
-	#define SOUND_REMIND_MODE_AUX NULL
-#endif
-
-#ifndef SOUND_REMIND_MODE_BT
-	#define SOUND_REMIND_MODE_BT NULL
-#endif
-
-#ifndef SOUND_REMIND_MODE_SD
-	#define SOUND_REMIND_MODE_SD NULL
-#endif
-
-#ifndef SOUND_REMIND_MODE_UPA
-	#define SOUND_REMIND_MODE_UPA NULL
-#endif
-
-#ifndef SOUND_REMIND_POWER_OF
-	#define SOUND_REMIND_POWER_OF NULL
-#endif
-
-#ifndef SOUND_REMIND_POWER_ON
-	#define SOUND_REMIND_POWER_ON NULL
-#endif
-
-#ifndef SOUND_REMIND_RING
-	#define SOUND_REMIND_RING NULL
-#endif
-
-#ifndef SOUND_REMIND_TWS_CON
-	#define SOUND_REMIND_TWS_CON NULL
-#endif
-
-#ifndef SOUND_REMIND_TWS_DIS
-	#define SOUND_REMIND_TWS_DIS NULL
-#endif
-
-#ifndef SOUND_REMIND_VOL_MAX
-	#define SOUND_REMIND_VOL_MAX NULL
-#endif
-
-#ifndef SOUND_REMIND_VOL_MIN
-	#define SOUND_REMIND_VOL_MIN NULL
-#endif
-
-#ifndef SOUND_REMIND_UPDATEOK
-	#define SOUND_REMIND_UPDATEOK NULL
-#endif
-
-
-//boeu end
-
 
 
 #define REMIND_ATTR_NEED_MIX					0x80    //混合当前音源一起输出
 #define REMIND_ATTR_NEED_HOLD_PLAY				0x40	//用于BlockPlay需要保留未完成的INTTERRUPT_PLAY
 #define REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY	0x20	//清空INTTERRUPT_PLAY
-#define REMIND_ATTR_NEED_MUTE_APP_SOURCE		0x10
+#define REMIND_ATTR_NEED_MUTE_APP_SOURCE		0x10    //播放提示音时MUTE APP SOURCE音源
 #define REMIND_ATTR_CLEAR						0x08
 #define REMIND_ATTR_MUTE						0x04	//for partner
 //下列多选一

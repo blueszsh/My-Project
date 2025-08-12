@@ -72,7 +72,6 @@ typedef enum
 	ModeHdmiAudioPlay,
 	ModeUDiskPlayBack,
 	ModeCardPlayBack,
-	////////////ModePoweroffInCharge,// BOEU 关机充电模式
 	SysModeMax,
 }SysModeNumber;
 #define ENTERR_PREV_MODE	SysModeMax

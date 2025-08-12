@@ -35,7 +35,8 @@
 #include "mode_task.h"
 #include "bt_stack_service.h"
 #include "bt_play_mode.h"
-
+#include "spi_flash.h"
+#include "sys_param.h"
 
 //蓝牙被连接条件状态
 #define BT_CON_REJECT		0
@@ -70,7 +71,7 @@ static uint32_t BtRemoteDeviceConnecting_DualPhoneAndTws(uint8_t *addr)
 	}
 
 //对箱主/角色随机
-#if ((TWS_PAIRING_MODE == CFG_TWS_ROLE_RANDOM)||(TWS_PAIRING_MODE == CFG_TWS_PEER_MASTER))
+#if ((TWS_PAIRING_MODE == CFG_TWS_ROLE_RANDOM)||(TWS_PAIRING_MODE == CFG_TWS_PEER_MASTER) || (TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER))
 	if(is_tws_device(addr))
 	{
 		if(btManager.twsState == BT_TWS_STATE_CONNECTED)
@@ -221,10 +222,8 @@ static uint32_t BtRemoteDeviceConnecting_DualPhoneAndTws(uint8_t *addr)
 			}
 		}
 	}
-
-#else //(TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER)||(TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
-	//暂时不支持soundbar的主从组网方式
-	return BT_CON_REJECT;
+#else
+	return BT_CON_SLAVE;
 #endif
 }
 #endif
@@ -247,7 +246,7 @@ static uint32_t BtRemoteDeviceConnecting_SinglePhoneAndTws(uint8_t *addr)
 	}
 
 //对箱主/角色随机
-#if ((TWS_PAIRING_MODE == CFG_TWS_ROLE_RANDOM)||(TWS_PAIRING_MODE == CFG_TWS_PEER_MASTER))
+#if ((TWS_PAIRING_MODE == CFG_TWS_ROLE_RANDOM)||(TWS_PAIRING_MODE == CFG_TWS_PEER_MASTER) || (TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER))
 	if(is_tws_device(addr))
 	{
 		if(btManager.twsState == BT_TWS_STATE_CONNECTED)
@@ -255,6 +254,14 @@ static uint32_t BtRemoteDeviceConnecting_SinglePhoneAndTws(uint8_t *addr)
 			APP_DBG("tws state is connected, reject the new tws device\n");
 			return BT_CON_REJECT;
 		}
+
+		#if (defined(BT_TWS_SUPPORT) && ((CFG_TWS_ONLY_IN_BT_MODE == ENABLE)))
+		if(!IsBtAudioMode())
+		{
+			APP_DBG("no bt mode, reject tws device\n");
+			return BT_CON_REJECT;
+		}
+		#endif
 
 		if((btManager.btLinkState == 1)
 			||(GetA2dpState(BtCurIndex_Get()) >= BT_A2DP_STATE_CONNECTED)
@@ -381,7 +388,7 @@ static uint32_t BtRemoteDeviceConnecting_SinglePhoneAndTws(uint8_t *addr)
 		else
 		{
 			APP_DBG("tws device connecting\n");
-			return BT_CON_SLAVE;
+			return BT_CON_MASTER;//BT_CON_SLAVE;
 		}
 	}
 	else
@@ -390,11 +397,9 @@ static uint32_t BtRemoteDeviceConnecting_SinglePhoneAndTws(uint8_t *addr)
 		{
 			return BT_CON_REJECT;
 		}
-		else 
-			if(btManager.twsState == BT_TWS_STATE_CONNECTED)
+		else if(btManager.twsState == BT_TWS_STATE_CONNECTED)
 		{
-			APP_DBG("tws state is connected, reject the new tws device\n");
-			return BT_CON_REJECT;
+			return BT_CON_MASTER;
 		}
 		else
 		{
@@ -409,9 +414,8 @@ static uint32_t BtRemoteDeviceConnecting_SinglePhoneAndTws(uint8_t *addr)
 		}
 	}
 
-#else //(TWS_PAIRING_MODE == CFG_TWS_ROLE_MASTER)||(TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
-	//暂时不支持soundbar的主从组网方式
-	return BT_CON_REJECT;
+#else
+	return BT_CON_SLAVE;
 #endif
 }
 
@@ -651,6 +655,11 @@ static void BtAccessMode_SinglePhoneAndTws(void)
 			{
 				BtSetAccessMode_NoDisc_NoCon();
 			}
+			else if((btManager.twsFlag) && (btManager.twsRole == BT_TWS_SLAVE))
+			{
+				BtSetAccessMode_NoDisc_NoCon();
+				BtReconnectTwsStop();
+			}
 			else
 			{
 				BtSetAccessMode_NoDisc_Con();
@@ -666,7 +675,16 @@ static void BtAccessMode_SinglePhoneAndTws(void)
 			{
 				if(IsBtAudioMode())
 				{
-					BtSetAccessMode_Disc_Con();
+					#if (defined(BT_TWS_SUPPORT) && (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE))
+					if (!btManager.twsSoundbarSlaveTestFlag)
+					{
+						BtSetAccessMode_NoDisc_Con();
+					}
+					else
+					#endif
+					{
+						BtSetAccessMode_Disc_Con();
+					}
 				}
 				else if(IsBtTwsSlaveMode())
 				{
@@ -674,16 +692,20 @@ static void BtAccessMode_SinglePhoneAndTws(void)
 				}
 				else
 				{
-				#if (CFG_TWS_ONLY_IN_BT_MODE == ENABLE)
+					#if (CFG_TWS_ONLY_IN_BT_MODE == ENABLE)
 					BtSetAccessMode_NoDisc_NoCon();
-				#else
+					#else
 					BtSetAccessMode_NoDisc_Con();
-				#endif
+					#endif
 				}
 			}
 			else
 			{
+				#if (TWS_PAIRING_MODE == CFG_TWS_ROLE_SLAVE)
+				BtSetAccessMode_NoDisc_Con();
+				#else
 				BtSetAccessMode_Disc_Con();
+				#endif
 			}
 		}
 	}
@@ -983,12 +1005,12 @@ void BtTwsConnectionLinkLoss(void)
 {
 	APP_DBG("[TWS]LINK LOST\n");
 	
-//#ifdef CFG_TWS_SOUNDBAR_APP
-//	{
-//		extern void sniff_lmpsend_set(uint8_t set);
-//		sniff_lmpsend_set(0);
-//	}
-//#endif
+#ifdef BT_SNIFF_ENABLE
+	{
+		extern void sniff_lmpsend_set(uint8_t set);
+		sniff_lmpsend_set(0);
+	}
+#endif
 
 #if (TWS_PAIRING_MODE == CFG_TWS_PEER_SLAVE)
 	if(GetSystemMode() == ModeTwsSlavePlay)
@@ -1325,4 +1347,44 @@ void BtEventFlagProcess(void)
 	}
 }
 
+/***********************************************************************************
+ * 更新 蓝牙BLE名称到flash
+ **********************************************************************************/
+int32_t BtDeviceBleNameSet(uint8_t* deviceName, uint8_t deviceLen)
+{
+
+	uint32_t addr = get_sys_parameter_addr();
+
+	SPI_FLASH_ERR_CODE ret=0;
+
+	uint8_t len = deviceLen;
+	
+	if(deviceName == NULL || len == 0)
+	{
+		APP_DBG("write ble name error:params is null\n");
+		return -1;
+	}
+	APP_DBG("write ble name :%s\n", deviceName);
+	
+	if(len > BLE_NAME_SIZE)
+		len = BLE_NAME_SIZE;
+	memset(sys_parameter.ble_LocalDeviceName,0,BLE_NAME_SIZE);
+	memcpy(sys_parameter.ble_LocalDeviceName,deviceName,len);
+	memcpy(btStackConfigParams->ble_LocalDeviceName, deviceName, len);
+
+	//1.erase
+	SpiFlashErase(SECTOR_ERASE, (addr/4096), 1);
+
+	//2.write params
+	ret = SpiFlashWrite(addr, (uint8_t*)&sys_parameter, sizeof(SYS_PARAMETER), 1);
+	if(ret != FLASH_NONE_ERR)
+	{
+		APP_DBG("write ble name error:%d\n", ret);
+		return -2;
+	}
+
+	APP_DBG("write ble name success\n");
+	
+	return 0;
+}
 

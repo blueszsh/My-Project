@@ -24,7 +24,7 @@
 #include "mode_task.h"
 
 #if (BT_AVRCP_SONG_TRACK_INFOR == ENABLE)
-#define StringMaxLen 60
+#define StringMaxLen 128
 #include "string_convert.h"
 #endif
 
@@ -128,7 +128,7 @@ void BtAvrcpConnectedDev(BT_AVRCP_CALLBACK_PARAMS * param)
 
 #if (BT_AVRCP_VOLUME_SYNC == ENABLE)
 	btManager.avrcpSyncEnable = 0;
-	btManager.avrcpSyncVol = 0xff; //初始值
+	btManager.avrcpSyncVol = AudioMusicVolGet(); //初始值
 	AvrcpAdvTargetSyncVolumeConfig(ConnectIndex,BtLocalVolLevel2AbsVolme(AudioMusicVolGet()));//蓝牙AVRCP连接成功后，将当前的音量值同步到AVRCP adv.volume默认值
 #endif
 
@@ -159,6 +159,11 @@ void BtAvrcpDisconnectedDev(BT_AVRCP_CALLBACK_PARAMS * param)
 		SetBtDisconnectProfile(index,BT_CONNECTED_AVRCP_FLAG);
 		BtLinkStateDisconnect(index);
 	}
+	#ifdef RECON_ADD
+	btManager.btReconnectunusual = TRUE;
+	#endif
+
+	btManager.btLinked_env[param->index].avrcpPlayStatus = 0;
 	
 	//AVRCP断开机制清除
 	//BtEventFlagDeregister(BT_EVENT_FLAG_AVRCP_DISCONNECT);
@@ -176,46 +181,11 @@ void BtAvrcpPlayStatusChanged(BT_AVRCP_CALLBACK_PARAMS * param)
 	uint8_t index = GetBtManagerAvrcpIndex(param->index);
 	APP_DBG("Remote AVRCP Play State [%d],index = %d\n", param->params.avrcpAdv.avrcpAdvMediaStatus,param->index);
 
-    if(param->params.avrcpAdv.avrcpAdvMediaStatus==1)
-    {
-       T_bt_inf.play_state =_Music_play;
-      // BT_state = BT_A2DP_Start;
-      #ifdef CFG_DMA_RGB_LED_EN
-		mainAppCt.rgb_mode = RGB_Effect_Bt_Play;
-        mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
-      #endif
-      #if LEDS_mix_RGB_EN
-		    RGB_curr_effect = RGB_Effect_Bt_Play;
-	        Temp_RGB_curr_effect=RGB_curr_effect;
-      #endif
-
-	}
-	else  if(param->params.avrcpAdv.avrcpAdvMediaStatus==2)
-    {
-       T_bt_inf.play_state =_Music_puse;
-      // BT_state = BT_A2DP_Suspend;
-      if(btManager.btLinkState == 1)
-      {
-	      #ifdef CFG_DMA_RGB_LED_EN
-			mainAppCt.rgb_mode = RGB_Effect_Bt_Pause;
-	        mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
-	      #endif
-	      #if LEDS_mix_RGB_EN
-			    RGB_curr_effect = RGB_Effect_Bt_Pause;
-		        Temp_RGB_curr_effect=RGB_curr_effect;
-	      #endif
-      }
-	}
-
-	PA_contral();
-
 	if(GetSystemMode() != ModeBtAudioPlay)
 		return;
 
 	if(index >= BT_LINK_DEV_NUM)
 		return;
-
-	
 
 #if 0//(BT_HFP_SUPPORT == ENABLE)
 	if((param->params.avrcpAdv.avrcpAdvMediaStatus == 1)&&(gSpecificDevice))
@@ -293,6 +263,8 @@ void BtAvrcpPlayStatus(BT_AVRCP_CALLBACK_PARAMS * param)
 	uint8_t curPlayStatus = param->params.avrcpAdv.avrcpAdvPlayStatus.CurPlayStatus;
 	uint32_t curPlayTimes = param->params.avrcpAdv.avrcpAdvPlayStatus.CurPosInMs;
 	uint32_t tatolPlayTimes = param->params.avrcpAdv.avrcpAdvPlayStatus.TotalLengthInMs;
+
+	btManager.btLinked_env[param->index].avrcpPlayStatus = curPlayStatus;
 	
 	switch(curPlayStatus)
 	{
@@ -307,8 +279,8 @@ void BtAvrcpPlayStatus(BT_AVRCP_CALLBACK_PARAMS * param)
 					((int)tatolPlayTimes/1000)/60,
 					((int)tatolPlayTimes/1000)%60);
 
-			if((curPlayTimes/1000%5) == 1)
-				BTCtrlGetMediaInfor(param->index);
+			//if((curPlayTimes/1000%5) == 1)
+			//	BTCtrlGetMediaInfor(param->index);
 			
 			break;
 
@@ -388,18 +360,41 @@ uint8_t GetBtSyncVolume(void)
 }
 #endif
 
-/***********************************************************************************
- * 获取歌曲信息函数
- **********************************************************************************/
+
 #if (BT_AVRCP_SONG_TRACK_INFOR == ENABLE)
-void GetBtMediaInfo(void *params)
+/***********************************************************************************
+ * 获取歌曲信息 回调函数
+ **********************************************************************************/
+#define BT_MEDIA_INFO_INTERVAL		250	//interval: **ms
+
+AppAvrcpAdvMediaInfo	AppBtMediaInfo;
+void BtMediaInfoCallback(void *params)
 {
 	AvrcpAdvMediaInfo	*CurMediaInfo;
 	uint8_t i;
-	uint8_t StringData[StringMaxLen];
-	uint8_t ConvertStringData[StringMaxLen];
+	
 	CurMediaInfo = (AvrcpAdvMediaInfo*)params;
+	memset(&AppBtMediaInfo, 0, sizeof(AppAvrcpAdvMediaInfo));
+	
+	if(CurMediaInfo->numIds)
+	{
+		AppBtMediaInfo.numIds = CurMediaInfo->numIds;
+		for(i=0;i<CurMediaInfo->numIds;i++)
+		{
+			AppBtMediaInfo.property[i].attrId = CurMediaInfo->property[i].attrId;
+			AppBtMediaInfo.property[i].charSet = CurMediaInfo->property[i].charSet;
+			AppBtMediaInfo.property[i].length = CurMediaInfo->property[i].length;
+			if(AppBtMediaInfo.property[i].length >= StringMaxLen)
+				AppBtMediaInfo.property[i].length = StringMaxLen;
 
+			if((CurMediaInfo->property[i].string != NULL) && (CurMediaInfo->property[i].length > 0))
+				memcpy(AppBtMediaInfo.property[i].string, CurMediaInfo->property[i].string, AppBtMediaInfo.property[i].length);
+		}
+
+		SoftFlagRegister(SoftFlagBtMediInfo);
+	}
+
+#if 0
 	if((CurMediaInfo)&&(CurMediaInfo->numIds))
 	{
 		for(i=0;i<CurMediaInfo->numIds;i++)
@@ -484,6 +479,163 @@ void GetBtMediaInfo(void *params)
 			}
 		}
 	}
+#endif
 }
+
+/***********************************************************************************
+ * 用于应用层主动获取歌曲信息
+ * 间隔 **ms 获取一次歌曲信息
+ * 播放时: BT_MEDIA_INFO_INTERVAL
+ * 暂停时: BT_MEDIA_INFO_INTERVAL * 20
+ ***********************************************************************************/
+void BtMediaInfoRunloop(void) 
+{
+//	if(btManager.btLinked_env[btManager.cur_index].a2dpState == BT_A2DP_STATE_STREAMING)
+//	{
+//		if(btManager.avrcpMediaInfoGetCnt++ >= BT_MEDIA_INFO_INTERVAL)
+//		{
+//			btManager.avrcpMediaInfoGetCnt = 0;
+//			BTCtrlGetMediaInfor(btManager.cur_index);
+//		}
+//	}
+
+	//20240515
+	if(btManager.avrcpMediaInfoGetCnt)
+	{
+		btManager.avrcpMediaInfoGetCnt = 0;
+		BTCtrlGetMediaInfor(btManager.cur_index);
+	}
+}
+
+/***********************************************************************************
+ * 用于应用层显示获取到的蓝牙歌曲信息
+ * 客户可以在这里将歌曲信息发送给其他模块
+ ***********************************************************************************/
+void BtMediaInfoDisp(void)
+{
+	uint8_t i;
+	uint16_t len;
+#ifdef CFG_FUNC_STRING_CONVERT_EN
+	uint8_t StringData[StringMaxLen];
+	uint8_t ConvertStringData[StringMaxLen];
+#endif
+
+	if(!SoftFlagGet(SoftFlagBtMediInfo))
+		return;
+
+	SoftFlagDeregister(SoftFlagBtMediInfo);
+	for(i=0; i<AppBtMediaInfo.numIds; i++)
+	{
+		if(AppBtMediaInfo.property[i].length)
+		{
+#ifdef CFG_FUNC_STRING_CONVERT_EN
+			memset(StringData, 0, StringMaxLen);
+			memset(ConvertStringData, 0, StringMaxLen);
+			
+			if(AppBtMediaInfo.property[i].charSet == 0x006a)
+			{
+				//APP_DBG("Character Set Id: UTF-8\n");
+				
+				if(AppBtMediaInfo.property[i].length > StringMaxLen)
+				{
+					AppBtMediaInfo.property[i].length = StringMaxLen;
+				}
+				
+				memcpy(StringData, AppBtMediaInfo.property[i].string, AppBtMediaInfo.property[i].length);
+				StringConvert(ConvertStringData, StringMaxLen, StringData, AppBtMediaInfo.property[i].length ,UTF8_TO_GBK);
+
+		//Attribute ID
+				if(ConvertStringData[0])// no character ,not dispaly ID3
+				{
+					switch(AppBtMediaInfo.property[i].attrId)
+					{
+						case 1:
+							APP_DBG("Title of the media\n");
+							break;
+		
+						case 2:
+							APP_DBG("Name of the artist\n");
+							break;
+		
+						case 3:
+							APP_DBG("Name of the Album\n");
+							break;
+		
+						//当前曲目数:只有在自带播放器才能获取到
+						case 4:
+							APP_DBG("Number of the media\n");
+							break;
+		
+						//总共曲目数:只有在自带播放器才能获取到
+						case 5:
+							APP_DBG("Totle number of the media\n");
+							break;
+		
+						case 6:
+							APP_DBG("Genre\n");
+							break;
+		
+						case 7:
+							APP_DBG("Playing time in millisecond\n");
+							break;
+						
+						case 8:
+							APP_DBG("Default cover art\n");
+							break;
+		
+						default:
+							break;
+					}
+				}
+
+				APP_DBG("%s\n", ConvertStringData);
+			}
+#else
+			switch(AppBtMediaInfo.property[i].attrId)
+			{
+				case 1: //歌词名/歌曲信息
+					APP_DBG("Title :%s\n", AppBtMediaInfo.property[i].string);
+					break;
+
+				case 2: //艺术家名
+					//APP_DBG("artist: %s\n", AppBtMediaInfo.property[i].string);
+					break;
+
+				case 3:
+					//APP_DBG("Name of the Album\n");
+					break;
+
+				//当前曲目数:只有在自带播放器才能获取到
+				case 4:
+					//APP_DBG("Number of the media\n");
+					break;
+
+				//总共曲目数:只有在自带播放器才能获取到
+				case 5:
+					//APP_DBG("Totle number of the media\n");
+					break;
+
+				case 6:
+					//APP_DBG("Genre\n");
+					break;
+
+				case 7:
+					//APP_DBG("Playing time in millisecond\n");
+					break;
+				
+				case 8:
+					//APP_DBG("Default cover art\n");
+					break;
+
+				default:
+					break;
+			}
+			
+			//APP_DBG("%s\n", AppBtMediaInfo.property[i].string);
+#endif
+		}
+	}
+}
+
 #endif
 

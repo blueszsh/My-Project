@@ -4,7 +4,7 @@
  * @brief	Resampler based on farrow structure
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v1.0.0
+ * @version	v1.1.0
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -66,6 +66,22 @@ int32_t resampler_farrow_init(ResamplerFarrowContext *ct, int32_t num_channels, 
  * as a large integer or simple rational (e.g: R = 1/4, R = 128/64) may result in severe alias effects.
  */
 int32_t resampler_farrow_apply(ResamplerFarrowContext *ct, int16_t *pcm_in, int16_t *pcm_out, int32_t num_in, int32_t num_out);
+
+
+/**
+ * @brief Apply resampling (sample rate conversion) to a frame of PCM data (fixed-point implementation, 24-bit).
+ * @param ct Pointer to a ResamplerFarrowContext object.
+ * @param pcm_in Address of the PCM input buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ * @param pcm_out Address of the PCM output buffer. The PCM layout for mono is like "M0,M1,M2,..." and for stereo "L0,R0,L1,R1,L2,R2,...".
+ *        pcm_out CANNOT be the same as pcm_in and the number of output PCM samples (num_out) may not be the same as the number of input PCM samples (num_in).
+ * @param num_in Number of input PCM samples per channel. Any positive value is legal.
+ * @param num_out Number of output PCM samples per channel. Any positive value is legal.
+ * @return error code. RESAMPLER_FARROW_ERROR_OK means successful, other codes indicate error.
+ * @note Although there is no limit for num_in & num_out, the design of this resampling algorithm is for a very small modification of
+ * the sampling factor and it concerns a fine-tuning factor close to unity (e.g: R = 129/128). Large sampling rate conversion factor such
+ * as a large integer or simple rational (e.g: R = 1/4, R = 128/64) may result in severe alias effects.
+ */
+int32_t resampler_farrow_apply24(ResamplerFarrowContext *ct, int32_t *pcm_in, int32_t *pcm_out, int32_t num_in, int32_t num_out);
 
 
 /**

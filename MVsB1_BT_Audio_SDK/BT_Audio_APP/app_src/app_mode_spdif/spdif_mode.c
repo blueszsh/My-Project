@@ -51,18 +51,22 @@
 
 #if defined(CFG_APP_OPTICAL_MODE_EN) || defined(CFG_APP_COAXIAL_MODE_EN)
 
+// 如果支持TWS，即打开了BT_TWS_SUPPORT  SPDIF位宽必须设为0;
+#define SPDIF_BIT_Width				    0  // 0: 16bit   1: 24bit
+
+
 bool SpdifLockFlag = FALSE;
 uint32_t samplerate = 0;
 
 #define SPDIF_SOURCE_NUM				APP_SOURCE_NUM
 #define PCM_REMAIN_SMAPLES				3//spdif数据丢声道时,返回数据会超过一帧128，用于缓存数据，试听感更加好
+
 //spdif单个采样点8字节
 //recv, dma buf len,MAX_FRAME_SAMPLES * 2 * 2 * 2 * 2是基础，OS切换间隔实测需要加倍。
-#define	SPDIF_FIFO_LEN					(MAX_FRAME_SAMPLES * 2 * 2 * 2 * 2 * 2)
+#define	SPDIF_FIFO_LEN					(MAX_FRAME_SAMPLES * 2 * 2 * 2 * 2 * 2 * 2)
+
 //由于采样值从32bit转换为16bit，可以使用同一个buf，否则要独立申请
-#define SPDIF_CARRY_LEN					(MAX_FRAME_SAMPLES * 2 * 2 * 2 + PCM_REMAIN_SMAPLES * 2 * 4)//支持192000输入 buf len for get data form dma fifo, deal + 6samples 用于缓存偶尔多余的数据，#9817
-//转采样输出buf,如果spdif转采样提升大于四倍需要加大此SPDIF_CARRY_LEN，比如输入8000以下转48000,需要缩小单次carry帧大小或调大SPDIF_RESAMPLER_OUT_LEN、SPDIF_PCM_FIFO_LEN
-#define SPDIF_RESAMPLER_OUT_LEN			(MAX_FRAME_SAMPLES * 2 * 2 * 4)
+#define SPDIF_CARRY_LEN					(MAX_FRAME_SAMPLES * 2 * 2 * 2 * 2 + PCM_REMAIN_SMAPLES * 2 * 4)//支持192000输入 buf len for get data form dma fifo, deal + 6samples 用于缓存偶尔多余的数据，#9817
 
 
 /**根据appconfig缺省配置:DMA 8个通道配置**/
@@ -90,9 +94,12 @@ static const uint8_t DmaChannelMap[29] =
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
 
-#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN) && !defined (CFG_FUNC_RECORDER_EN)
 	255,//PERIPHERAL_ID_SDIO_RX,		//3
 	255,//PERIPHERAL_ID_SDIO_TX,		//4
+#elif defined (CFG_FUNC_RECORDER_EN) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+	5,//PERIPHERAL_ID_SDIO_RX,			//3
+	5,//PERIPHERAL_ID_SDIO_TX,			//4
 #else
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
@@ -101,8 +108,8 @@ static const uint8_t DmaChannelMap[29] =
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
-	0,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
-	0,//PERIPHERAL_ID_SDPIF_TX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_TX,			//8 SPDIF_RX /TX same chanell
 	255,//PERIPHERAL_ID_SPIM_RX,		//9
 	255,//PERIPHERAL_ID_SPIM_TX,		//10
 	255,//PERIPHERAL_ID_UART0_TX,		//11
@@ -118,7 +125,7 @@ static const uint8_t DmaChannelMap[29] =
 	255,//PERIPHERAL_ID_TIMER4,			//14
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
-	255,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
+	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
 	1,//PERIPHERAL_ID_AUDIO_ADC1_RX,	//18
 	2,//PERIPHERAL_ID_AUDIO_DAC0_TX,	//19
 	3,//PERIPHERAL_ID_AUDIO_DAC1_TX,	//20
@@ -154,14 +161,13 @@ static const uint8_t DmaChannelMap[29] =
 
 typedef struct _SpdifPlayContext
 {
-	//xTaskHandle 		taskHandle;
-	//MessageHandle		msgHandle;
-	//MessageHandle		parentMsgHandle;
-
 	TaskState			state;
 	uint32_t			*SpdifPwcFIFO;		//
 	uint16_t 			*Source1Buf_Spdif;//
 	uint32_t            *SpdifCarry;
+#if (SPDIF_BIT_Width == 1)
+	uint32_t            *SpdifCarry24;
+#endif	
 	uint32_t			*SpdifPcmFifo;
 	MCU_CIRCULAR_CONTEXT SpdifPcmCircularBuf;
 
@@ -177,12 +183,6 @@ typedef struct _SpdifPlayContext
 #endif
 	//play
 	uint32_t 			SampleRate;
-	
-#if 1//def CFG_FUNC_MIXER_SRC_EN
-	ResamplerPolyphaseContext* ResamplerCt;
-	uint32_t*			resampleOutBuf;
-#endif
-	uint32_t			SpdifSampleRate;
 
 	uint32_t 			SpdifDmaWritePtr;
 	uint32_t 			SpdifDmaReadPtr;
@@ -193,79 +193,11 @@ typedef struct _SpdifPlayContext
 }SpdifPlayContext;
 static  SpdifPlayContext*		SpdifPlayCt = NULL;
 
-static const int32_t SamplerRatio[][3] =
-{
-	{8000,  RESAMPLER_POLYPHASE_SRC_RATIO_441_80,	RESAMPLER_POLYPHASE_SRC_RATIO_6_1},
-	{11025, RESAMPLER_POLYPHASE_SRC_RATIO_4_1,		RESAMPLER_POLYPHASE_SRC_RATIO_640_147},
-	{12000, RESAMPLER_POLYPHASE_SRC_RATIO_147_40,	RESAMPLER_POLYPHASE_SRC_RATIO_4_1},
-	{16000, RESAMPLER_POLYPHASE_SRC_RATIO_441_160,	RESAMPLER_POLYPHASE_SRC_RATIO_3_1},
-	{22050, RESAMPLER_POLYPHASE_SRC_RATIO_2_1,		RESAMPLER_POLYPHASE_SRC_RATIO_320_147},
-	{24000, RESAMPLER_POLYPHASE_SRC_RATIO_147_80,	RESAMPLER_POLYPHASE_SRC_RATIO_2_1},
-	{32000, RESAMPLER_POLYPHASE_SRC_RATIO_441_320, 	RESAMPLER_POLYPHASE_SRC_RATIO_3_2},
-	{44100, 0,										RESAMPLER_POLYPHASE_SRC_RATIO_160_147},
-	{48000, RESAMPLER_POLYPHASE_SRC_RATIO_147_160,	0},
-	{88200, RESAMPLER_POLYPHASE_SRC_RATIO_1_2,		RESAMPLER_POLYPHASE_SRC_RATIO_80_147},
-	{96000, RESAMPLER_POLYPHASE_SRC_RATIO_147_320,	RESAMPLER_POLYPHASE_SRC_RATIO_1_2},
-	{176400,RESAMPLER_POLYPHASE_SRC_RATIO_1_4,		RESAMPLER_POLYPHASE_SRC_RATIO_40_147},
-	{192000,RESAMPLER_POLYPHASE_SRC_RATIO_147_640,	RESAMPLER_POLYPHASE_SRC_RATIO_1_4},
-	{33075, RESAMPLER_POLYPHASE_SRC_RATIO_4_3,		RESAMPLER_POLYPHASE_SRC_RATIO_4_3},
-};
 
-int32_t Get_Resampler_Polyphase(uint32_t resampler)
-{
-	int32_t res = 0;
-	uint32_t i;
-	for(i=0; i<14; i++)
-	{
-		if(SamplerRatio[i][0] == resampler)
-		{
-			if(CFG_PARA_SAMPLE_RATE == 44100)
-			{
-				res = SamplerRatio[i][1];
-				break;
-			}
-			else if(CFG_PARA_SAMPLE_RATE == 48000)
-			{
-				res = SamplerRatio[i][2];
-				break;
-			}
-			else
-			{
-				res = 0;
-			}
-		}
-	}
-	//APP_DBG("res = %d\n", res);		
-	return res;
-}
-
-uint16_t Spdif_Rx_DataLenGet(void);
-uint16_t Spdif_Rx_DataGet(void *pcm_out, uint16_t MaxSize);
-void SpdifDataCarry(void);
-static void SpdifPlayRunning(uint16_t msgId);
-static void SpdifSampleRateChange(void)
-{
-#if 1//def CFG_FUNC_MIXER_SRC_EN
-	resampler_polyphase_init(SpdifPlayCt->ResamplerCt, 2, Get_Resampler_Polyphase(SpdifPlayCt->SpdifSampleRate));
-#else
-	if(SpdifPlayCt->SampleRate != SpdifPlayCt->SpdifSampleRate)
-	{
-		SpdifPlayCt->SampleRate = SpdifPlayCt->SpdifSampleRate;//注意此处调整会造成提示音和mic数据dac不正常。
-		APP_DBG("Dac Sample:%d\n",(int)SpdifPlayCt->SampleRate);
-#ifdef CFG_RES_AUDIO_DACX_EN
-		AudioDAC_SampleRateChange(ALL, SpdifPlayCt->SampleRate);
-#endif
-#ifdef CFG_RES_AUDIO_DAC0_EN
-		AudioDAC_SampleRateChange(DAC0, SpdifPlayCt->SampleRate);
-#endif
-	}
-#endif
-}
 static void SpdifPlayRunning(uint16_t msgId)
 {
 	switch(msgId)
 	{
-	
 		default:
 			CommonMsgProccess(msgId);
 			break;
@@ -275,13 +207,21 @@ static void SpdifPlayRunning(uint16_t msgId)
 //sample为单位
 uint16_t Spdif_Rx_DataLenGet(void)
 {
+#if (SPDIF_BIT_Width == 1)
+	return MCUCircular_GetDataLen(&SpdifPlayCt->SpdifPcmCircularBuf)/8;
+#else
 	return MCUCircular_GetDataLen(&SpdifPlayCt->SpdifPcmCircularBuf)/4;
+#endif
 }
 
 //sample为单位，buf大小：8 * MaxSize
 uint16_t Spdif_Rx_DataGet(void *pcm_out, uint16_t MaxPoint)
 {
+#if (SPDIF_BIT_Width == 1)
+	return MCUCircular_GetData(&SpdifPlayCt->SpdifPcmCircularBuf, pcm_out, MaxPoint * 8) / 8;
+#else
 	return MCUCircular_GetData(&SpdifPlayCt->SpdifPcmCircularBuf, pcm_out, MaxPoint * 4) / 4;
+#endif
 }
 
 void SpdifDataCarry(void)
@@ -289,20 +229,23 @@ void SpdifDataCarry(void)
 	int16_t pcm_space;
 	uint16_t spdif_len;
 	int16_t pcm_len;
-	int16_t *pcmBuf  = (int16_t *)SpdifPlayCt->SpdifCarry;
+	uint32_t *pcmBuf = SpdifPlayCt->SpdifCarry;
 	uint16_t cnt;
 
-	spdif_len = DMA_CircularDataLenGet(PERIPHERAL_ID_SPDIF_RX);
-	pcm_space = MCUCircular_GetSpaceLen(&SpdifPlayCt->SpdifPcmCircularBuf) - 16;
+	#if (SPDIF_BIT_Width == 1)
+	uint16_t Spdif_bit_width = 32;
+	#else
+	uint16_t Spdif_bit_width = 16;
+	#endif
 
-	if(pcm_space < 16)
+	spdif_len = DMA_CircularDataLenGet(PERIPHERAL_ID_SPDIF_RX);
+	pcm_space = MCUCircular_GetSpaceLen(&SpdifPlayCt->SpdifPcmCircularBuf) - Spdif_bit_width;
+
+	if(pcm_space < Spdif_bit_width)
 	{
 		DBG("err\n");
 		return;
 	}
-#if 1//def CFG_FUNC_MIXER_SRC_EN
-	pcm_space = (pcm_space * SpdifPlayCt->SpdifSampleRate) / CFG_PARA_SAMPLE_RATE - 16;
-#endif
 
 	if((spdif_len >> 1) > pcm_space)
 	{
@@ -314,65 +257,49 @@ void SpdifDataCarry(void)
 	{
 		return ;
 	}
-	cnt = (spdif_len / 8) / (MAX_FRAME_SAMPLES);
 
+	cnt = (spdif_len / (Spdif_bit_width/2)) / (MAX_FRAME_SAMPLES);
 	while(cnt--)
 	{
+		pcm_len = DMA_CircularDataGet(PERIPHERAL_ID_SPDIF_RX, pcmBuf, MAX_FRAME_SAMPLES * (Spdif_bit_width/2));
 
-		DMA_CircularDataGet(PERIPHERAL_ID_SPDIF_RX, pcmBuf, MAX_FRAME_SAMPLES * 8);
 		//由于从32bit转换为16bit，buf可以使用同一个，否则要独立申请。
-		pcm_len = SPDIF_SPDIFDataToPCMData((int32_t *)pcmBuf, MAX_FRAME_SAMPLES * 8, (int32_t *)pcmBuf, SPDIF_WORDLTH_16BIT);
-
+		#if (SPDIF_BIT_Width == 1)
+		pcm_len = SPDIF_SPDIFDataToPCMData((int32_t *)pcmBuf, MAX_FRAME_SAMPLES * (Spdif_bit_width/2), (int32_t *)SpdifPlayCt->SpdifCarry24, SPDIF_WORDLTH_24BIT);
+		//printf("pcm_len = %d\n",pcm_len);
 		if(pcm_len < 0)
 		{
 			return;
 		}
-
-#if 1//def CFG_FUNC_MIXER_SRC_EN
-		if(SpdifPlayCt->SpdifSampleRate != CFG_PARA_SAMPLE_RATE)
+		MCUCircular_PutData(&SpdifPlayCt->SpdifPcmCircularBuf, SpdifPlayCt->SpdifCarry24, pcm_len);
+		#else
+		pcm_len = SPDIF_SPDIFDataToPCMData((int32_t *)pcmBuf, MAX_FRAME_SAMPLES * (Spdif_bit_width/2), (int32_t *)pcmBuf, SPDIF_WORDLTH_16BIT);
+		//printf("pcm_len = %d\n",pcm_len);
+		if(pcm_len < 0)
 		{
-			//pcm_len = resampler_apply(SpdifPlayCt->ResamplerCt, (int16_t*)pcmBuf, (int16_t*)SpdifPlayCt->resampleOutBuf, pcm_len/4);
-			pcm_len = resampler_polyphase_apply(SpdifPlayCt->ResamplerCt, (int16_t*)pcmBuf, (int16_t*)SpdifPlayCt->resampleOutBuf, pcm_len/4);
-			if(pcm_len<0)
-			{
-				return ;
-			}
-			MCUCircular_PutData(&SpdifPlayCt->SpdifPcmCircularBuf, SpdifPlayCt->resampleOutBuf, pcm_len*4);
+			return;
 		}
-		else
-		{
-			MCUCircular_PutData(&SpdifPlayCt->SpdifPcmCircularBuf, pcmBuf, pcm_len);
-		}
-#else
 		MCUCircular_PutData(&SpdifPlayCt->SpdifPcmCircularBuf, pcmBuf, pcm_len);
-#endif
+		#endif
 	}
 }
 
-
 bool SpdifPlayInit(void)
 {
-	
 	AudioCoreIO AudioIOSet;
 	bool ret;
-
 	
-	if(SpdifPlayCt != NULL)
-	{
+	if(SpdifPlayCt != NULL){
 		return FALSE;
 	}	
 	
 #ifdef CFG_FUNC_REMIND_SOUND_EN
-	{
-		if(GetSystemMode() == ModeOpticalAudioPlay)
-		{
-			DBG("Optical Play Init\n");
-		}
-		else
-		{
-			DBG("Coaxial Play Init\n");
-		}
-	}		
+	if(GetSystemMode() == ModeOpticalAudioPlay){
+		DBG("Optical Play Init\n");
+	}
+	else{
+		DBG("Coaxial Play Init\n");
+	}
 #endif
 
 	SPDIF_ModuleDisable();
@@ -386,17 +313,16 @@ bool SpdifPlayInit(void)
 	}
 	memset(SpdifPlayCt, 0, sizeof(SpdifPlayContext));
 
-	SpdifPlayCt->SampleRate = 0;//CFG_PARA_SAMPLE_RATE;
-	
-	SpdifPlayCt->SpdifPcmFifo = (uint32_t *)osPortMalloc(AudioCoreFrameSizeGet(DefaultNet) * 2 * 2 * 2 * 2);//end bkd
+	SpdifPlayCt->SampleRate = CFG_PARA_SAMPLE_RATE;
+
+	SpdifPlayCt->SpdifPcmFifo = (uint32_t *)osPortMalloc(SPDIF_FIFO_LEN);//end bkd
 	if(SpdifPlayCt->SpdifPcmFifo == NULL)
 	{
 		return FALSE;
 	}
-	memset(SpdifPlayCt->SpdifPcmFifo, 0, AudioCoreFrameSizeGet(DefaultNet) * 2 * 2 * 2 * 2);
-	MCUCircular_Config(&SpdifPlayCt->SpdifPcmCircularBuf, SpdifPlayCt->SpdifPcmFifo, AudioCoreFrameSizeGet(DefaultNet) * 2 * 2 * 2 * 2);
+	memset(SpdifPlayCt->SpdifPcmFifo, 0, SPDIF_FIFO_LEN);
+	MCUCircular_Config(&SpdifPlayCt->SpdifPcmCircularBuf, SpdifPlayCt->SpdifPcmFifo, SPDIF_FIFO_LEN);
 	DBG("spdif frame size %d sample / frame\n",AudioCoreFrameSizeGet(DefaultNet));
-
 
 	//  (DMA buffer)
 	SpdifPlayCt->SpdifPwcFIFO = (uint32_t*)osPortMalloc(SPDIF_FIFO_LEN);
@@ -406,6 +332,14 @@ bool SpdifPlayInit(void)
 	}
 	memset(SpdifPlayCt->SpdifPwcFIFO, 0, SPDIF_FIFO_LEN);
 	
+#if (SPDIF_BIT_Width == 1)
+	SpdifPlayCt->SpdifCarry24 = (uint32_t *)osPortMalloc(SPDIF_CARRY_LEN);
+	if(SpdifPlayCt->SpdifCarry24 == NULL)
+	{
+		return FALSE;
+	}
+	memset(SpdifPlayCt->SpdifCarry24, 0, SPDIF_CARRY_LEN);
+#endif	
 
 	SpdifPlayCt->SpdifCarry = (uint32_t *)osPortMalloc(SPDIF_CARRY_LEN);
 	if(SpdifPlayCt->SpdifCarry == NULL)
@@ -413,22 +347,6 @@ bool SpdifPlayInit(void)
 		return FALSE;
 	}
 	memset(SpdifPlayCt->SpdifCarry, 0, SPDIF_CARRY_LEN);
-
-#if 1//def CFG_FUNC_MIXER_SRC_EN
-	SpdifPlayCt->ResamplerCt = (ResamplerPolyphaseContext*)osPortMalloc(sizeof(ResamplerPolyphaseContext));
-	if(SpdifPlayCt->ResamplerCt == NULL)
-	{
-		return FALSE;
-	}
-	memset(SpdifPlayCt->ResamplerCt, 0, sizeof(ResamplerPolyphaseContext));
-
-	SpdifPlayCt->resampleOutBuf = (uint32_t *)osPortMalloc(SPDIF_RESAMPLER_OUT_LEN);
-	if(SpdifPlayCt->resampleOutBuf == NULL)
-	{
-		return FALSE;
-	}
-	memset(SpdifPlayCt->resampleOutBuf, 0, SPDIF_RESAMPLER_OUT_LEN);
-#endif
 
 	SpdifPlayCt->SpdifDmaWritePtr 		 = 0;
 	SpdifPlayCt->SpdifDmaReadPtr  		 = 0;
@@ -454,10 +372,9 @@ bool SpdifPlayInit(void)
 #endif
 
 	//Audio init
-	
 	memset(&AudioIOSet, 0, sizeof(AudioCoreIO));
 
-	AudioIOSet.Adapt = SRA_ONLY;
+	AudioIOSet.Adapt = SRC_SRA;//STD;
 	AudioIOSet.Sync = FALSE;
 	AudioIOSet.Channels = 2;
 	AudioIOSet.Net = DefaultNet;
@@ -468,15 +385,23 @@ bool SpdifPlayInit(void)
 	AudioIOSet.Depth = AudioCoreFrameSizeGet(DefaultNet) * 2;
 	AudioIOSet.LowLevelCent = 40;
 	AudioIOSet.HighLevelCent = 60;
+
+	AudioIOSet.SampleRate = SpdifPlayCt->SampleRate;
+
 #ifdef	CFG_AUDIO_WIDTH_24BIT
-	//数据位为16bit
-	AudioIOSet.IOBitWidth = 0;//0,16bit,1:24bit
-#ifdef BT_TWS_SUPPORT
-	AudioIOSet.IOBitWidthConvFlag = 0;//tws不需要数据进行位宽扩展，会在TWS_SOURCE_NUM以后统一转成24bit
-#else
-	AudioIOSet.IOBitWidthConvFlag = 1;//需要数据进行位宽扩展
+	#ifdef BT_TWS_SUPPORT
+		AudioIOSet.IOBitWidth = 0;//0,16bit,1:24bit
+		AudioIOSet.IOBitWidthConvFlag = 0;//tws不需要数据进行位宽扩展，会在TWS_SOURCE_NUM以后统一转成24bit
+	#else
+		AudioIOSet.IOBitWidth = SPDIF_BIT_Width;//0,16bit,1:24bit
+    	#if (SPDIF_BIT_Width == 1)
+		AudioIOSet.IOBitWidthConvFlag = 0;//需要数据进行位宽扩展
+		#else
+		AudioIOSet.IOBitWidthConvFlag = 1;//需要数据进行位宽扩展
+		#endif
+	#endif
 #endif
-#endif
+
 	if(!AudioCoreSourceInit(&AudioIOSet, SPDIF_SOURCE_NUM))
 	{
 		DBG("spdif source init error!\n");
@@ -524,13 +449,13 @@ bool SpdifPlayInit(void)
 
 	
 #ifdef CFG_FUNC_BREAKPOINT_EN
-		BackupInfoUpdata(BACKUP_SYS_INFO);
+	BackupInfoUpdata(BACKUP_SYS_INFO);
 #endif
 
 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 #ifdef CFG_EFFECT_PARAM_IN_FLASH_EN
-	//mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
+	mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
 #else
 	mainAppCt.EffectMode = EFFECT_MODE_NORMAL;
 #endif
@@ -539,56 +464,33 @@ bool SpdifPlayInit(void)
 	AudioEffectsLoadInit(0, mainAppCt.EffectMode);
 #endif
 
-	//AudioCoreSourceEnable(SPDIF_SOURCE_NUM);
-
 #ifdef CFG_FUNC_REMIND_SOUND_EN
+	if(GetSystemMode() == ModeOpticalAudioPlay)
 	{
-		if(GetSystemMode() == ModeOpticalAudioPlay)
+		DBG("Optical Play run\n");
+		ret = RemindSoundServiceItemRequest(SOUND_REMIND_GXIANMOD, REMIND_PRIO_NORMAL);
+	}
+	else
+	{
+		DBG("Coaxial Play run\n");
+		ret = RemindSoundServiceItemRequest(SOUND_REMIND_TZHOUMOD, REMIND_PRIO_NORMAL);
+	}
+	if(ret == FALSE)
+	{
+		if(IsAudioPlayerMute() == TRUE)
 		{
-			DBG("Optical Play run\n");
-			ret = RemindSoundServiceItemRequest(SOUND_REMIND_GXIANMOD, REMIND_PRIO_NORMAL);
+			HardWareMuteOrUnMute();
 		}
-		else
-		{
-			DBG("Coaxial Play run\n");
-			ret = RemindSoundServiceItemRequest(SOUND_REMIND_TZHOUMOD, REMIND_PRIO_NORMAL);
-		}
-		if(ret == FALSE)
-		{
-			if(IsAudioPlayerMute() == TRUE)
-				{
-					HardWareMuteOrUnMute();
-				}
-		}
-	}		
-#endif
-
-	SpdifLockFlag = FALSE;
-	samplerate = 0;
-	
-#ifndef CFG_FUNC_REMIND_SOUND_EN
+	}
+#else
 	 if(IsAudioPlayerMute() == TRUE)
 	 {
 		 HardWareMuteOrUnMute();
 	 }
 #endif
 
-
-  if(GetSystemMode() == ModeCoaxialAudioPlay)
-	{
-		APP_DBG("Coaxial Mode\n");
-		Save_task_state(Task_COAXIAL);
-		T_COAXIAL_inf.play_state = _Music_play;
-	}
-	else
-	{
-		APP_DBG("Spdif:App\n");
-		Save_task_state(Task_OPTICAL);
-		T_OPTICAL_inf.play_state = _Music_play;
-	}
-    PA_contral();
-
-    Machine_state=Machine_run;//zsh A2
+	SpdifLockFlag = FALSE;
+	samplerate = 0;
 
 	return TRUE;
 }
@@ -596,7 +498,6 @@ bool SpdifPlayInit(void)
 
 void SpdifPlayRun(uint16_t msgId)
 {
-	
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 	if(IsEffectChange == 1)
 	{
@@ -622,163 +523,70 @@ void SpdifPlayRun(uint16_t msgId)
 
 	switch(msgId)
 	{
-		/*
-#ifdef	CFG_FUNC_POWERKEY_EN
-		case MSG_TASK_POWERDOWN:
-			APP_DBG("MSG receive PowerDown, Please breakpoint\n");
-			SystemPowerDown();
-			break;
-#endif
-		case MSG_TASK_CREATE://API, not msg, only happy
-			break;
-			
-		case MSG_DECODER_SERVICE_CREATED:
-			//SpdifPlayModeCreating(msgRecv.msgId);
-			break;
-
-		case MSG_TASK_START:
-			SpdifPlayModeStart();
-			SpdifPlayModeStarting(MSG_NONE);//无service，直接向上级返回
-			//vTaskDelay(100);//延时用于确保提示音启动消息已经发出来并被app接收到
-			break;
-
-		case MSG_DECODER_SERVICE_STARTED:
-			SpdifPlayModeStarting(msgRecv.msgId);//无service，直接向上级返回
-			break;
-
-		case MSG_TASK_STOP:
-#ifdef CFG_FUNC_REMIND_SOUND_EN
-		RemindSoundServiceReset();
-#endif
-#if 0//CFG_COMMUNICATION_BY_USB
-			NVIC_DisableIRQ(Usb_IRQn);
-			OTG_DeviceDisConnect();
-#endif
-			SpdifPlayModeStop();
-			SpdifPlayModeStopping(MSG_NONE);//无service，直接向上级返回
-			break;
-		
-
-		case MSG_MEDIA_RECORDER_SERVICE_STOPPED:
-		case MSG_DECODER_SERVICE_STOPPED:
-			SpdifPlayModeStopping(msgRecv.msgId);
-			break;
-			
-
-		case MSG_APP_RES_RELEASE:
-			SpdifPlayResRelease();
+		default:
+		{
+			SpdifPlayRunning(msgId);
+#ifdef CFG_APP_COAXIAL_MODE_EN
+			if(GetSystemMode() == ModeCoaxialAudioPlay)
 			{
-				MessageContext		msgSend;
-				msgSend.msgId		= MSG_APP_RES_RELEASE_SUC;
-				MessageSend(GetMainMessageHandle(), &msgSend);
+				if(SPDIF_FlagStatusGet(SYNC_FLAG_STATUS) || (!SPDIF_FlagStatusGet(LOCK_FLAG_STATUS)))
+				{
+					SPDIF_RXInit(1, 0, 0);
+					SPDIF_ModuleEnable();
+				}
 			}
-			break;
-		case MSG_APP_RES_MALLOC:
-			SpdifPlayResMalloc(mainAppCt.SamplesPreFrame);
+#endif
+
+			if(SpdifLockFlag && !SPDIF_FlagStatusGet(LOCK_FLAG_STATUS))
 			{
-				MessageContext		msgSend;
-				msgSend.msgId		= MSG_APP_RES_MALLOC_SUC;
-				MessageSend(GetMainMessageHandle(), &msgSend);
+				APP_DBG("SPDIF RX UNLOCK!\n");
+				SpdifLockFlag = FALSE;
+				AudioCoreSourceDisable(SPDIF_SOURCE_NUM);
 			}
-			
-			break;
-		case MSG_APP_RES_INIT:
-			SpdifPlayResInit();
+			if(!SpdifLockFlag && SPDIF_FlagStatusGet(LOCK_FLAG_STATUS))
 			{
-				MessageContext		msgSend;
-				msgSend.msgId		= MSG_APP_RES_INIT_SUC;
-				MessageSend(GetMainMessageHandle(), &msgSend);
+				APP_DBG("SPDIF RX LOCK!\n");
+				SpdifLockFlag = TRUE;
+				if(IsAudioPlayerMute() == FALSE)
+				{
+					HardWareMuteOrUnMute();
+				}
+				vTaskDelay(20);
+				AudioCoreSourceEnable(SPDIF_SOURCE_NUM);
+				AudioCoreSourceUnmute(SPDIF_SOURCE_NUM, TRUE, TRUE);
+				if(IsAudioPlayerMute() == TRUE)
+				{
+					HardWareMuteOrUnMute();
+				}
 			}
-			break;
-			
-		case MSG_REMIND_SOUND_PLAY_START:
-			APP_DBG("spdifin: MSG_REMIND_SOUND_PLAY_START: \n");
-		#if	defined(CFG_FUNC_REMIND_SOUND_EN)
-			SpdifPlayCt->IsSoundRemindDone = FALSE;
-		#endif
-			break;
-				
-		case MSG_REMIND_SOUND_PLAY_DONE://提示音播放结束
-		case MSG_REMIND_SOUND_PLAY_REQUEST_FAIL://提示音音源获取失败
-			APP_DBG("spdifin: MSG_REMIND_SOUND_PLAY_DONE: \n");
-		#if	defined(CFG_FUNC_REMIND_SOUND_EN)
-			SpdifPlayCt->IsSoundRemindDone = TRUE;
-		#endif
+
+			//监控SPDIF RX采样率是否改变
 			if(SpdifLockFlag == TRUE)
 			{
-				AudioCoreSourceUnmute(APP_SOURCE_NUM, TRUE, TRUE);
-			}
-			break;
-			*/
-		default:
-		
-			//if(SpdifPlayCt->state == TaskStateRunning)
-			{
-				SpdifPlayRunning(msgId);
-#ifdef CFG_APP_COAXIAL_MODE_EN
-				if(GetSystemMode() == ModeCoaxialAudioPlay)
+				if(samplerate != SPDIF_SampleRateGet())
 				{
-					if(SPDIF_FlagStatusGet(SYNC_FLAG_STATUS) || (!SPDIF_FlagStatusGet(LOCK_FLAG_STATUS)))
-					{
-						SPDIF_RXInit(1, 0, 0);
-						SPDIF_ModuleEnable();
-					}
-				}
+					samplerate = SPDIF_SampleRateGet();
+
+					SpdifPlayCt->SampleRate = samplerate;
+					APP_DBG("Get SampleRate: %d\n", (int)SpdifPlayCt->SampleRate);
+#ifdef CFG_AUDIO_OUT_AUTO_SAMPLE_RATE_44100_48000
+					AudioOutSampleRateSet(SpdifPlayCt->SampleRate);
 #endif
-
-				if(SpdifLockFlag && !SPDIF_FlagStatusGet(LOCK_FLAG_STATUS))
-				{
-					APP_DBG("SPDIF RX UNLOCK!\n");
-					SpdifLockFlag = FALSE;
-					AudioCoreSourceDisable(SPDIF_SOURCE_NUM);
-			/*#ifdef CFG_FUNC_FREQ_ADJUST
-					AudioCoreSourceFreqAdjustDisable();
-			#endif
-			*/
-				}
-				if(!SpdifLockFlag && SPDIF_FlagStatusGet(LOCK_FLAG_STATUS))
-				{
-					APP_DBG("SPDIF RX LOCK!\n");
-					SpdifLockFlag = TRUE;
-					if(IsAudioPlayerMute() == FALSE)
-					{
-						HardWareMuteOrUnMute();
-					}
-					vTaskDelay(20);
-					AudioCoreSourceEnable(SPDIF_SOURCE_NUM);
-					///AudioCoreSourceUnmute(SPDIF_SOURCE_NUM, TRUE, TRUE);
-					if(IsAudioPlayerMute() == TRUE)
-					{
-						HardWareMuteOrUnMute();
-					}
+					AudioCoreSourceChange(SPDIF_SOURCE_NUM, 2, SpdifPlayCt->SampleRate);
 				}
 
-				//监控SPDIF RX采样率是否改变
-				if(SpdifLockFlag == TRUE)
-				{
-					if(samplerate != SPDIF_SampleRateGet())
-					{
-						samplerate = SPDIF_SampleRateGet();
-
-						SpdifPlayCt->SpdifSampleRate = samplerate;
-						APP_DBG("Get SampleRate: %d\n", (int)SpdifPlayCt->SpdifSampleRate);
-						SpdifSampleRateChange();
-					}
-
-					SpdifDataCarry();
-				}
-				//任务优先级设置为4,通过发送该命令，可以提高AudioCore service有效利用率
-				{
-					MessageContext		msgSend;
-					msgSend.msgId		= MSG_NONE;
-					MessageSend(GetAudioCoreServiceMsgHandle(), &msgSend);
-				}
+				SpdifDataCarry();
 			}
-			break;
+			//任务优先级设置为4,通过发送该命令，可以提高AudioCore service有效利用率
+			{
+				MessageContext		msgSend;
+				msgSend.msgId		= MSG_NONE;
+				MessageSend(GetAudioCoreServiceMsgHandle(), &msgSend);
+			}
+		}
+		break;
 	}
-	
 }
-
 
 bool SpdifPlayDeinit(void)
 {
@@ -788,21 +596,6 @@ bool SpdifPlayDeinit(void)
 		return FALSE;
 	}
 
-
-    if(GetSystemMode() == ModeCoaxialAudioPlay)
-	{
-		APP_DBG("Stopping Coaxial Mode\n");
-	
-		T_COAXIAL_inf.play_state = _Music_stop;
-	}
-	else
-	{
-		APP_DBG("Stopping  Spdif:App\n");
-		
-		T_OPTICAL_inf.play_state = _Music_stop;
-	}
-	PA_contral();
-	
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();
@@ -837,6 +630,14 @@ bool SpdifPlayDeinit(void)
 		osPortFree(SpdifPlayCt->SpdifCarry);
 		SpdifPlayCt->SpdifCarry = NULL;
 	}
+	
+#if (SPDIF_BIT_Width == 1)
+	if(SpdifPlayCt->SpdifCarry24 != NULL)
+	{
+		osPortFree(SpdifPlayCt->SpdifCarry24);
+		SpdifPlayCt->SpdifCarry24 = NULL;
+	}
+#endif
 
 	if(SpdifPlayCt->SpdifPcmFifo != NULL)
 	{
@@ -850,19 +651,6 @@ bool SpdifPlayDeinit(void)
 		SpdifPlayCt->SpdifPwcFIFO = NULL;
 	}
 	SpdifPlayCt->AudioCoreSpdif = NULL;
-
-#if 1//def CFG_FUNC_MIXER_SRC_EN
-	if(SpdifPlayCt->ResamplerCt != NULL)
-	{
-		osPortFree(SpdifPlayCt->ResamplerCt);
-		SpdifPlayCt->ResamplerCt = NULL;
-	}
-	if(SpdifPlayCt->resampleOutBuf != NULL)
-	{
-		osPortFree(SpdifPlayCt->resampleOutBuf);
-		SpdifPlayCt->resampleOutBuf = NULL;
-	}
-#endif
 
 	ModeCommonDeinit();//通路全部释放
 	

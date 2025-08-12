@@ -30,6 +30,11 @@ uint16_t AudioSpdifRx_GetData(void* Buf1, void *Buf2, uint16_t MaxLen);
     
 uint16_t AudioSpdifGetData(int16_t** Buf, uint16_t MaxLen);     
 
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN
+uint16_t AudioSpdifTXDataSet(void* Buf, uint16_t Len);
+uint16_t AudioSpdifTXDataSpaceLenGet(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif//__cplusplus

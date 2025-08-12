@@ -31,18 +31,18 @@
 #include "bt_stack_service.h"
 #include "hdmi_in_api.h"
 #include "display_task.h"
+#ifdef CFG_FUNC_LINE_MIX_MODE
+#include "line_api.h"
+#endif
+#ifdef CFG_FUNC_SPDIF_MIX_MODE
+#include "spdif_api.h"
+#endif
+
 //app
 #if (BT_AVRCP_VOLUME_SYNC == ENABLE)
 #include "bt_app_avrcp_deal.h"
 #endif
 
-
-#if BAT_CHECK_EN 
-extern uint16_t LdoinLevelAverage;
-#endif
-
-
-void AudioI2sOutParamsSet(void);
 
 #ifdef CFG_REMIND_SOUND_DECODING_USE_LIBRARY
 extern int32_t RemindMp3DecoderInit(void);
@@ -65,6 +65,57 @@ void SDCardForceExitFuc(void)
 	if(GetSysModeState(ModeCardAudioPlay) == ModeStateDeinit)
 	{
 		SDCard_Force_Exit();
+	}
+}
+#endif
+
+#ifdef CFG_AUDIO_OUT_AUTO_SAMPLE_RATE_44100_48000
+void AudioOutSampleRateSet(uint32_t SampleRate)
+{
+	uint32_t i;
+
+	extern uint32_t IsBtHfMode(void);
+
+	if(IsBtHfMode() || mainAppCt.EffectMode == EFFECT_MODE_HFP_AEC)
+		return;
+
+	if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100)
+			|| (SampleRate == 88200) || (SampleRate == 176400))
+	{
+		SampleRate = 44100;
+	}
+	else
+	{
+		SampleRate = 48000;
+	}
+
+	if(AudioCoreMixSampleRateGet(DefaultNet) == SampleRate)
+		return;
+	APP_DBG("SampleRate: %d --> %d\n", (int)AudioCoreMixSampleRateGet(DefaultNet), (int)SampleRate);
+	if(SampleRate && SampleRate != AudioCoreMixSampleRateGet(DefaultNet))
+	{
+		for(i = 0; i < MaxNet; i++)
+		{
+			AudioCoreMixSampleRateSet(i, SampleRate);
+		}
+	}
+#ifdef CFG_RES_AUDIO_I2SOUT_EN
+	AudioI2S_SampleRateChange(CFG_RES_I2S_MODULE,SampleRate);
+#endif
+}
+
+//切换模式恢复框图 原始采样率
+void AudioOutSampleRecover(void)
+{
+	uint32_t SampleRate = CFG_PARA_SAMPLE_RATE;
+	uint32_t i;
+
+	if(SampleRate && SampleRate != AudioCoreMixSampleRateGet(DefaultNet))
+	{
+		for(i = 0; i < MaxNet; i++)
+		{
+			AudioCoreMixSampleRateSet(i, SampleRate);//默认系统采样率
+		}
 	}
 }
 #endif
@@ -104,17 +155,7 @@ bool ModeCommonInit(void)
 	AudioCoreIO AudioIOSet;
 	uint16_t SampleLen = AudioCoreFrameSizeGet(DefaultNet);
 	uint16_t FifoLenStereo = SampleLen * sizeof(PCM_DATA_TYPE) * 2 * 2;//立体声8倍大小于帧长，单位byte
-//	uint16_t FifoLenMono = SampleLen * sizeof(PCM_DATA_TYPE) * 2;//单声到4倍大小于帧长，单位byte
-
-#if defined(TWS_DAC0_OUT) && defined(TWS_DACX_OUT)
-	extern void tws_device_open_isr(void);
-	extern void tws_device_close(void);
-	bool		tws_device_init_flag = FALSE;
-#endif
-
-#ifdef TWS_CODE_BACKUP//BT_TWS_SUPPORT
-	SoftFlagRegister(SoftFlagAudioCoreSourceIsDeInit);
-#endif
+	mainAppCt.tws_device_init_flag = FALSE;
 
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 	EffectPcmBufMalloc(SampleLen);
@@ -132,10 +173,10 @@ bool ModeCommonInit(void)
 	#endif
 	if(!AudioCoreSinkIsInit(AUDIO_DAC0_SINK_NUM))
 	{
-	#ifndef TWS_DAC0_OUT
-		mainAppCt.DACFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE) * 2;
-		mainAppCt.DACFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.DACFIFO_LEN);//DAC fifo
-	#endif
+		if(mainAppCt.DACFIFO == NULL){
+			mainAppCt.DACFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE) * 2;
+			mainAppCt.DACFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.DACFIFO_LEN);//DAC fifo
+		}
 		if(mainAppCt.DACFIFO != NULL)
 		{
 			memset(mainAppCt.DACFIFO, 0, mainAppCt.DACFIFO_LEN);
@@ -151,7 +192,7 @@ bool ModeCommonInit(void)
 		AudioIOSet.Sync = TRUE;
 		AudioIOSet.Channels = 2;
 		AudioIOSet.Net = DefaultNet;
-	#ifdef TWS_DAC0_OUT
+	#if defined(BT_TWS_SUPPORT) && defined(TWS_DAC0_OUT)
 		AudioIOSet.DataIOFunc = AudioDAC0DataSet_tws;
 	#else
 		AudioIOSet.DataIOFunc = AudioDAC0DataSet;
@@ -167,19 +208,18 @@ bool ModeCommonInit(void)
 			return FALSE;
 		}
 		AudioDAC_Init(DAC0, mainAppCt.SampleRate, (void*)mainAppCt.DACFIFO, mainAppCt.DACFIFO_LEN, NULL, 0);
-#if defined(TWS_DAC0_OUT) && defined(TWS_DACX_OUT)
-		tws_device_init_flag = TRUE;
-#endif
+
+		mainAppCt.tws_device_init_flag = TRUE;
 	}
 	else//sam add,20230221
 	{
 		AudioDAC_SampleRateChange(DAC0, CFG_PARA_SAMPLE_RATE);
-	#ifdef	CFG_AUDIO_WIDTH_24BIT
+		#ifdef	CFG_AUDIO_WIDTH_24BIT
 		AudioIOSet.IOBitWidth = PCM_DATA_24BIT_WIDTH;//0,16bit,1:24bit
 		AudioIOSet.IOBitWidthConvFlag = 0;//DAC 24bit ,sink最后一级输出时需要转变为24bi
 		AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].BitWidth = AudioIOSet.IOBitWidth;
 		AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].BitWidthConvFlag = AudioIOSet.IOBitWidthConvFlag;
-	#endif
+		#endif
 	}
 	AudioCoreSinkEnable(AUDIO_DAC0_SINK_NUM);
 #endif
@@ -194,10 +234,10 @@ bool ModeCommonInit(void)
 	#endif
 	if(!AudioCoreSinkIsInit(AUDIO_DACX_SINK_NUM))
 	{
-	#ifndef TWS_DACX_OUT
-		mainAppCt.DACXFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE);
-		mainAppCt.DACXFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.DACXFIFO_LEN);//DACX fifo
-	#endif
+		if(mainAppCt.DACXFIFO == NULL){
+			mainAppCt.DACXFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE);
+			mainAppCt.DACXFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.DACXFIFO_LEN);//DACX fifo
+		}
 		if(mainAppCt.DACXFIFO != NULL)
 		{
 			memset(mainAppCt.DACXFIFO, 0, mainAppCt.DACXFIFO_LEN);
@@ -224,9 +264,8 @@ bool ModeCommonInit(void)
 			return FALSE;
 		}
 		AudioDAC_Init(DAC1, mainAppCt.SampleRate, NULL, 0, (void*)mainAppCt.DACXFIFO, mainAppCt.DACXFIFO_LEN);
-#if defined(TWS_DAC0_OUT) && defined(TWS_DACX_OUT)
-		tws_device_init_flag = TRUE;
-#endif
+
+		mainAppCt.tws_device_init_flag = TRUE;
 	}
 	else//sam add,20230221
 	{
@@ -241,14 +280,6 @@ bool ModeCommonInit(void)
 	AudioCoreSinkEnable(AUDIO_DACX_SINK_NUM);
 #endif
 
-#if defined(TWS_DAC0_OUT) && defined(TWS_DACX_OUT)
-	if(tws_device_init_flag)
-	{
-		tws_device_close();
-		tws_device_open_isr();
-	}
-	tws_device_init_flag = FALSE;
-#endif
 	//Mic1 analog  = Soure0.
 	AudioADC_AnaInit();
 	//AudioADC_VcomConfig(1);//MicBias en
@@ -290,7 +321,9 @@ bool ModeCommonInit(void)
 		AudioIOSet.LenGetFunc = AudioADC1DataLenGet;
 	#ifdef	CFG_AUDIO_WIDTH_24BIT
 		AudioIOSet.IOBitWidth = PCM_DATA_16BIT_WIDTH;//0,16bit,1:24bit
-		AudioIOSet.IOBitWidthConvFlag = 0;//需要数据进行位宽扩展
+		#if defined(CFG_FUNC_MIC_RECOD_EN) || !defined(CFG_FUNC_AUDIO_EFFECT_EN) 
+		AudioIOSet.IOBitWidthConvFlag = 1;//需要数据进行位宽扩展
+		#endif
 	#endif
 		if(!AudioCoreSourceInit(&AudioIOSet, MIC_SOURCE_NUM))
 		{
@@ -298,7 +331,6 @@ bool ModeCommonInit(void)
 			return FALSE;
 		}
 	}
-
 	AudioCoreSourceEnable(MIC_SOURCE_NUM);
 #endif
 
@@ -354,8 +386,13 @@ bool ModeCommonInit(void)
 	if(!AudioCoreSourceIsInit(REMIND_SOURCE_NUM))
 	{
 		memset(&AudioIOSet, 0, sizeof(AudioCoreIO));
+		#if (CFG_PARA_SAMPLE_RATE == 44100)
 		AudioIOSet.Adapt = STD;//SRC_ONLY;
+		#else
+		AudioIOSet.Adapt = SRC_ONLY;
+		#endif
 		AudioIOSet.SampleRate = CFG_PARA_SAMPLE_RATE;//初始值
+
 		AudioIOSet.Sync = FALSE;
 		AudioIOSet.Channels = 1;
 		AudioIOSet.Net = DefaultNet;
@@ -388,34 +425,31 @@ bool ModeCommonInit(void)
 	#endif
 	if(!AudioCoreSinkIsInit(AUDIO_I2SOUT_SINK_NUM))
 	{
-#if !defined(TWS_IIS0_OUT) && !defined(TWS_IIS1_OUT)
-		mainAppCt.I2SFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE) * 2;
-		mainAppCt.I2SFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.I2SFIFO_LEN);//I2S fifo
-#endif
-		if(mainAppCt.I2SFIFO != NULL)
-		{
-			memset(mainAppCt.I2SFIFO, 0, mainAppCt.I2SFIFO_LEN);
+		if(mainAppCt.I2SFIFO == NULL){
+			mainAppCt.I2SFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE) * 2;
+			mainAppCt.I2SFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.I2SFIFO_LEN);//I2S fifo
 		}
-		else
-		{
+		if(mainAppCt.I2SFIFO != NULL){
+			memset(mainAppCt.I2SFIFO, 0, mainAppCt.I2SFIFO_LEN);
+		}else{
 			APP_DBG("malloc I2SFIFO error\n");
 			return FALSE;
 		}
 
-#if CFG_RES_I2S_MODE == 0 || !defined(CFG_FUNC_I2S_OUT_SYNC_EN)// Master 或不开微调
-#if CFG_PARA_I2S_SAMPLERATE == CFG_PARA_SAMPLE_RATE
+#if CFG_RES_I2S_MODE == 0 || !defined(CFG_FUNC_I2S_OUT_SYNC_EN) || (USE_MCLK_IN_MODE != 0)// Master 或不开微调
+	#if CFG_PARA_I2S_SAMPLERATE == CFG_PARA_SAMPLE_RATE
 		AudioIOSet.Adapt = STD;//SRC_ONLY
-#else
+	#else
 		AudioIOSet.Adapt = SRC_ONLY;
-#endif
+	#endif
 #else//slave
-#if CFG_PARA_I2S_SAMPLERATE == CFG_PARA_SAMPLE_RATE
-		AudioIOSet.Adapt = STD;//SRA_ONLY;//CLK_ADJUST_ONLY;
-#else
-		AudioIOSet.Adapt = SRC_ONLY;//SRC_SRA;//SRC_ADJUST;
+	#if CFG_PARA_I2S_SAMPLERATE == CFG_PARA_SAMPLE_RATE
+		AudioIOSet.Adapt = SRA_ONLY;//CLK_ADJUST_ONLY;
+	#else
+		AudioIOSet.Adapt = SRC_SRA;//SRC_SRA;//SRC_ADJUST;
+	#endif
 #endif
-#endif
-		AudioIOSet.Sync = TRUE;//I2S slave 时候如果master没有接，有可能会导致DAC也不出声音。
+		AudioIOSet.Sync = TRUE; //I2S slave 时候如果master没有接，有可能会导致DAC也不出声音。
 		AudioIOSet.Channels = 2;
 		AudioIOSet.Net = DefaultNet;
 		AudioIOSet.HighLevelCent = 60;
@@ -441,6 +475,8 @@ bool ModeCommonInit(void)
 		AudioI2sOutParamsSet();
 		AudioCoreSinkEnable(AUDIO_I2SOUT_SINK_NUM);
 		AudioCoreSinkAdjust(AUDIO_I2SOUT_SINK_NUM, TRUE);
+
+		mainAppCt.tws_device_init_flag = TRUE;
 	}
 	else//sam add,20230221
 	{
@@ -450,10 +486,80 @@ bool ModeCommonInit(void)
 		AudioIOSet.IOBitWidthConvFlag = 0;//DAC 24bit ,sink最后一级输出时需要转变为24bi
 		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].BitWidth = AudioIOSet.IOBitWidth;
 		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].BitWidthConvFlag = AudioIOSet.IOBitWidthConvFlag;
-		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].Sync = TRUE;		
+		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].Sync = TRUE;
 	#endif
 	}
 #endif
+
+#ifdef CFG_FUNC_I2S_MIX_MODE
+	I2sMixModeInit();
+#endif
+
+#ifdef CFG_FUNC_LINE_MIX_MODE
+    AudioLine_ConfigInit(AudioCoreFrameSizeGet(DefaultNet));
+#endif
+
+#ifdef CFG_FUNC_SPDIF_MIX_MODE	
+	MixSpdifPlayInit();
+#endif
+
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN
+	spdif_out_init();
+#endif
+
+	extern void tws_device_open_isr(void);
+	extern void tws_device_close(void);
+
+#ifdef BT_TWS_SUPPORT
+	if((GetBtManager()->twsState == BT_TWS_STATE_CONNECTED) && (GetBtManager()->twsRole == BT_TWS_MASTER)
+		&& (!IsBtTwsSlaveMode()) && (!IsBtHfMode()) && (!IsIdleModeReady()))
+	{
+		uint32_t tws_delay_back = 0;
+		tws_delay_back = tws_delay;
+
+		if ((GetSysModeState(ModeBtAudioPlay) == ModeStateInit || GetSysModeState(ModeBtAudioPlay) == ModeStateRunning))
+		{
+			tws_delay = TWS_DELAY_FRAMES;
+		}
+		else if (((GetSysModeState(ModeUDiskAudioPlay) == ModeStateInit || GetSysModeState(ModeUDiskAudioPlay) == ModeStateRunning))
+				||((GetSysModeState(ModeCardAudioPlay) == ModeStateInit || GetSysModeState(ModeCardAudioPlay) == ModeStateRunning)))
+		{
+			tws_delay = BT_TWS_DELAY_DEFAULT;
+		}
+		else
+		{
+			tws_delay = BT_TWS_DELAY_DEINIT;
+		}
+
+		if (tws_delay_back != tws_delay)
+		{
+			tws_delay_set(tws_delay);
+			extern uint32_t g_tws_need_init;
+			g_tws_need_init = 5000;
+		}
+		else
+		{
+			if(mainAppCt.tws_device_init_flag)
+			{
+				tws_device_close();
+				tws_device_open_isr();
+			}
+		}
+	}
+	else
+	{
+		if((mainAppCt.tws_device_init_flag) || (btManager.twsState != BT_TWS_STATE_CONNECTED))
+		{
+			tws_device_close();
+			tws_device_open_isr();
+		}
+	}
+#else
+	tws_device_close();
+	tws_device_open_isr();
+#endif
+
+	mainAppCt.tws_device_init_flag = FALSE;
 
 #ifdef CFG_FUNC_BREAKPOINT_EN
 	//注意 是否需要模式过滤，部分模式无需记忆和恢复
@@ -462,16 +568,6 @@ bool ModeCommonInit(void)
 		BackupInfoUpdata(BACKUP_SYS_INFO);
 	}
 #endif
-#ifdef TWS_CODE_BACKUP//BT_TWS_SUPPORT
-	if(!IsIdleModeReady() && GetBtManager()->twsState == BT_TWS_STATE_CONNECTED && GetBtManager()->twsRole == BT_TWS_MASTER)
-	{
-		g_tws_need_init = 1;
-	}
-#endif	
-
-#ifdef CFG_FUNC_I2S_MIX_MODE
-	I2sMixModeInit();
-#endif
 
 	return TRUE;
 }
@@ -479,23 +575,24 @@ bool ModeCommonInit(void)
 //释放公共通路，
 void ModeCommonDeinit(void)
 {
-#ifdef TWS_CODE_BACKUP//BT_TWS_SUPPORT
+//#ifdef TWS_CODE_BACKUP//BT_TWS_SUPPORT
 	//模式切换时,清除TWS同步的标志位
 	g_tws_need_init = 0;
-#endif
+//#endif
 
 	SoftFlagRegister(SoftFlagAudioCoreSourceIsDeInit);
 #ifdef	CFG_FUNC_AUDIO_EFFECT_EN
 	EffectPcmBufRelease();
 #endif
+
 #if defined(CFG_RES_AUDIO_DAC0_EN) && !defined(TWS_DAC0_OUT)
-//	AudioCoreSinkDisable(AUDIO_DAC0_SINK_NUM);
 	AudioDAC_Disable(DAC0);
+	AudioDAC_FuncReset(DAC0);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC0_TX, DMA_DONE_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC0_TX, DMA_THRESHOLD_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC0_TX, DMA_ERROR_INT);
 	DMA_ChannelDisable(PERIPHERAL_ID_AUDIO_DAC0_TX);
-//	AudioDAC_Reset(DAC0);
+
 	if(mainAppCt.DACFIFO != NULL)
 	{
 		osPortFree(mainAppCt.DACFIFO);
@@ -507,11 +604,12 @@ void ModeCommonDeinit(void)
 #if defined(CFG_RES_AUDIO_DACX_EN) && !defined(TWS_DACX_OUT)
 	AudioCoreSinkDisable(AUDIO_DACX_SINK_NUM);
 	AudioDAC_Disable(DAC1);
+	AudioDAC_FuncReset(DAC1);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_DONE_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_THRESHOLD_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_ERROR_INT);
 	DMA_ChannelDisable(PERIPHERAL_ID_AUDIO_DAC1_TX);
-//	AudioDAC_Reset(DAC1);
+
 	if(mainAppCt.DACXFIFO != NULL)
 	{
 		osPortFree(mainAppCt.DACXFIFO);
@@ -536,19 +634,15 @@ void ModeCommonDeinit(void)
 	}
 	AudioCoreSourceDeinit(MIC_SOURCE_NUM);
 #endif
+
 #if defined(CFG_RES_AUDIO_I2SOUT_EN) && !defined(TWS_IIS0_OUT)&& !defined(TWS_IIS1_OUT)
 	I2S_ModuleDisable(CFG_RES_I2S_MODULE);
-#if CFG_RES_I2S == 0
-	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX, DMA_DONE_INT);
-	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX, DMA_THRESHOLD_INT);
-	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX, DMA_ERROR_INT);
-	DMA_ChannelDisable(PERIPHERAL_ID_I2S0_TX);
-#else
-	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S1_TX, DMA_DONE_INT);
-	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S1_TX, DMA_THRESHOLD_INT);
-	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S1_TX, DMA_ERROR_INT);
-	DMA_ChannelDisable(PERIPHERAL_ID_I2S1_TX);
-#endif
+	RST_I2SModule(CFG_RES_I2S_MODULE);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX + CFG_RES_I2S * 2, DMA_DONE_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX + CFG_RES_I2S * 2, DMA_THRESHOLD_INT);
+	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX + CFG_RES_I2S * 2, DMA_ERROR_INT);
+	DMA_ChannelDisable(PERIPHERAL_ID_I2S0_TX + CFG_RES_I2S * 2);
+
 	if(mainAppCt.I2SFIFO != NULL)
 	{
 		APP_DBG("I2SFIFO\n");
@@ -557,17 +651,27 @@ void ModeCommonDeinit(void)
 	}
 	AudioCoreSinkDeinit(AUDIO_I2SOUT_SINK_NUM);
 #endif
+
+#ifdef CFG_FUNC_I2S_MIX_MODE
+	I2sMixModeDeInit();
+#endif
+
+#ifdef CFG_FUNC_LINE_MIX_MODE
+	MixLineInPlayDeInit();
+#endif
+
+#ifdef CFG_FUNC_SPDIF_MIX_MODE
+	MixSpdifPlayDeinit();
+#endif
+
 #ifdef BT_TWS_SUPPORT
 	if(AudioCoreSourceIsInit(TWS_SOURCE_NUM))
 	{
 		AudioCoreSourceDisable(TWS_SOURCE_NUM);
 		AudioCoreSourceDeinit(TWS_SOURCE_NUM);
+		DBG("Deinit TWS Source\n");
 	}
-
-	DBG("Deinit TWS Source\n");
 #endif
-
-//#endif
 
 #ifdef CFG_FUNC_REMIND_SOUND_EN
 	AudioCoreSourceDisable(REMIND_SOURCE_NUM);
@@ -578,8 +682,8 @@ void ModeCommonDeinit(void)
 #endif
 #endif
 
-#ifdef CFG_FUNC_I2S_MIX_MODE
-	I2sMixModeDeInit();
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN
+	spdif_out_deinit();
 #endif
 
 //#ifdef CFG_FUNC_AUDIO_EFFECT_EN
@@ -587,101 +691,11 @@ void ModeCommonDeinit(void)
 //#endif
 }
 
-#ifdef CFG_RES_AUDIO_I2SOUT_EN
-void AudioI2sOutParamsSet(void)
-{
-	I2SParamCt i2s_set;
-	i2s_set.IsMasterMode = CFG_RES_I2S_MODE;// 0:master 1:slave
-	i2s_set.SampleRate = CFG_PARA_I2S_SAMPLERATE; //外设采样率
-	i2s_set.I2sFormat = I2S_FORMAT_I2S;
-#ifdef	CFG_AUDIO_WIDTH_24BIT
-	i2s_set.I2sBits = I2S_LENGTH_24BITS;
-#else
-	i2s_set.I2sBits = I2S_LENGTH_16BITS;
-#endif
-	i2s_set.I2sTxRxEnable = 1;
-#if (CFG_RES_I2S == 0)
-	i2s_set.TxPeripheralID = PERIPHERAL_ID_I2S0_TX;
-#else
-	i2s_set.TxPeripheralID = PERIPHERAL_ID_I2S1_TX;
-#endif
-	i2s_set.TxBuf = (void*)mainAppCt.I2SFIFO;
-
-	i2s_set.TxLen = mainAppCt.I2SFIFO_LEN;
-
-#if CFG_RES_I2S == 0
-#if CFG_RES_I2S_IO_PORT == 0			//I2S0_MODULE Port0
-#if CFG_RES_I2S_MODE == 0
-	GPIO_PortAModeSet(GPIOA0, 9);// mclk 3:in;9:out
-#else
-	GPIO_PortAModeSet(GPIOA0, 3);
-#endif
-	GPIO_PortAModeSet(GPIOA1, 6);// lrclk
-	GPIO_PortAModeSet(GPIOA2, 5);// bclk
-	GPIO_PortAModeSet(GPIOA3, 7);// out
-//	GPIO_PortAModeSet(GPIOA4, 1);// din
-
-#else									//I2S0_MODULE Port1
-#if CFG_RES_I2S_MODE == 0
-	GPIO_PortAModeSet(GPIOA24, 9);//mclk 3:in;9:out
-#else
-	GPIO_PortAModeSet(GPIOA24, 3);
-#endif
-	GPIO_PortAModeSet(GPIOA20, 6);//lrclk
-	GPIO_PortAModeSet(GPIOA21, 5);//bclk
-	GPIO_PortAModeSet(GPIOA22, 10);//do
-//	GPIO_PortAModeSet(GPIOA23, 3);//di
-#endif
-
-#else//CFG_RES_I2S == 1
-#if CFG_RES_I2S_IO_PORT == 0			//I2S0_MODULE Port0
-#if CFG_RES_I2S_MODE == 0
-	GPIO_PortAModeSet(GPIOA27, 6);//mclk 1:in;6:out
-#else
-	GPIO_PortAModeSet(GPIOA27, 1);//mclk 1:in;6:out
-#endif
-	GPIO_PortAModeSet(GPIOA28, 1);//lrclk
-	GPIO_PortAModeSet(GPIOA29, 1);//bclk
-	GPIO_PortAModeSet(GPIOA30, 6);//do
-//	GPIO_PortAModeSet(GPIOA31, 2);//di
-
-#elif CFG_RES_I2S_IO_PORT == 1			//I2S0_MODULE Port1
-#if CFG_RES_I2S_MODE == 0
-	GPIO_PortAModeSet(GPIOA7, 5);//mclk 3:in;5:out
-#else
-	GPIO_PortAModeSet(GPIOA7, 3);//mclk 3:in;5:out
-#endif
-	GPIO_PortAModeSet(GPIOA8, 1);//lrclk
-	GPIO_PortAModeSet(GPIOA9, 2);//bclk
-	GPIO_PortAModeSet(GPIOA10, 4);//do
-//	GPIO_PortAModeSet(GPIOA11, 2);//di
-
-#elif CFG_RES_I2S_IO_PORT == 2			//I2S1_MODULE Port2
-	GPIO_PortAModeSet(GPIOA1, 7);//lrclk
-	GPIO_PortAModeSet(GPIOA2, 6);//bclk
-	GPIO_PortAModeSet(GPIOA31, 5);//do
-//	GPIO_PortAModeSet(GPIOA30, 2);//di
-
-#else									//I2S1_MODULE Port3
-	GPIO_PortAModeSet(GPIOA20, 7);//lrclk
-	GPIO_PortAModeSet(GPIOA21, 6);//bclk
-	GPIO_PortAModeSet(GPIOA11, 4);//do
-//	GPIO_PortAModeSet(GPIOA10, 1);//di
-#endif
-#endif//CFG_RES_I2S == 0
-	I2S_AlignModeSet(CFG_RES_I2S_MODULE, I2S_LOW_BITS_ACTIVE);
-	AudioI2S_Init(CFG_RES_I2S_MODULE, &i2s_set);//
-}
-#endif
-
-
-
 bool AudioIoCommonForHfp(uint32_t sampleRate, uint16_t gain, uint8_t gainBoostSel)
 {
 	AudioCoreIO AudioIOSet;
 	uint16_t SampleLen = AudioCoreFrameSizeGet(DefaultNet);
 	uint16_t FifoLenStereo = SampleLen * 2 * 2 * 2;//立体声8倍大小于帧长，单位byte
-//	uint16_t FifoLenMono = SampleLen * 2 * 2;//单声到4倍大小于帧长，单位byte
 
 #ifdef BT_TWS_SUPPORT
 	SoftFlagRegister(SoftFlagAudioCoreSourceIsDeInit);
@@ -823,10 +837,10 @@ bool AudioIoCommonForHfp(uint32_t sampleRate, uint16_t gain, uint8_t gainBoostSe
 	#endif
 	if(!AudioCoreSinkIsInit(AUDIO_DAC0_SINK_NUM))
 	{
-	#ifndef TWS_DAC0_OUT
-		mainAppCt.DACFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE) * 2;
-		mainAppCt.DACFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.DACFIFO_LEN);//DAC fifo
-	#endif
+		if(mainAppCt.DACFIFO == NULL){
+			mainAppCt.DACFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE) * 2;
+			mainAppCt.DACFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.DACFIFO_LEN);//DAC fifo
+		}
 		if(mainAppCt.DACFIFO != NULL)
 		{
 			memset(mainAppCt.DACFIFO, 0, mainAppCt.DACFIFO_LEN);
@@ -836,8 +850,8 @@ bool AudioIoCommonForHfp(uint32_t sampleRate, uint16_t gain, uint8_t gainBoostSe
 			APP_DBG("malloc DACFIFO error\n");
 			return FALSE;
 		}
-		//sink0
 
+		//sink0
 		AudioIOSet.Adapt = STD;
 		AudioIOSet.Sync = TRUE;
 		AudioIOSet.Channels = 2;
@@ -865,6 +879,7 @@ bool AudioIoCommonForHfp(uint32_t sampleRate, uint16_t gain, uint8_t gainBoostSe
 		AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].BitWidth = AudioIOSet.IOBitWidth;
 		AudioCore.AudioSink[AUDIO_DAC0_SINK_NUM].BitWidthConvFlag = AudioIOSet.IOBitWidthConvFlag;
 #endif
+		AudioDAC_Reset(DAC0);
 	}
 	AudioCoreSinkEnable(AUDIO_DAC0_SINK_NUM);
 #endif
@@ -879,10 +894,10 @@ bool AudioIoCommonForHfp(uint32_t sampleRate, uint16_t gain, uint8_t gainBoostSe
 	#endif
 	if(!AudioCoreSinkIsInit(AUDIO_DACX_SINK_NUM))
 	{
-	#ifndef TWS_DACX_OUT
-		mainAppCt.DACXFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE);
-		mainAppCt.DACXFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.DACXFIFO_LEN);//DACX fifo
-	#endif
+		if(mainAppCt.DACXFIFO == NULL){
+			mainAppCt.DACXFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE);
+			mainAppCt.DACXFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.DACXFIFO_LEN);//DACX fifo
+		}
 		if(mainAppCt.DACXFIFO != NULL)
 		{
 			memset(mainAppCt.DACXFIFO, 0, mainAppCt.DACXFIFO_LEN);
@@ -931,25 +946,22 @@ bool AudioIoCommonForHfp(uint32_t sampleRate, uint16_t gain, uint8_t gainBoostSe
 	#else
 	AudioIOSet.Depth = AudioCore.FrameSize[DefaultNet] * 2 ;
 	#endif
+	AudioCoreSinkDeinit(AUDIO_I2SOUT_SINK_NUM);
 	if(!AudioCoreSinkIsInit(AUDIO_I2SOUT_SINK_NUM))
 	{
-	#if !defined(TWS_IIS0_OUT) && !defined(TWS_IIS1_OUT)
-		mainAppCt.I2SFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE) * 2;
-		mainAppCt.I2SFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.I2SFIFO_LEN);//I2S fifo
-	#endif
-
-		if(mainAppCt.I2SFIFO != NULL)
-		{
-			memset(mainAppCt.I2SFIFO, 0, mainAppCt.I2SFIFO_LEN);
+		if(mainAppCt.I2SFIFO == NULL){
+			mainAppCt.I2SFIFO_LEN = AudioIOSet.Depth * sizeof(PCM_DATA_TYPE) * 2;
+			mainAppCt.I2SFIFO = (uint32_t*)osPortMallocFromEnd(mainAppCt.I2SFIFO_LEN);//I2S fifo
 		}
-		else
-		{
+
+		if(mainAppCt.I2SFIFO != NULL){
+			memset(mainAppCt.I2SFIFO, 0, mainAppCt.I2SFIFO_LEN);
+		}else{
 			APP_DBG("malloc I2SFIFO error\n");
 			return FALSE;
 		}
 
-
-#if CFG_RES_I2S_MODE == 0 || !defined(CFG_FUNC_I2S_OUT_SYNC_EN)// Master 或不开微调
+#if CFG_RES_I2S_MODE == 0 || !defined(CFG_FUNC_I2S_OUT_SYNC_EN) || (USE_MCLK_IN_MODE != 0)// Master 或不开微调
 #if CFG_PARA_I2S_SAMPLERATE == CFG_BTHF_PARA_SAMPLE_RATE
 		AudioIOSet.Adapt = STD;//SRC_ONLY
 #else
@@ -992,59 +1004,105 @@ bool AudioIoCommonForHfp(uint32_t sampleRate, uint16_t gain, uint8_t gainBoostSe
 	}
 	else
 	{
-		I2S_SampleRateSet(CFG_RES_I2S_MODULE, sampleRate);
+		I2S_SampleRateSet(CFG_RES_I2S_MODULE, CFG_PARA_I2S_SAMPLERATE);
 	#ifdef	CFG_AUDIO_WIDTH_24BIT
 		AudioIOSet.IOBitWidth = PCM_DATA_16BIT_WIDTH;//0,16bit,1:24bit
 		AudioIOSet.IOBitWidthConvFlag = 1;//DAC 24bit ,sink最后一级输出时需要转变为24bi
 		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].BitWidth = AudioIOSet.IOBitWidth;
 		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].BitWidthConvFlag = AudioIOSet.IOBitWidthConvFlag;
-		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].Sync = FALSE;
+		AudioCore.AudioSink[AUDIO_I2SOUT_SINK_NUM].Sync = TRUE;
 	#endif
 	}
 #endif
+
+#ifdef CFG_FUNC_I2S_MIX_MODE
+	I2sMixModeInit_HFP();
+#endif	
+
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN
+	spdif_out_hfp_init();
+#endif
+
 	return TRUE;
 }
 
 
-#ifdef BT_TWS_SUPPORT
 void tws_device_close(void)
 {
+#ifdef BT_TWS_SUPPORT
 	btManager.TwsDacStatus = FALSE;
+#endif
 #ifdef  TWS_IIS0_OUT
-	*(volatile unsigned long *)0x40029000 &= ~0x80;//enable iis0
+	*(volatile unsigned long *)0x40029000 &= ~0x80;//disable iis0
+	RST_I2SModule(I2S0_MODULE);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX, DMA_DONE_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX, DMA_THRESHOLD_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S0_TX, DMA_ERROR_INT);
 	DMA_ChannelDisable(PERIPHERAL_ID_I2S0_TX);
-	DMA_CircularConfig(PERIPHERAL_ID_I2S0_TX, mainAppCt.I2SFIFO_LEN/2, mainAppCt.I2SFIFO,mainAppCt.I2SFIFO_LEN);
+
+	#ifdef CFG_RES_AUDIO_I2S0OUT_EN
+	DMA_CircularConfig(PERIPHERAL_ID_I2S0_TX, mainAppCt.I2S0_TX_FIFO_LEN/2, mainAppCt.I2S0_TX_FIFO, mainAppCt.I2S0_TX_FIFO_LEN);
+	GIE_DISABLE();
+	DMA_CircularWritePtrSet(PERIPHERAL_ID_I2S0_TX, mainAppCt.I2S0_TX_FIFO_LEN - sizeof(PCM_DATA_TYPE) * 2);
+	GIE_ENABLE();
+	#else
+	DMA_CircularConfig(PERIPHERAL_ID_I2S0_TX, mainAppCt.I2SFIFO_LEN/2, mainAppCt.I2SFIFO, mainAppCt.I2SFIFO_LEN);
+	GIE_DISABLE();
 	DMA_CircularWritePtrSet(PERIPHERAL_ID_I2S0_TX, mainAppCt.I2SFIFO_LEN - sizeof(PCM_DATA_TYPE) * 2);
+	GIE_ENABLE();
+	#endif
 	DMA_ChannelEnable(PERIPHERAL_ID_I2S0_TX);
 #endif
+
 #ifdef TWS_IIS1_OUT
-	*(volatile unsigned long *)0x4002A000 &= ~0x80;//enable iis1
+	*(volatile unsigned long *)0x4002A000 &= ~0x80;//disable iis1
+	RST_I2SModule(I2S1_MODULE);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S1_TX, DMA_DONE_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S1_TX, DMA_THRESHOLD_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_I2S1_TX, DMA_ERROR_INT);
 	DMA_ChannelDisable(PERIPHERAL_ID_I2S1_TX);
+
+	#ifdef CFG_RES_AUDIO_I2S1OUT_EN
+	DMA_CircularConfig(PERIPHERAL_ID_I2S1_TX, mainAppCt.I2S1_TX_FIFO_LEN/2, mainAppCt.I2S1_TX_FIFO, mainAppCt.I2S1_TX_FIFO_LEN);
+	GIE_DISABLE();
+	DMA_CircularWritePtrSet(PERIPHERAL_ID_I2S1_TX, mainAppCt.I2S1_TX_FIFO_LEN - sizeof(PCM_DATA_TYPE) * 2);
+	GIE_ENABLE();
+	#else
 	DMA_CircularConfig(PERIPHERAL_ID_I2S1_TX, mainAppCt.I2SFIFO_LEN/2, mainAppCt.I2SFIFO, mainAppCt.I2SFIFO_LEN);
+	GIE_DISABLE();
 	DMA_CircularWritePtrSet(PERIPHERAL_ID_I2S1_TX, mainAppCt.I2SFIFO_LEN - sizeof(PCM_DATA_TYPE) * 2);
+	GIE_ENABLE();
+	#endif
 	DMA_ChannelEnable(PERIPHERAL_ID_I2S1_TX);
 #endif
+
 #ifdef TWS_DAC0_OUT
-	AudioDAC_Disable(DAC0);
+	#if DAC_RESET_SET
+	AudioDAC_Pause(DAC0);
 	AudioDAC_Reset(DAC0);
+	#else
+	AudioDAC_Disable(DAC0);
+	AudioDAC_FuncReset(DAC0);
+	#endif
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC0_TX, DMA_DONE_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC0_TX, DMA_THRESHOLD_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC0_TX, DMA_ERROR_INT);
 	DMA_ChannelDisable(PERIPHERAL_ID_AUDIO_DAC0_TX);
 	DMA_CircularConfig(PERIPHERAL_ID_AUDIO_DAC0_TX, mainAppCt.DACFIFO_LEN/2, mainAppCt.DACFIFO, mainAppCt.DACFIFO_LEN);
+	GIE_DISABLE();
 	DMA_CircularWritePtrSet(PERIPHERAL_ID_AUDIO_DAC0_TX, mainAppCt.DACFIFO_LEN - sizeof(PCM_DATA_TYPE) * 2);
+	GIE_ENABLE();
 	DMA_ChannelEnable(PERIPHERAL_ID_AUDIO_DAC0_TX);
-
 #endif
+
 #ifdef TWS_DACX_OUT
-	AudioDAC_Disable(DAC1);
+	#if DAC_RESET_SET
+	AudioDAC_Pause(DAC1);
 	AudioDAC_Reset(DAC1);
+	#else
+	AudioDAC_Disable(DAC1);
+	AudioDAC_FuncReset(DAC1);
+	#endif
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_DONE_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_THRESHOLD_INT);
 	DMA_InterruptFlagClear(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_ERROR_INT);
@@ -1053,7 +1111,9 @@ void tws_device_close(void)
 #ifdef CFG_AUDIO_WIDTH_24BIT
 	DMA_ConfigModify(PERIPHERAL_ID_AUDIO_DAC1_TX, DMA_SRC_DWIDTH_WORD, 	DMA_SRC_DWIDTH_WORD, DMA_SRC_AINCR_SRC_WIDTH, DMA_DST_AINCR_NO);
 #endif
+	GIE_DISABLE();
 	DMA_CircularWritePtrSet(PERIPHERAL_ID_AUDIO_DAC1_TX, mainAppCt.DACXFIFO_LEN - sizeof(PCM_DATA_TYPE));
+	GIE_ENABLE();
 	DMA_ChannelEnable(PERIPHERAL_ID_AUDIO_DAC1_TX);
 #endif
 }
@@ -1061,9 +1121,15 @@ void tws_device_close(void)
 __attribute__((section(".tws_sync_code")))
 void tws_device_open_isr(void)
 {
+#ifdef BT_TWS_SUPPORT
 	btManager.TwsDacStatus = TRUE;
+#endif
 #ifdef TWS_DAC0_OUT
+	#if DAC_RESET_SET
+	AudioDAC_Run(DAC0);
+	#else
 	AudioDAC_Enable(DAC0);
+	#endif
 #endif
 #ifdef  TWS_IIS0_OUT
 	*(volatile unsigned long *)0x40029000 |= 0x80;//enable iis0
@@ -1072,13 +1138,19 @@ void tws_device_open_isr(void)
 	*(volatile unsigned long *)0x4002A000 |= 0x80;//enable iis1
 #endif
 #ifdef TWS_DACX_OUT
+	#if DAC_RESET_SET
+	AudioDAC_Run(DAC1);
+	#else
 	AudioDAC_Enable(DAC1);
+	#endif
 #endif
 }
 
 void tws_device_resume(void)
 {
+#ifdef BT_TWS_SUPPORT
 	btManager.TwsDacStatus = TRUE;
+#endif
 #ifdef TWS_IIS0_OUT
 	if ((*(volatile unsigned long *)0x40029000 & 0x80) == 0)
 	{
@@ -1092,24 +1164,27 @@ void tws_device_resume(void)
 	}
 #endif
 #ifdef TWS_DAC0_OUT
+	#if DAC_RESET_SET
+	AudioDAC_Run(DAC0);
+	#else
 	if(((*(volatile unsigned long *)0x4002E000)&0x01) == 0x0)
 	{
 		AudioDAC_Enable(DAC0);
-	}
+	}	
+	#endif
 #endif
 #ifdef TWS_DACX_OUT
+	#if DAC_RESET_SET
+	AudioDAC_Run(DAC1);
+	#else
 	if(((*(volatile unsigned long *)0x4002E024)&0x01) == 0x0)
 	{
 		AudioDAC_Enable(DAC1);
 	}
+	#endif
 #endif
 }
-#else
-void tws_device_open_isr(void)
-{
 
-}
-#endif
 
 //各模式下的通用消息处理, 共有的提示音在此处理，因此要求调用次API前，确保APP running状态。避免解码器没准备好。
 void CommonMsgProccess(uint16_t Msg)
@@ -1124,343 +1199,6 @@ void CommonMsgProccess(uint16_t Msg)
 
 	switch(Msg)
 	{
-
-	   case Custom_Event2:
-        	        Custom_Event1_get = Custom_Event1_number;
-                    Custom_Event1_number = 0;
-                    switch(Custom_Event1_get)
-                    {
-                        /*case Custom_Event1_Moyin_sw:
-							DBG("@@@@ set Moyin_sw @@@\n");
-							 break;*/
-				
-						case Custom_Event1_Mic_Echo_up:
-							DBG("@@@@ set Mic_Echo_up @@@\n");
-							 break;	 
-						case Custom_Event1_Mic_Echo_down:
-							DBG("@@@@ set Mic_Echo_down @@@\n");
-							 break;
-
-
-					    case Custom_Event2_sound_scene_ktv:
-							DBG("@@@@ set sound_scene_ktv @@@\n");
-							break;
-					   case Custom_Event2_sound_scene_country:
-							DBG("@@@@ set sound_scene_country @@@\n");
-							break;
-					    case  Custom_Event2_sound_scene_recordingroom:
-							DBG("@@@@ set sound_scene_recordingroom @@@\n");
-							  break;
-
-						case  Custom_Event2_sound_effect_two:
-							DBG("@@@@ set sound_effect_two @@@\n");
-							  break;
-						case  Custom_Event2_scene_up:
-							DBG("@@@@ set scene_up @@@\n");
-							break;
-						
-						case  Custom_Event2_scene_down:
-							DBG("@@@@ set scene_down @@@\n");
-							break;
-
-						  case  Custom_Event2_BTMIC_sw: 
-			     #if BT_MIC_POWER_EN	   	
-							DBG("@@@@ Custom_Event2_BTMIC_sw-->0 @@@\n");
-                          
-							if(BT_PowerKey_Ctr_EN==FALSE)
-							{
-								BT_PowerKey_Ctr_EN=TRUE;
-								if(BT_MIC_state)
-								{
-								   btmic_power_cnt=BTMIC_POWER_KEY_HOLD_TIME*100;
-								   PowerOff_Key_Press=TRUE;
-							    }
-								else
-								{
-									 PowerOn_Key_Press=TRUE;
-									btmic_power_cnt=(BTMIC_POWER_KEY_HOLD_TIME)*100;
-								}
-						    }
-
-				   #endif		
-				  
-					break;
-				   
-						
-                        case Custom_Event2_KT0641_sw:
-                        case Custom_Event2_KT0641_next:
-                        case Custom_Event2_KT0641_mute:
-                        case Custom_Event2_KT0641_vol_up:
-                        case Custom_Event2_KT0641_vol_down:
-                                KT0641_msg_deal(Custom_Event1_get);
-                             break;
-							 
-                         case Custom_Event1_Poweron:
-						#if fun_idle_en //从待机到正式开机,播开机提示音
-                          #if BAT_CHECK_EN
-						    
-						      // DBG("PowerLevelGet() == %d\n",PowerLevelGet());
-						     // DBG("LdoinLevelAverage == %d\n",LdoinLevelAverage);
-                              if(PowerLevelGet() < 1)
-                              {
-                                 DBG("Low power !!   break\n");
-                                  break; 
-							  }
-						  #endif
-						
-						 RemindSoundItemRequestEnable();
-
-						 if(Idle_sw.power_off_tone == tone_start)
-						 {
-				             DBG("Custom_Event1_Poweron   break\n");
-                             break;
-						 }
-						
-					#ifdef CFG_DMA_RGB_LED_EN	 
-						 mainAppCt.rgb_mode=RGB_Effect_PowerOn;
-					#endif
-					#if LEDS_mix_RGB_EN
-					   RGB_curr_effect = RGB_Effect_PowerOn;
-				    #endif
-
-					   AudioMusicVolSet(Z__SYS_DEFAULT_VOL);
-						 
-						 Machine_state=Machine_poweron_tone;
-						 	Flag_poweroff = 0;
-							Idle_sw.power_on_tone = tone_start;
-							Idle_sw.idle_mode = off_line;
-							AudioCoreSourceUnmute(APP_SOURCE_NUM, 1, 1);
-							IO_contral_init(PA1_mute_pin,0,0,0,1);//先解mute
-							PA_contral();
-                           // main_msg_send(MSG_POWER); 
-							
-							DBG("Custom_Event1_Poweron          play power on REMIND\n");
-							u8 flag=0;
-                            flag =  RemindSoundServiceItemRequest(SOUND_REMIND_POWER_ON, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
-							DBG("*************** flag = %d ***************\n",flag);
-						 #endif
-						 
-							break;  
-							
-                        case Custom_Event1_Poweroff:
-					          DBG("***************  Custom_Event1_Poweroff ***************\n");
-						   #if BT_MIC_POWER_EN && CFG_POWER_ON_MICON_EN
-							    if(BT_PowerKey_Ctr_EN==FALSE&&Single_Press_EN)
-								{
-									BT_PowerKey_Ctr_EN=TRUE;
-									if(BT_MIC_state)
-									{
-									   btmic_power_cnt=BTMIC_POWER_KEY_HOLD_TIME*100;
-									   PowerOff_Key_Press=TRUE;
-								    }
-									else
-									{
-										 PowerOn_Key_Press=TRUE;
-										btmic_power_cnt=(BTMIC_POWER_KEY_HOLD_TIME)*100;
-									}
-							    }
-							#endif
-
-						#if fun_idle_en 	
-						 if(Idle_sw.power_on_tone == tone_start)
-						 {
-				             DBG("Custom_Event1_Poweroff   break\n");
-                             break;
-						 }
-
-						
-						#endif  
-
-				  	
-					
-						DBG("@@@@ Flag_poweroff == %d\n",Flag_poweroff);
-						    if(Flag_poweroff == 0)
-							{
-							   Flag_poweroff = 1;
-							   Machine_state = Machine_Poweroff_tone;
-							   AudioCoreSourceMute(APP_SOURCE_NUM, 1, 1);	
-                               RemindSoundItemRequestEnable(); 
-							   PA_contral();
-							   Idle_sw.power_off_tone = tone_start;
-                              RemindSoundServiceItemRequest(SOUND_REMIND_POWER_OF, REMIND_ATTR_NEED_CLEAR_INTTERRUPT_PLAY|REMIND_PRIO_SYS);
-							}
-                          
-                            
-
-							
-						
-							
-                            break;
-						case Custom_Event1_IR_Poweroff:
-                            #ifdef CFG_FUNC_REMIND_SOUND_EN
-							
-                            RemindSoundServiceItemRequest(SOUND_REMIND_POWER_OF, TRUE);
-                            #endif
-                            Flag_IR_poweroff = 1;
-                            break;
-
-						#if Z__Tone_scene_EN
-
-							case Custom_Event1_tone_BtPair:
-								DBG("@@@@ play Custom_Event1_tone_BtPair @@@\n");
-                            	RemindSoundServiceItemRequest(SOUND_REMIND_MODE_BT, FALSE);
-                            break;
-
-							case Custom_Event1_tone_TWS_Pair:
-								DBG("@@@@ play Custom_Event1_tone_TWS_Pair @@@\n");
-                            	RemindSoundServiceItemRequest(SOUND_REMIND_MODE_TWS, FALSE);
-                            break;
-							
-                        	case Custom_Event1_tone_tws_con:
-								DBG("@@@@ play Custom_Event1_tone_tws_con @@@\n");
-                            	RemindSoundServiceItemRequest(SOUND_REMIND_TWS_CON, FALSE);
-                            break;
-							
-							case Custom_Event1_tone_tws_discon:
-								DBG("@@@@ play Custom_Event1_tone_tws_discon @@@\n");
-                            	RemindSoundServiceItemRequest(SOUND_REMIND_TWS_DIS, FALSE);
-                            break;
-							
-							case Custom_Event1_tone_zhangsheng:
-								DBG("@@@@ play tone_zhangsheng @@@\n");
-								//RemindSoundServiceItemRequest(SOUND_REMIND_ZHANGSHE, FALSE);
-							break;
-							
-							case Custom_Event1_tone_bishi:
-								DBG("@@@@ play tone_bishi @@@\n");
-							//	RemindSoundServiceItemRequest(SOUND_REMIND_BISHI, FALSE);
-							break;
-							
-							case Custom_Event1_tone_huanhu:
-								DBG("@@@@ play tone_huanhu @@@\n");
-							//	RemindSoundServiceItemRequest(SOUND_REMIND_HUANHU, FALSE);
-							break;
-
-							case Custom_Event1_tone_ganga:
-								DBG("@@@@ play tone_ganga @@@\n");
-                            	//RemindSoundServiceItemRequest(SOUND_REMIND_GANGA, FALSE);
-                            break;
-							
-							/*case Custom_Event1_tone_qinw:
-								DBG("@@@@ play tone_tone_qinw @@@\n");
-								RemindSoundServiceItemRequest(SOUND_REMIND_QINW, FALSE);
-							break;*/
-								case Custom_Event1_tone_memeda:
-								  DBG("@@@@ play tone_tone_qinw @@@\n");
-								// RemindSoundServiceItemRequest(SOUND_REMIND_MEMEDA, FALSE);
-							    break;
-							
-							case Custom_Event1_tone_hongxiao:
-								DBG("@@@@ play tone_hongxiao @@@\n");
-								//RemindSoundServiceItemRequest(SOUND_REMIND_HONGXIAO, FALSE);
-							break;
-							
-							case  Custom_Event1_tone_liqu:
-								DBG("@@@@ play tone_tone_liqu @@@\n");
-								//RemindSoundServiceItemRequest(SOUND_REMIND_LIQU, FALSE);
-							break;
-
-							
-						#endif
-						
-                        case Custom_Event1_max_vol:
-													                 						
-                      RemindSoundServiceItemRequest(SOUND_REMIND_VOL_MAX, TRUE);                     						
-                            break;
-							
-						 case Custom_Event1_min_vol:
-                            #ifdef CFG_FUNC_REMIND_SOUND_EN
-                            RemindSoundServiceItemRequest(SOUND_REMIND_VOL_MIN, TRUE);
-                            #endif						
-                            break;	
-
-					   case Custom_Event1_Key_Tone:
-                            #ifdef CFG_FUNC_REMIND_SOUND_EN
-						    //remind_state = 1;
-                        //   RemindSoundServiceItemRequest(SOUND_REMIND_EFFECT, FALSE);
-                            #endif
-                            break;
-
-                        case Custom_Event1_lowpower:
-
-							#if 0//fun_rec_en
-                               if(IsRecoding())
-                               {
-                                   break;
-							   }
-							#endif
-							
-                			#ifdef CFG_FUNC_REMIND_SOUND_EN
-                                RemindSoundServiceItemRequest(SOUND_REMIND_LOW_POWE, TRUE);
-                			#endif
-							
-                            break;
-							
-						case Custom_Event1_DSP_11OP_TONE_EQ1:
-						case Custom_Event1_DSP_11OP_TONE_EQ2:
-						case Custom_Event1_DSP_11OP_TONE_EQ3:
-						case Custom_Event1_DSP_11OP_TONE_EQ4:
-							DBG("\n Custom_Event1_DSP_11OP_TONE_EQ4\n");
-							#ifdef CFG_FUNC_REMIND_SOUND_EN
-							//remind_state = 1;
-								//RemindSoundServiceItemRequest(SOUND_REMIND_EFFECT, FALSE);
-							#endif
-							break;
-						case Custom_Event1_TONE_POWER_ON:
-							DBG("\n Custom_Event1_TONE_POWER_ON\n");
-							#ifdef CFG_FUNC_REMIND_SOUND_EN
-							//remind_state = 1;
-								RemindSoundServiceItemRequest(SOUND_REMIND_VOL_MAX, TRUE);
-							#endif
-							break;
-						case Custom_Event1_Tws_Tone:
-		                    #ifdef CFG_FUNC_REMIND_SOUND_EN
-								//remind_state = 1;
-							//	RemindSoundServiceItemRequest(SOUND_REMIND_MODE_TWS, FALSE);
-		                    #endif
-							break;
-						case Custom_Event1_TWS_Disconnect:
-							  #ifdef CFG_FUNC_REMIND_SOUND_EN							
-								RemindSoundServiceItemRequest(SOUND_REMIND_TWS_DIS, TRUE);
-		                       #endif
-							break;
-							
-						case Custom_Event1_Tone_Mic_Max:
-		                    #ifdef CFG_FUNC_REMIND_SOUND_EN
-							
-								RemindSoundServiceItemRequest(SOUND_REMIND_VOL_MAX, FALSE);
-		                    #endif
-							break;
-						case Custom_Event1_Tone_Mic_Min:
-		                    #ifdef CFG_FUNC_REMIND_SOUND_EN
-								//RemindSoundServiceItemRequest(SOUND_REMIND_MIC_MIN, FALSE);
-		                    #endif
-							break;
-						case Custom_Event1_Tone_Echo_Max:
-		                    #ifdef CFG_FUNC_REMIND_SOUND_EN
-								//RemindSoundServiceItemRequest(SOUND_REMIND_ECHO_MAX, FALSE);
-		                    #endif
-							break;
-						case Custom_Event1_Tone_Echo_Min:
-		                    #ifdef CFG_FUNC_REMIND_SOUND_EN
-								//RemindSoundServiceItemRequest(SOUND_REMIND_ECHO_MIN, FALSE);
-		                    #endif
-							break;
-
-				
-						case Custom_Event1_Tone_Effect_Key:
-	                    #ifdef CFG_FUNC_REMIND_SOUND_EN
-							//	RemindSoundServiceItemRequest(SOUND_REMIND_EFFECT_K, FALSE);
-	                    #endif
-								break;
-
-                    }
-                Custom_Event1_get = 0;
-                DEBUG_ZX(0, " Custom_Event1 ", 0);
-                break;
-                    //end
-
-					
 #ifdef TWS_CODE_BACKUP//BT_TWS_SUPPORT
 		case MSG_TWS_UNMUTE:
 			{
@@ -1499,46 +1237,18 @@ void CommonMsgProccess(uint16_t Msg)
             MessageSend(GetSysModeMsgHandle(), &msgSend);
 			#endif
 			break;
-
-#ifdef CFG_DMA_RGB_LED_EN
-           case MSG_DMA_RGB_SW:
-		   	      APP_DBG("MSG_DMA_RGB_SW\n");
 		
-			  DMA_RGB_POWER_SW = !DMA_RGB_POWER_SW;
-			  if(DMA_RGB_POWER_SW)
-			  {
-			     mainAppCt.rgb_mode = mainAppCt.temp_rgb_mode;
-			     #if RGB_Since_the_flash_EN 
-                   RGB_Since_the_flash_ON;
-				 #endif
-			  }
-			  else
-			  {
-			     mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
-                 mainAppCt.rgb_mode = 0xff;
-			     #if RGB_Since_the_flash_EN 
-                   RGB_Since_the_flash_OFF;
-				  #endif
-			  }
-              
+#ifdef POWER_ON_BT_ACCESS_MODE_SET
+		case MSG_BT_OPEN_ACCESS:
+			 APP_DBG("MSG_BT_OPEN_ACCESS\n");
+			if (!GetBtManager()->keysetAccessModeEnable)
+			{
+				GetBtManager()->keysetAccessModeEnable = TRUE;
+				BtStackServiceMsgSend(MSG_BTSTACK_ACCESS_MODE_SET);
+				APP_DBG("open bt access\n");
+			}
 			break;
-           case MSG_RGB_MODE:
-		   	    APP_DBG("MSG_RGB_MODE\n");
-                // mainAppCt.rgb_mode++;
-               if(DMA_RGB_POWER_SW)
-			   {
-	                mainAppCt.rgb_mode++;
-	                if(mainAppCt.rgb_mode > 3)
-	                { 
-	                     mainAppCt.rgb_mode=0;
-					}
-               }
-			   
-				break;
-			
 #endif
-
-
 		case MSG_MAIN_VOL_UP:
 			SystemVolUp();
 			APP_DBG("MSG_MAIN_VOL_UP\n");
@@ -1559,41 +1269,7 @@ void CommonMsgProccess(uint16_t Msg)
 
 		case MSG_MUSIC_VOLUP:
 			AudioMusicVolUp();
-#ifdef BT_TWS_SUPPORT
-			tws_vol_send(mainAppCt.MusicVolume, IsAudioPlayerMute());
-#endif
 			APP_DBG("MSG_MUSIC_VOLUP\n");
-
-            #if(BT_HFP_SUPPORT == ENABLE)
-		        if(GetSystemMode() == ModeBtHfPlay)
-		        {
-                    if(mainAppCt.HfVolume >= CFG_PARA_MAX_VOLUME_NUM)
-                    {
-                       #if Z__Max_vol_tone_en
-                        if(max_min_tone_msg_send_en == TRUE)
-		                {
-		                    max_min_tone_msg_send_en = FALSE;
-							Z_post_msg(Custom_Event2,Custom_Event1_max_vol);
-						}
-						#endif
-					}
-				}
-				else if(mainAppCt.MusicVolume==Z__SYS_MAX_VOL)
-			#else	
-				if(mainAppCt.MusicVolume==Z__SYS_MAX_VOL)
-			#endif
-				{
-				   #if Z__Max_vol_tone_en
-	                if(max_min_tone_msg_send_en == TRUE)
-	                {
-	                    max_min_tone_msg_send_en = FALSE;
-						Z_post_msg(Custom_Event2,Custom_Event1_max_vol);
-					}	
-				   #endif
-				
-				}
-
-			
 			#ifdef CFG_FUNC_DISPLAY_EN
             msgSend.msgId = MSG_DISPLAY_SERVICE_MUSIC_VOL;
             MessageSend(GetSysModeMsgHandle(), &msgSend);
@@ -1602,42 +1278,6 @@ void CommonMsgProccess(uint16_t Msg)
 
 		case MSG_MUSIC_VOLDOWN:
 			AudioMusicVolDown();
-#ifdef BT_TWS_SUPPORT
-			tws_vol_send(mainAppCt.MusicVolume, IsAudioPlayerMute());
-#endif
-
-	          #if(BT_HFP_SUPPORT == ENABLE)
-		        if(GetSystemMode() == ModeBtHfPlay)
-		        {
-                    if(mainAppCt.HfVolume == 0)
-                    {
-                       #if Z__Min_vol_tone_en
-                        if(max_min_tone_msg_send_en == TRUE)
-		                {
-		                    max_min_tone_msg_send_en = FALSE;
-							Z_post_msg(Custom_Event2,Custom_Event1_min_vol);
-						}
-					   #endif
-					}
-				}
-				else if(mainAppCt.MusicVolume==0)
-			  #else	
-				if(mainAppCt.MusicVolume==0)
-			  #endif	
-				{
-				   #if Z__Min_vol_tone_en
-	                if(max_min_tone_msg_send_en == TRUE)
-	                {
-	                    max_min_tone_msg_send_en = FALSE;
-						Z_post_msg(Custom_Event2,Custom_Event1_min_vol);
-					}
-				   #endif
-
-				}
-				
-			// end
-
-			
 			APP_DBG("MSG_MUSIC_VOLDOWN\n");
 			#ifdef CFG_FUNC_DISPLAY_EN
             msgSend.msgId = MSG_DISPLAY_SERVICE_MUSIC_VOL;
@@ -1645,30 +1285,10 @@ void CommonMsgProccess(uint16_t Msg)
 			#endif
 			break;
 
-#if CFG_RES_MIC_SELECT
+		#if CFG_RES_MIC_SELECT
 		case MSG_MIC_VOLUP:
 			AudioMicVolUp();
 			APP_DBG("MSG_MIC_VOLUP\n");
-
-			if (mainAppCt.MicVolume >= CFG_PARA_MAX_VOLUME_NUM)
-			{
-				mainAppCt.MicVolume = CFG_PARA_MAX_VOLUME_NUM;
-			   #if Z__Max_vol_tone_en
-                if(max_min_tone_msg_send_en == TRUE)
-                {
-                    max_min_tone_msg_send_en = FALSE;
-					Z_post_msg(Custom_Event2,Custom_Event1_max_vol);
-				}
-			   #endif
-			} 
-			else
-			{
-			//	Z_post_msg(Custom_Event2,Custom_Event1_Tone_Effect_Key);
-				
-
-			}
-
-			
 			#ifdef CFG_FUNC_DISPLAY_EN
             msgSend.msgId = MSG_DISPLAY_SERVICE_MIC_VOL;
             MessageSend(GetSysModeMsgHandle(), &msgSend);
@@ -1678,204 +1298,12 @@ void CommonMsgProccess(uint16_t Msg)
 		case MSG_MIC_VOLDOWN:
 			AudioMicVolDown();
 			APP_DBG("MSG_MIC_VOLDOWN\n");
-
-			if (mainAppCt.MicVolume == 0)
-			{
-			   #if Z__Min_vol_tone_en
-                if(max_min_tone_msg_send_en == TRUE)
-                {
-                    max_min_tone_msg_send_en = FALSE;
-					Z_post_msg(Custom_Event2,Custom_Event1_min_vol);
-				}
-			   #endif
-			}
-			else
-			{
-			//	Z_post_msg(Custom_Event2,Custom_Event1_Tone_Effect_Key);
-			
-			}
-
-			
 			#ifdef CFG_FUNC_DISPLAY_EN
             msgSend.msgId = MSG_DISPLAY_SERVICE_MIC_VOL;
             MessageSend(GetSysModeMsgHandle(), &msgSend);
 			#endif
 			break;
-#endif
-
-#ifdef CFG_FUNC_MIC_ECHO_REVERB_GAIN_EN
-	case MSG_MIC_EchoReverb_UP:
-			DBG("@@@@MSG_MIC_EchoReverb_UP@@@@\n");
-
-                   
-		#if Z__MIC_ECHO_VOL != 0
-		        #if Z__MIC_ECHO_ADJ_PALN // 增益调节
-				mainAppCt.ReverbGainStep = BOEU_MIC_EchoReverb_UP();
-		        mainAppCt.EchoGainStep = mainAppCt.ReverbGainStep;
-				
-				#else //干湿度、延时调节
-                    mainAppCt.ReverbStep = BOEU_MIC_EchoReverb_UP();
-				#endif
-				
-	     #else
-		          #if Z__MIC_ECHO_ADJ_PALN // 增益调节
-                     if(mainAppCt.ReverbGainStep < (32))
-					 {
-						   mainAppCt.ReverbGainStep +=2;
-						 mainAppCt.EchoGainStep +=2;
-					 }
-					 
-					 if(mainAppCt.ReverbGainStep >= (32))
-					 {
-						 mainAppCt.ReverbGainStep=32;
-						 mainAppCt.EchoGainStep=32;
-					 }
-				   #else //干湿度、延时调节
-                        if(mainAppCt.ReverbStep < Z__SYS_MAX_VOL)
-                        {
-                            mainAppCt.ReverbStep+=2;
-						}
-				   #endif
-
-		#endif		 
-		  #if Z__MIC_ECHO_ADJ_PALN
-			  if(mainAppCt.ReverbGainStep==32)
-				{
-                  #if Z__Max_vol_tone_en
-	                if(max_min_tone_msg_send_en == TRUE)
-	                {
-	                    max_min_tone_msg_send_en = FALSE;
-						Z_post_msg(Custom_Event2,Custom_Event1_max_vol);
-					}
-				  #endif	
-				
-				}	
-			     printf("mainAppCt.EchoGainStep == %d\n",mainAppCt.EchoGainStep);
-                 printf("mainAppCt.ReverbGainStep == %d\n",mainAppCt.ReverbGainStep);
-            #else
-			    if(mainAppCt.ReverbStep == Z__SYS_MAX_VOL)
-			    {
-                  #if Z__Max_vol_tone_en
-	                if(max_min_tone_msg_send_en == TRUE)
-	                {
-	                    max_min_tone_msg_send_en = FALSE;
-						Z_post_msg(Custom_Event2,Custom_Event1_max_vol);
-					}
-				  #endif
-				}
-
-				printf("mainAppCt.ReverbStep== %d\n",mainAppCt.ReverbStep);
-			#endif	
-        
-
-         //   g_tws_mic_echo = mainAppCt.EchoGainStep;
-		//	g_tws_mic_rever = mainAppCt.ReverbGainStep;
- 
-		  //  tws_echo_send(mainAppCt.EchoGainStep,  mainAppCt.ReverbGainStep);
-		   #if Z__MIC_ECHO_ADJ_PALN
-			 MicEchoReverbGainAjust(mainAppCt.EchoGainStep,mainAppCt.ReverbGainStep);
-		   #else
-              ReverbStepSet(mainAppCt.ReverbStep);
-		   #endif
-		   
-		    #ifdef CFG_FUNC_DISPLAY_EN
-               msgSend.msgId = MSG_DISPLAY_SERVICE_REVERB_VOL;
-               MessageSend(GetDisplayMessageHandle(), &msgSend);
-			#endif
-              #ifdef CFG_FUNC_BREAKPOINT_EN
-			     #if Z__SYS_DEFAULT_EOHO_VOL == 0
-			     BackupInfoUpdata(BACKUP_SYS_INFO);
-				 #endif
-			 #endif
-		   
-		 break;
-			 
-		case MSG_MIC_EchoReverb_DW:
-			DBG("@@@MSG_MIC_EchoReverb_DW@@@@\n");
-			
-         #if Z__MIC_ECHO_VOL != 0
-		        #if Z__MIC_ECHO_ADJ_PALN // 增益调节
-				mainAppCt.ReverbGainStep = BOEU_MIC_EchoReverb_DW();
-		        mainAppCt.EchoGainStep = mainAppCt.ReverbGainStep;
-				
-				#else //干湿度、延时调节
-                    mainAppCt.ReverbStep = BOEU_MIC_EchoReverb_DW();
-				#endif
-				
-	     #else
-		          #if Z__MIC_ECHO_ADJ_PALN // 增益调节
-                     if(mainAppCt.ReverbGainStep < (32))
-					 {
-						   mainAppCt.ReverbGainStep -=2;
-						 mainAppCt.EchoGainStep -=2;
-					 }
-					 
-					 if(mainAppCt.ReverbGainStep >= (32))
-					 {
-						 mainAppCt.ReverbGainStep=32;
-						 mainAppCt.EchoGainStep=32;
-					 }
-				   #else //干湿度、延时调节
-                        if(mainAppCt.ReverbStep < Z__SYS_MAX_VOL)
-                        {
-                            mainAppCt.ReverbStep-=2;
-						}
-				   #endif
-
-		#endif		 
-		  #if Z__MIC_ECHO_ADJ_PALN
-			  if(mainAppCt.ReverbGainStep==0)
-				{
-                   #if Z__Min_vol_tone_en
-	                if(max_min_tone_msg_send_en == TRUE)
-	                {
-	                    max_min_tone_msg_send_en = FALSE;
-						Z_post_msg(Custom_Event2,Custom_Event1_min_vol);
-					}
-					#endif
-				}	
-			     printf("mainAppCt.EchoGainStep == %d\n",mainAppCt.EchoGainStep);
-                 printf("mainAppCt.ReverbGainStep == %d\n",mainAppCt.ReverbGainStep);
-            #else
-			    if(mainAppCt.ReverbStep == 0)
-			    {
-                   #if Z__Min_vol_tone_en
-	                if(max_min_tone_msg_send_en == TRUE)
-	                {
-	                    max_min_tone_msg_send_en = FALSE;
-						Z_post_msg(Custom_Event2,Custom_Event1_min_vol);
-					}
-					#endif
-				}
-
-				printf("mainAppCt.ReverbStep== %d\n",mainAppCt.ReverbStep);
-			#endif	
-        
-
-	         //   g_tws_mic_echo = mainAppCt.EchoGainStep;
-			//	g_tws_mic_rever = mainAppCt.ReverbGainStep;
-	 
-			  //  tws_echo_send(mainAppCt.EchoGainStep,  mainAppCt.ReverbGainStep);
-			   #if Z__MIC_ECHO_ADJ_PALN
-				 MicEchoReverbGainAjust(mainAppCt.EchoGainStep,mainAppCt.ReverbGainStep);
-			   #else
-	              ReverbStepSet(mainAppCt.ReverbStep);
-			   #endif
-
-		    #ifdef CFG_FUNC_DISPLAY_EN
-               msgSend.msgId = MSG_DISPLAY_SERVICE_REVERB_VOL;
-               MessageSend(GetDisplayMessageHandle(), &msgSend);
-			#endif
-			 #ifdef CFG_FUNC_BREAKPOINT_EN
-			     #if Z__SYS_DEFAULT_EOHO_VOL == 0
-			     BackupInfoUpdata(BACKUP_SYS_INFO);
-				 #endif
-			 #endif  
-			
-         break;
-
-#endif
-			 
+		#endif
 
 #ifdef CFG_APP_BT_MODE_EN
 		case MSG_BT_PLAY_SYNC_VOLUME_CHANGED:
@@ -2097,97 +1525,6 @@ void CommonMsgProccess(uint16_t Msg)
 			break;
 #endif
 
-		case MSG_MOYIN_IN_OUT:
-              DBG("@@@ MSG_MOYIN_IN_OUT @@@\n");
-			  
-            //  gCtrlVars.remind_type = REMIND_TYPE_KEY;
-			  
-		     if(moyin_in_out_flag == moyin_out)
-		     {
-                moyin_in_out_flag = moyin_in;
-				//RemindSoundServiceItemRequest(SOUND_REMIND_MOYIN_IO,FALSE);
-			 }
-			else if(moyin_in_out_flag == moyin_in)
-			 {
-                 moyin_in_out_flag = moyin_out;
-				// RemindSoundServiceItemRequest(SOUND_REMIND_MOYIN_IO,FALSE);
-			 }
-
-                      
-
-			break;
-
-			
- #if PH_DET_AUDIO_EFFECT_EN			
-	   case MSG_EFFECT_PH_ON_LINE:
-                //APP_DBG("--- 耳机插入 ---\n");
-				/*AudioEffectModeSel2(EFFECT_MODE_PH_on_line, 1);
-				{
-					extern TIMER EffectChangeTimer;
-					TimeOutSet(&EffectChangeTimer, 500);//临时修改方案，保证音效模式频繁切换时，能规避死机现象(恢复为500ms超时等待处理)
-				}*/
-			break;
-
-       case MSG_EFFECT_PH_OFF_LINE:
-               // APP_DBG("--- 耳机拔出 ---\n");
-				/*AudioEffectModeSel2(EFFECT_MODE_PH_off_line, 1);
-			   {
-					extern TIMER EffectChangeTimer;
-					TimeOutSet(&EffectChangeTimer, 500);//临时修改方案，保证音效模式频繁切换时，能规避死机现象(恢复为500ms超时等待处理)
-				}*/
-			break;	
-#endif	 // PH_DET_AUDIO_EFFECT_EN
-
-        case MSG_LINE_SET_ON:
-              APP_DBG("--- MSG_LINE_SET_ON ---\n");
-
-			    if(GetSystemMode()!=ModeLineAudioPlay)
-			    {
-			      APP_DBG("GetSystemMode()!=AppModeLineAudioPlay !!!    break \n");
-                     break;
-				}
-			   AudioCoreSourceUnmute(APP_SOURCE_NUM,TRUE,TRUE);
-			break;
-
-		case MSG_LINE_SET_OFF:
-              APP_DBG("--- MSG_LINE_SET_OFF ---\n");
-			    if(GetSystemMode()!=ModeLineAudioPlay)
-			    {
-			      APP_DBG("GetSystemMode()!=AppModeLineAudioPlay !!!    break \n");
-                     break;
-				}
-			  
-			   AudioCoreSourceMute(APP_SOURCE_NUM,TRUE,TRUE);
-			break;
-
-        case MSG_LINE3_R_SW:   //设置MIC2 开   MIC1 关
-                APP_DBG("----- MSG_LINE3_R_SW  -----\n");
-			   
-				// AudioEffectModeSel(EFFECT_MODE_MIC1_OFF_MIC2_ON, 2);
-               //  mic2_ctrl_en = !mic2_ctrl_en;
-			    // AudioLine3Mic1Enable(1);
-                // AudioLine3Mic2Enable(0);
-			break;
-
-		case MSG_LINE3_L_SW:   //设置MIC1 开   MIC2 关
-			     APP_DBG("----- MSG_LINE3_L_SW  -----\n");
-				
-               //  mic1_ctrl_en = !mic1_ctrl_en;
-             /*  if(GetSystemMode()==AppModeBtHfPlay)
-               {
-                    AudioEffectModeSel(EFFECT_MODE_MIC2_OFF_MIC1_ON, 2);
-			   }
-			   else
-			   {
-                   AudioEffectModeSel(EFFECT_MODE_HunXiang, 2);
-			   }*/
-              
-			  			   
-                 // AudioLine3Mic1Enable(0);
-                //  AudioLine3Mic2Enable(1);
-			break;
-
-
 		case MSG_REC_MUSIC:
 			SetRecMusic(0);
 			break;
@@ -2243,22 +1580,11 @@ void CommonMsgProccess(uint16_t Msg)
 			//RemindSound request
 			APP_DBG("MSG_DEVICE_SERVICE_BATTERY_LOW\n");
 			#ifdef CFG_FUNC_REMIND_SOUND_EN
-			RemindSoundServiceItemRequest(SOUND_REMIND_LOW_POWE, TRUE);
+			RemindSoundServiceItemRequest(SOUND_REMIND_DLGUODI, FALSE);
 			#endif
 			break;
 
-#ifdef CFG_APP_BT_MODE_EN
-		#ifdef POWER_ON_BT_ACCESS_MODE_SET
-		case MSG_BT_OPEN_ACCESS:
-			if (GetBtManager()->btAccessModeEnable == 0)
-			{
-				GetBtManager()->btAccessModeEnable = 1;
-				BtStackServiceMsgSend(MSG_BTSTACK_ACCESS_MODE_SET);
-				DBG("open bt access\n");
-			}
-			break;
-		#endif
-			
+#ifdef CFG_APP_BT_MODE_EN			
 		//蓝牙连接断开消息,用于提示音
 		case MSG_BT_STATE_CONNECTED:
 			APP_DBG("[BT_STATE]:BT Connected...\n");
@@ -2271,28 +1597,10 @@ void CommonMsgProccess(uint16_t Msg)
 			if(btManager.btDutModeEnable)
 				break;
 
-				 if(Tws_state==1 && is_tws_slave()==0)
-				 {
-                    BT_state = BT_master_slave_phone;
-				 }
-				 else
-				 {
-                    BT_state = BT_connect;
-				 }
-
-			 #ifdef CFG_DMA_RGB_LED_EN
-		        mainAppCt.rgb_mode=RGB_Effect_Bt_Con;
-			    mainAppCt.temp_rgb_mode=mainAppCt.rgb_mode;
-	         #endif
-		     #if LEDS_mix_RGB_EN
-		        RGB_curr_effect = RGB_Effect_Bt_Con;
-			    Temp_RGB_curr_effect = RGB_curr_effect;
-		     #endif
-            
 			//if(!(btCheckEventList&BT_EVENT_L2CAP_LINK_DISCONNECT))
 			{
 				#ifdef CFG_FUNC_REMIND_SOUND_EN
-				if(RemindSoundServiceItemRequest(SOUND_REMIND_BT_CON, REMIND_PRIO_SYS|REMIND_ATTR_NEED_HOLD_PLAY))
+				if(RemindSoundServiceItemRequest(SOUND_REMIND_CONNECT, REMIND_PRIO_SYS|REMIND_ATTR_NEED_HOLD_PLAY))
 				{
 					if(!SoftFlagGet(SoftFlagWaitBtRemindEnd)&&SoftFlagGet(SoftFlagDelayEnterBtHf))
 					{
@@ -2326,36 +1634,61 @@ void CommonMsgProccess(uint16_t Msg)
 
 			BtStackServiceMsgSend(MSG_BTSTACK_ACCESS_MODE_SET);
 
-			    if(Tws_state==1 && is_tws_slave()==0)
-				 {
-                    BT_state = BT_master_slave;
-				 }
-				 else
-				 {
-                    BT_state = BT_disconnect;
-				 }
-
-			 #ifdef CFG_DMA_RGB_LED_EN
-		        mainAppCt.rgb_mode=RGB_Effect_Bt_Dis;
-			    mainAppCt.temp_rgb_mode=mainAppCt.rgb_mode;
-	         #endif
-		     #if LEDS_mix_RGB_EN
-		        RGB_curr_effect = RGB_Effect_Bt_Dis;
-			    Temp_RGB_curr_effect = RGB_curr_effect;
-		     #endif
-			 
 			//异常回连过程中，不提示连接断开提示音
 			//if(!(btCheckEventList&BT_EVENT_L2CAP_LINK_DISCONNECT))
 			{
 				#ifdef CFG_FUNC_REMIND_SOUND_EN
-				if(GetSystemMode() != ModeIdle)
+				if(((GetSystemMode() != ModeIdle) && (sys_parameter.bt_BackgroundType == 1))
+					|| (GetSystemMode() == ModeBtAudioPlay))
 				{
-					RemindSoundServiceItemRequest(SOUND_REMIND_BT_DIS, REMIND_PRIO_SYS|REMIND_ATTR_NEED_HOLD_PLAY);
+					RemindSoundServiceItemRequest(SOUND_REMIND_DISCONNE, REMIND_PRIO_SYS|REMIND_ATTR_NEED_HOLD_PLAY);
 				}
 				#endif
 			}
 			break;
 #endif
+
+
+#ifdef BT_PROFILE_BQB_ENABLE
+		case MSG_A2DP_CONNECT:
+			APP_DBG("MSG_A2DP_CONNECT\n");
+			A2dpConnect(0,btManager.btDdbLastAddr);
+		break;
+
+		case MSG_AVRCP_STOP:
+			APP_DBG("MSG_AVRCP_STOP\n");
+			AvrcpCtrlStop(0);
+			break;
+
+		case MSG_AVRCP_CONNECT:
+			APP_DBG("MSG_AVRCP_CONNECT\n");
+			AvrcpConnect(0,btManager.btDdbLastAddr);
+		break;
+
+		case MSG_HFP_CONNECT:
+			APP_DBG("MSG_HFP_CONNECT\n");
+			HfpConnect(0,btManager.btDdbLastAddr);
+		break;
+
+		case MSG_SCO_CONNECT:
+			APP_DBG("MSG_SCO_CONNECT\n");
+			HfpAudioConnect(0);
+		break;
+
+		case MSG_BT_BQB_AVDTP_SMG:
+		{
+			BTBqbAvdtpSmgSet(1);
+			APP_DBG("enable AVDTP/SNK/ACP/SIG/SMG/BI-05-C BI-33-C test\n");
+		}
+		break;
+
+		case MSG_BT_BQB_AVDTP_SMG_BI38C:
+		{
+			BTBqbAvdtpSmgBI38CSet(1);
+			APP_DBG("enable AVDTP/SNK/ACP/SIG/SMG/BI-38-C test\n");
+		}
+		break;
+#endif//BT_PROFILE_BQB_ENABLE
 
 		default:
 	#ifdef CFG_FUNC_DISPLAY_TASK_EN

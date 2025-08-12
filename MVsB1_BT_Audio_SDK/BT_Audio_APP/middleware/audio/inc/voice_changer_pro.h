@@ -4,7 +4,7 @@
  * @brief	Voice Changer Pro for mono signals
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v2.4.0
+ * @version	v2.5.1
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -41,7 +41,7 @@ typedef struct _VoiceChangerProContext
     
     int32_t x[2048];
     int32_t xlast; // must be put here
-    int16_t pcm_x[2048];
+    int32_t pcm_x[2048];
     int32_t pcm_y[4096];
     int32_t phi0[1024];
     int32_t psi[1024];
@@ -77,6 +77,17 @@ int32_t voice_changer_pro_init(VoiceChangerProContext *ct, int32_t sample_rate, 
  * @note Note that the number of PCM samples per frame is equal to the step_size set in voice_changer_init(...).
  */
 int32_t voice_changer_pro_apply(VoiceChangerProContext *ct, int16_t *pcm_in, int16_t *pcm_out);
+
+
+/**
+ * @brief Apply the change of voice (24-bit)
+ * @param ct Pointer to a VoiceChangerContext object.
+ * @param pcm_in PCM input buffer.
+ * @param pcm_out PCM output buffer. pcm_out can be the same as pcm_in. In this case, the PCM data is changed in-place.
+ * @return error code. VOICECHANGER_ERROR_OK means successful, other codes indicate error.
+ * @note Note that the number of PCM samples per frame is equal to the step_size set in voice_changer_init(...).
+ */
+int32_t voice_changer_pro_apply24(VoiceChangerProContext *ct, int32_t *pcm_in, int32_t *pcm_out);
 
 
 #ifdef __cplusplus

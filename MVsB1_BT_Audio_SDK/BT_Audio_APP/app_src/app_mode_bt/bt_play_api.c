@@ -44,7 +44,6 @@
 #define OS_SBC_UNLOCK	if(SbcDecoderMutex != NULL){osMutexUnlock(SbcDecoderMutex);}
 
 uint32_t gBtPlaySbcDecoderInitFlag = 0;
-
 extern BT_A2DP_PLAYER *a2dp_player;
 osMutexId SbcDecoderMutex = NULL;
 
@@ -121,54 +120,53 @@ void a2dp_sbc_decoer_init(void)
 
 void a2dp_sbc_save(uint8_t *p,uint32_t len)
 {
-#ifdef TWS_CODE_BACKUP//BT_TWS_SUPPORT
-	if(g_tws_need_init && GetBtManager()->twsState == BT_TWS_STATE_CONNECTED)
-	{
-		return;
-	}
-#endif
-
 	if(!IsBtAudioMode())
 		return;
 
 	if(a2dp_player == NULL)
-	{
 		return;
-	}
 
 	if(a2dp_player->sbc_init_flag == 0)
 		return ;
 
-	if(a2dp_unmute_delay_cnt < 20)
+	uint8_t index = btManager.btLinked_env[btManager.cur_index].a2dp_index;
+
+	if(a2dp_unmute_delay_cnt < 5)
 	{
 		a2dp_unmute_delay_cnt++;
-		if(a2dp_unmute_delay_cnt == 20 || GetValidSbcDataSize() >= SBC_FIFO_LEVEL_HIGH)
+		if((a2dp_unmute_delay_cnt == 5)
+			|| ( (GetBtManager()->a2dpStreamType[index] == BT_A2DP_STREAM_TYPE_SBC)&& (GetValidSbcDataSize() >= SBC_FIFO_LEVEL_HIGH) )
+			|| ( (GetBtManager()->a2dpStreamType[index] == BT_A2DP_STREAM_TYPE_AAC)&& (btManager.aacFrameNumber >= BT_AAC_START_FRAME) ))
 		{
 			if(IsAudioPlayerMute() == TRUE)
 			{
 				HardWareMuteOrUnMute();
 			}
 			AudioCoreSourceUnmute(APP_SOURCE_NUM,TRUE,TRUE);
-			a2dp_unmute_delay_cnt = 20;
+			a2dp_unmute_delay_cnt = 5;
 		}
-		//return;
 	}
 
 	OS_SBC_LOCK;
 	if(mv_mremain(&a2dp_player->MemHandle) > len)
 	{
 		mv_mwrite(p, len, 1,&a2dp_player->MemHandle);
+		if(GetBtManager()->a2dpStreamType[index] == BT_A2DP_STREAM_TYPE_AAC)
+		{
+			if(btManager.aacFrameNumber<0xffffffff)
+				btManager.aacFrameNumber++;
+		}
 		
-#ifdef CFG_DUMP_DEBUG_EN
+		#ifdef CFG_DUMP_DEBUG_EN
 		dumpUartSend(p, len);
-#endif
-
+		#endif
 	}
-	if(GetValidSbcDataSize() >= SBC_FIFO_LEVEL_HIGH)
+
+	if(( (GetBtManager()->a2dpStreamType[index] == BT_A2DP_STREAM_TYPE_SBC)&& (GetValidSbcDataSize() >= SBC_FIFO_LEVEL_HIGH) )
+		|| ( (GetBtManager()->a2dpStreamType[index] == BT_A2DP_STREAM_TYPE_AAC)&& (btManager.aacFrameNumber >= BT_AAC_START_FRAME) ))
 	{
 		if(AudioCore.AudioSource[1].Enable == FALSE)
 		{
-			uint8_t index = btManager.btLinked_env[btManager.cur_index].a2dp_index;
 			if(index < BT_LINK_DEV_NUM && btManager.a2dpStreamType[index] == BT_A2DP_STREAM_TYPE_AAC)
 				BtDecoderInit(&a2dp_player->MemHandle,AAC_DECODER);
 			else
@@ -189,6 +187,17 @@ uint32_t GetValidSbcDataSize(void)
 
 	dataSize =  mv_msize(&a2dp_player->MemHandle);
 
+	return dataSize;
+}
+
+uint32_t GetValidFrameDataSize(void)
+{
+	uint32_t	dataSize = 0;
+	extern uint8_t GetBtDecoderFlag(void);
+	if(GetBtDecoderFlag())
+	{
+		dataSize = btManager.aacFrameNumber;
+	}
 	return dataSize;
 }
 
@@ -245,7 +254,6 @@ extern int32_t sbc_decoder_apply_phone(SBCFrameDecoderContext *ct,uint8_t *sbc_b
 uint32_t a2dp_unmute_delay_cnt = 0;
 void a2dp_sbc_decoer_init(void)
 {
-
 	if(a2dp_player == NULL)
 	{
 		return;
@@ -276,36 +284,27 @@ void a2dp_sbc_save(uint8_t *p,uint32_t len)
 	int info_ok = 0;
 	int play_start = 0;
 	int ret = 0;
-
-#ifdef TWS_CODE_BACKUP//BT_TWS_SUPPORT
-	if(g_tws_need_init && GetBtManager()->twsState == BT_TWS_STATE_CONNECTED)	
-	{
-		return;
-	}
-#endif	
 	
 	if(!IsBtAudioMode())
 		return;
 		
 	if(a2dp_player == NULL)
-	{
 		return;
-	}
 
-	if(a2dp_unmute_delay_cnt < 20)
+	if(a2dp_unmute_delay_cnt < 5)
 	{
 		a2dp_unmute_delay_cnt++;
-		if(a2dp_unmute_delay_cnt == 20 || MCUCircular_GetDataLen(&a2dp_player->sbc_fifo_cnt) >= SBC_FIFO_LEVEL_HIGH)
+		if(a2dp_unmute_delay_cnt == 5 || MCUCircular_GetDataLen(&a2dp_player->sbc_fifo_cnt) >= SBC_FIFO_LEVEL_HIGH)
 		{
 			if(IsAudioPlayerMute() == TRUE)
 			{
 				HardWareMuteOrUnMute();
 			}
 			AudioCoreSourceUnmute(APP_SOURCE_NUM,TRUE,TRUE);
-			a2dp_unmute_delay_cnt = 20;
+			a2dp_unmute_delay_cnt = 5;
 		}
-		//return;
 	}
+	
 	OS_SBC_LOCK;
 	if(gBtPlaySbcDecoderInitFlag == 0)
 	{
@@ -328,7 +327,6 @@ void a2dp_sbc_save(uint8_t *p,uint32_t len)
 	{
 		if(a2dp_player->sbc_bytes == 0)//未曾解码 获取采样率等参数
 		{
-			
 			//uint32_t decoder_out_sample = 0;
 			ret = sbc_get_fram_infor(p,&a2dp_player->sbc_bytes,&a2dp_player->sample_rate,&a2dp_player->decoder_out_sample);
 			AudioCoreSourceChange(APP_SOURCE_NUM, 2, a2dp_player->sample_rate);
@@ -567,7 +565,7 @@ uint16_t A2DPDataGet(void* Buf, uint16_t Samples)
 				
 				}
 			}
-			
+				
 			src_len = 128;//解码出来固定128samples
 
 			if(a2dp_player->dec_out_pcm_offset > 256)

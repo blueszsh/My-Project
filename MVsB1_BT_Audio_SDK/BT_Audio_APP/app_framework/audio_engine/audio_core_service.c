@@ -26,7 +26,9 @@
 #include "audio_core_service.h"
 #include "audio_core_api.h"
 
-
+#ifdef CFG_FUNC_SPDIF_MIX_MODE
+#include "spdif_api.h"
+#endif
 
 #if (AUDIO_CORE_SERVICE_SIZE <= 512)
 #define USE_SYS_STACK	//can free AUDIO_CORE_SERVICE_SIZE*4 btyes RAM
@@ -148,6 +150,9 @@ static void AudioCoreServiceEntrance(void * param)
 		{
 			//audiocore 在转模式的时候可能暂停 Mark
 			AudioCoreRun();
+#ifdef CFG_FUNC_SPDIF_MIX_MODE
+			AudioSpdif_DataInProcess();
+#endif	
 #ifdef CFG_FUNC_RECORDER_EN
 			void MediaRecorderEncode(void);
 			MediaRecorderEncode();

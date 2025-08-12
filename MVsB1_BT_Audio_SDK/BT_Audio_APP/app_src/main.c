@@ -96,20 +96,14 @@ extern void trace_TASK_SWITCHED_OUT(void);
 extern void bt_api_init(void);
 extern void uart_log_out(void);
 typedef void (*rtosfun)(void);
+
+#ifndef CFG_FUNC_STRING_CONVERT_EN
 extern rtosfun pvApplicationIdleHook;
 extern rtosfun ptrace_TASK_SWITCHED_IN;
 extern rtosfun ptrace_TASK_SWITCHED_OUT;
+#endif
+
 extern volatile uint8_t uart_switch;
-
-
-
-#ifdef CFG_DMA_RGB_LED_EN
-extern void ModeTest(void);
-#ifdef CFG_MORE_GPIO_RGB_CTRL_EN
-extern void ModeTest1(void);
-#endif
-extern void rgb_data_deal(void);
-#endif
 
 
 void _printf_float()
@@ -197,7 +191,7 @@ void Timer2Interrupt(void)
 #endif
 
 #ifdef CFG_APP_USB_AUDIO_MODE_EN
-	UsbAudioTimer1msProcess();//; //1ms中断监控
+	UsbAudioTimer1msProcess(); //1ms中断监控
 #endif
 
 #ifdef CFG_APP_BT_MODE_EN
@@ -205,71 +199,81 @@ void Timer2Interrupt(void)
 	BtHf_Timer1msProcess();
 #endif
 #endif
-
-
-#ifdef CFG_DMA_RGB_LED_EN
-	ModeTest();
-	#ifdef CFG_MORE_GPIO_RGB_CTRL_EN
-	ModeTest1();
-	#endif
-	rgb_data_deal();
-#endif
-    _1ms_fun();
-
 	uart_log_out();
 	OneMSTimer();
 }
 
-#if (defined(CFG_FUNC_LED_REFRESH) || defined(CFG_DMA_RGB_LED_EN))
+#ifdef CFG_FUNC_LED_REFRESH
 __attribute__((section(".tcm_section")))
 void Timer6Interrupt(void)
 {
-
 	Timer_InterruptFlagClear(TIMER6, UPDATE_INTERRUPT_SRC);
 
 	//示例代码，需要添加段“.tcm_section”
 	//关键字    __attribute__((section(".tcm_section")))
 	//客户需要将自己的实现的API代码添加关键字
 	//GPIO_RegOneBitSet(GPIO_A_TGL, GPIO_INDEX2);
- #if DIGITAL_TUBE_EN		
 	extern void LedFlushDisp(void);
 	LedFlushDisp();
- #endif
- 
-	
-#ifdef CFG_DMA_RGB_LED_EN
-     extern void LedDmaDataMode(void);
-     LedDmaDataMode();
-#endif
- 
- 
 }
 #endif
 
 void SystemClockInit(void)
 {
+	Clock_SysClkSelect(RC_CLK_MODE);
+
 	//clock配置
 	Clock_Config(1, 24000000);
-	#ifdef BT_TWS_SUPPORT
-	//此处主频不可修改
-	Clock_PllLock(293530);//owen 11.2896*26=293.5296MHz
-	*(uint32_t*)0x40026008 = 0x24B0F2;//驱动存在BUG，低8位被清零了
 
-	#else
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN
+	Clock_PllLock(300000);
+#elif defined(BT_TWS_SUPPORT)
+
+	Clock_PllLock(SYS_CORE_DPLL_FREQ / 10);
+	*(uint32_t*)0x40026008 = ((uint64_t)8192 * SYS_CORE_DPLL_FREQ / 10000);  // 0x2BBF48--349M    0x27837B--316M
+
+#elif defined(LOSSLESS_DECODER_HIGH_RESOLUTION)
+	Clock_PllLock(320000);//主频设置为最高320M
+#else
 	Clock_PllLock(288000);
-	#endif
+#endif
+
+	#if (SYS_CORE_DPLL_FREQ == 3499776)
+	Clock_APllLock(300000);
+	#else
 	Clock_APllLock(240000);
+	#endif
+
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN
+	Clock_USBClkDivSet(5);// bkd add for u disk 60M 2019.4.17
+	Clock_SysClkSelect(PLL_CLK_MODE);
+	Clock_USBClkSelect(PLL_CLK_MODE);
+	Clock_UARTClkSelect(PLL_CLK_MODE);
+#else
+	#if (SYS_CORE_DPLL_FREQ == 3499776)
+	Clock_USBClkDivSet(5);// bkd add for u disk 60M 2019.4.17
+	#else
 	Clock_USBClkDivSet(4);// bkd add for u disk 60M 2019.4.17
+	#endif
+
 	Clock_SysClkSelect(PLL_CLK_MODE);
 	Clock_USBClkSelect(APLL_CLK_MODE);
 	Clock_UARTClkSelect(APLL_CLK_MODE);
+#endif
 	Clock_Timer3ClkSelect(RC_CLK_MODE);//for cec rc clk
 
 	Clock_Module1Enable(ALL_MODULE1_CLK_SWITCH);
 	Clock_Module2Enable(ALL_MODULE2_CLK_SWITCH);
 	Clock_Module3Enable(ALL_MODULE3_CLK_SWITCH);
-	//Clock_ApbClkDivSet(5);
-	Clock_ApbClkDivSet(2);
+
+	if (Clock_CoreClockFreqGet() > 320*1000000)
+	{
+		Clock_ApbClkDivSet(6);
+	}
+	else
+	{
+		Clock_ApbClkDivSet(5);
+	}
 }
 
 void LogUartConfig(bool InitBandRate)
@@ -380,11 +384,22 @@ void WakeupMain(void)
 	Chip_Init(1);
 	SysTickDeInit();
 	WDG_Enable(WDG_STEP_4S);
+	Efuse_ReadDataEnable();
 	SystemClockInit();
 	SysTickInit();
-	Efuse_ReadDataEnable(); 
+//	Efuse_ReadDataEnable(); 
 	Clock_DeepSleepSysClkSelect(PLL_CLK_MODE, FSHC_PLL_CLK_MODE, 0);
-	SpiFlashInit(96000000, MODE_4BIT, 0, FSHC_PLL_CLK_MODE);
+
+	if (Clock_CoreClockFreqGet() == 360*1000000){
+		SpiFlashInit(90000000, MODE_4BIT, 0, FSHC_PLL_CLK_MODE);
+	}
+	else if (Clock_CoreClockFreqGet() > 320*1000000){
+		SpiFlashInit(100000000, MODE_4BIT, 0, FSHC_APLL_CLK_MODE);
+	}
+	else{
+		SpiFlashInit(96000000, MODE_4BIT, 0, FSHC_PLL_CLK_MODE);
+	}
+
 	LogUartConfig(TRUE);//调整时钟后，重配串口前不要打印。
 	//Clock_Pll5ClkDivSet(8);// 
 	//B0B1为SW调式端口，在调试阶段若系统进入了低功耗模式时关闭了GPIO复用模式，请在此处开启
@@ -467,7 +482,16 @@ int main(void)
 	memcpy((void *)0x20006000, (void *)(&__sdk_code_start), TCM_SIZE*1024);
 	Remap_AddrRemapSet(ADDR_REMAP1, (uint32_t)(&__sdk_code_start), 0x20006000, TCM_SIZE);//SDK占用的TCM空间12K
 #endif
-	SpiFlashInit(96000000, MODE_4BIT, 0, FSHC_PLL_CLK_MODE);
+
+	if (Clock_CoreClockFreqGet() == 360*1000000){
+		SpiFlashInit(90000000, MODE_4BIT, 0, FSHC_PLL_CLK_MODE);
+	}
+	else if (Clock_CoreClockFreqGet() > 320*1000000){
+		SpiFlashInit(100000000, MODE_4BIT, 0, FSHC_APLL_CLK_MODE);
+	}
+	else{
+		SpiFlashInit(96000000, MODE_4BIT, 0, FSHC_PLL_CLK_MODE);
+	}
 	Clock_RC32KClkDivSet(Clock_RcFreqGet(TRUE) / 32000);//不可屏蔽
 	
 	//考虑到大容量的8M flash，写之前需要Unlock，SDK默认不做加锁保护
@@ -478,7 +502,7 @@ int main(void)
 	osSemaphoreMutexCreate();//硬件串口OS启用了软件锁，必须在创建锁之后输出log，否则死机，锁要初始化堆栈后创建。软件模拟串口不影响。
 	
 #ifdef CFG_RES_RTC_EN
-	#ifdef CFG_CHIP_BP1064L2
+	#ifdef CFG_PARA_RTC_SRC_OSC32K
     RTC_ClockSrcSel(OSC_32K);//此函数的参数选择必须和上面系统初始化选择的晶振（“Clock_Config()”）保持一致
 	#else
 	RTC_ClockSrcSel(OSC_24M);
@@ -498,8 +522,7 @@ int main(void)
 	NVIC_EnableIRQ(SWI_IRQn);
 	GIE_ENABLE();	//开启总中断
 
-#if (defined(CFG_FUNC_LED_REFRESH) || defined(CFG_DMA_RGB_LED_EN))	//默认优先级为0，旨在提高刷新速率，特别是断点记忆等写flash操作有影响刷屏，必须严格遵守所有timer6中断调用都是TCM代码，含调用的driver库代码
-
+#ifdef CFG_FUNC_LED_REFRESH
 	//默认优先级为0，旨在提高刷新速率，特别是断点记忆等写flash操作有影响刷屏，必须严格遵守所有timer6中断调用都是TCM代码，含调用的driver库代码
 	//已确认GPIO_RegOneBitSet、GPIO_RegOneBitClear在TCM区，其他api请先确认。
 	NVIC_SetPriority(Timer6_IRQn, 0);
@@ -514,15 +537,6 @@ int main(void)
 #ifdef CFG_FUNC_DISPLAY_EN
  	DispInit(0);
 #endif
-	
-	//检查flash boot中调用的蓝牙库版本信息是否和SDK调用的版本信息匹配
-    APP_DBG("FlashBoot BtLib Version: %s\n", (unsigned char *)GetLibVersionBt_Flashboot());
-	if(strcmp((const char *)GetLibVersionBt(), (const char *)GetLibVersionBt_Flashboot()))
-	{
-    	APP_DBG("SDK BtLib Version: %s\n", (unsigned char *)GetLibVersionBt());
-		APP_DBG("*********** Error: bt version is not match!!! \n");
-		while(1);
-	}
 
 	APP_DBG("\n");
 	APP_DBG("****************************************************************\n");
@@ -586,11 +600,12 @@ int main(void)
 #endif
 	RTC_SecGet();//OWEN: 不能去掉
 
-#ifndef USE_DBG_CODE
+#if !defined(CFG_FUNC_STRING_CONVERT_EN) && !defined(USE_DBG_CODE)
 	pvApplicationIdleHook = vApplicationIdleHook;
 	ptrace_TASK_SWITCHED_IN = trace_TASK_SWITCHED_IN;
 	ptrace_TASK_SWITCHED_OUT = trace_TASK_SWITCHED_OUT;
 #endif
+
 #ifdef CFG_APP_BT_MODE_EN
 	bt_api_init();
 #ifdef BT_TWS_SUPPORT
@@ -605,68 +620,7 @@ int main(void)
 #endif
 
 	uart_switch = 1;
-
-   ZX_boot_init();
-
-#if fun_idle_en
-   #if CHARGE_EN
-    if(IsInCharge())
-    {
-        DelayMs(10);//延时消抖
-		if(IsInCharge())//插充电上电进待机
-		{
-           Idle_sw.idle_mode = on_line;
-		   APP_DBG("----------- PowerOn Enter IDLE ---------------\n"); 
-
-		   if(update_ok)//升级后,开机
-		   {
-               update_ok=0;
-			   Idle_sw.idle_mode = off_line;
-		   }
-		
-		}
-		else
-		{
-           Idle_sw.idle_mode = off_line;
-		}
-	}
-	else
-	{
-         Idle_sw.idle_mode = off_line;
-	}
 	
-	#endif
-#endif
-    PA_contral();
-   // DelayMs(500);   
-   // WDG_Feed();
-
-#if LED1_EN
-    #if Pin_LED1== Port_B0
-      GPIO_PortBModeSet(GPIOB0, 0);
-    #elif Pin_LED1== Port_B1
-      GPIO_PortBModeSet(GPIOB1, 0);
-   #endif
-
-#endif
-
-    #if (Power_on_off_plan==8)
-	 DelayMs(1000);
-	 WDG_Feed();
-		#if fun_idle_en == 0
-	    printf(">>>>>>>>>>>>>>>>   MOS  start\n");
-		POWER_MOS_ON();
-		#elif fun_idle_en && CHARGE_EN //开待机模式
-        //  if(Idle_sw.idle_mode == off_line)
-          {
-              printf(">>>>>>>>>>>>>>>>   MOS  start\n");
-		      POWER_MOS_ON();
-		  }
-		#endif
-   #endif 
-
-
-   
 	MainAppTaskStart();
 	vTaskStartScheduler();
 

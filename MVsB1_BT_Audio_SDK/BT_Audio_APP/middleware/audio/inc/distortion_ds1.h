@@ -4,7 +4,7 @@
  * @brief	Distortion DS1 for mono signals
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v1.1.2
+ * @version	v1.2.0
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -57,7 +57,7 @@ int32_t distortion_ds1_init(DistortionDS1Context *ct, int32_t sample_rate, int32
 
 
 /**
-* @brief Apply distortion ds1 effect to a frame of PCM data (mono only)
+* @brief Apply distortion ds1 effect to a frame of 16-bit PCM data (mono only)
 * @param ct Pointer to a DistortionDS1Context object.
 * @param pcm_in Address of the PCM input.
 * @param pcm_out Address of the PCM output.
@@ -68,6 +68,20 @@ int32_t distortion_ds1_init(DistortionDS1Context *ct, int32_t sample_rate, int32
 * @note Note that only mono signals are accepted.
 */
 int32_t distortion_ds1_apply(DistortionDS1Context *ct, int16_t *pcm_in, int16_t *pcm_out, int32_t n,  int32_t out_level);
+
+
+/**
+* @brief Apply distortion ds1 effect to a frame of 24-bit PCM data (mono only)
+* @param ct Pointer to a DistortionDS1Context object.
+* @param pcm_in Address of the PCM input.
+* @param pcm_out Address of the PCM output.
+*        pcm_out can be the same as pcm_in. In this case, the PCM signals are changed in-place.
+* @param n Number of PCM samples to process.
+* @param out_level The output level of effect signals. Range: 0~100%.
+* @return error code. DISTORTION_DS1_ERROR_OK means successful, other codes indicate error.
+* @note Note that only mono signals are accepted.
+*/
+int32_t distortion_ds1_apply24(DistortionDS1Context *ct, int32_t *pcm_in, int32_t *pcm_out, int32_t n, int32_t out_level);
 
 
 /**

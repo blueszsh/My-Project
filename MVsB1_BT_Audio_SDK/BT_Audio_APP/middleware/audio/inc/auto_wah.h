@@ -4,7 +4,7 @@
  * @brief	Auto-wah effect for mono signals
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v1.1.1
+ * @version	v1.2.0
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -72,7 +72,7 @@ int32_t auto_wah_init(AutoWahContext *ct, int32_t sample_rate, int32_t mod_rate,
 
 
 /**
- * @brief Apply the Auto-Wah effect to a frame of PCM data (mono only)
+ * @brief Apply the Auto-Wah effect to a frame of 16-bit PCM data (mono only)
  * @param ct Pointer to an AutoWahContext object.
  * @param pcm_in PCM input buffer.
  * @param pcm_out PCM output buffer.
@@ -85,6 +85,22 @@ int32_t auto_wah_init(AutoWahContext *ct, int32_t sample_rate, int32_t mod_rate,
  * @note Note that only mono signals are accepted.
  */
 int32_t auto_wah_apply(AutoWahContext *ct, int16_t *pcm_in, int16_t *pcm_out, int32_t n, int32_t dry, int32_t wet, int32_t mod_rate);
+
+
+/**
+ * @brief Apply the Auto-Wah effect to a frame of 24-bit PCM data (mono only)
+ * @param ct Pointer to an AutoWahContext object.
+ * @param pcm_in PCM input buffer.
+ * @param pcm_out PCM output buffer.
+ *        pcm_out can be the same as pcm_in. In this case, the PCM data is changed in-place.
+ * @param n Number of PCM samples to process.
+ * @param dry The level of dry(direct) signals in the output. Range: 0%~100%.
+ * @param wet The level of wet(effect) signals in the output. Range: 0%~100%.
+ * @param mod_rate Modulation rate in 0.1Hz. For example, 2 for 0.2Hz, 10 for 1.0Hz, 100 for 10.0Hz. Range: 0.0~10.0Hz in step of 0.1Hz
+ * @return error code. AUTOWAH_ERROR_OK means successful, other codes indicate error.
+ * @note Note that only mono signals are accepted.
+ */
+int32_t auto_wah_apply24(AutoWahContext *ct, int32_t *pcm_in, int32_t *pcm_out, int32_t n, int32_t dry, int32_t wet, int32_t mod_rate);
 
 
 #ifdef __cplusplus

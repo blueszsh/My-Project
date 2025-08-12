@@ -81,7 +81,6 @@ void report_up_grate()
 		{
 			SoftFlagRegister(SoftFlagUpgradeOK);
 			APP_DBG("Éý¼¶OK 1\n");
-			update_ok=1;
 		}
 		else if(err_code == NEEDLESS_UPDAT)
 		{
@@ -113,7 +112,6 @@ void report_up_grate()
 		{
 			SoftFlagRegister(SoftFlagUpgradeOK);
 			APP_DBG("Éý¼¶OK 2\n");
-			update_ok=1;
 		}
 		else if(SREG_FLASH_BOOT_FLAGE.ERROR_CODE == NEEDLESS_UPDAT)
 		{

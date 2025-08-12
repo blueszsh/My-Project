@@ -196,7 +196,6 @@ void AudioDAC_DsmOutdisModeSet(DAC_MODULE DACModule,uint8_t mode);
  */
 void AudioDAC_ZeroNumSet(DAC_MODULE DACModule,uint8_t sel);
 
-
 /**
  * @brief  Audio DAC dither pow set
  * @param  DACModule which AudioDAC you will use
@@ -212,7 +211,6 @@ void AudioDAC_DitherPowSet(DAC_MODULE DACModule,uint32_t DitherPow);
  */
 uint32_t AudioDAC_DitherPowGet(DAC_MODULE DACModule);
 
-
 /**
  * @brief  Audio DAC get sampler rate
  * @param  DACModule which AudioDAC you will use
@@ -227,7 +225,6 @@ uint32_t AudioDAC_SampleRateGet(DAC_MODULE DACModule);
  * @return NONE
  */
 void AudioDAC_SampleRateSet(DAC_MODULE DACModule,uint32_t SampleRate);
-
 
 /**
  * @brief  Audio DAC reset the reg data and mem data
@@ -361,11 +358,33 @@ void AudioDAC_IBSelect(DAC_MODULE DACModule, uint8_t VrefpL, uint8_t VrefpR);
 bool AudioDAC_AllPowerOn(void);
 
 /**
+ * @brief All Analog LowEnergy power on DAC
+ * @param NONE
+ * @return TRUE:sucess,FALSE:failure
+ */
+bool AudioDAC_AllPowerOnLowEnergy(void);
+
+/**
+ * @brief DAC LowLowEnergy mode
+ * @param DACModule which AudioDAC you will use
+ * @return void
+ * @note use the API after AudioDAC PowerOn，There may be a pop sound
+ */
+void DAC_LowEnergySet(DAC_MODULE DACModule);
+
+/**
  * @brief All Analog power on DAC in fast mode
  * @param NONE
  * @return TRUE:sucess,FALSE:failure
  */
 bool AudioDAC_AllPowerOn_Fast(void);
+
+/**
+ * @brief All Analog power on DAC in Fast mode and more safe
+ * @param NONE
+ * @return TRUE:sucess,FALSE:failure
+ */
+bool AudioDAC_AllPowerOn_FastSafe(void);
 
 /**
  * @brief Analog power on DAC
@@ -375,11 +394,39 @@ bool AudioDAC_AllPowerOn_Fast(void);
 bool AudioDAC_PowerOn(DAC_MODULE DACModule);
 
 /**
+ * @brief Analog LowEnergy power on DAC
+ * @param DACModule which AudioDAC you will use
+ * @return TRUE:sucess,FALSE:failure
+ */
+bool AudioDAC_PowerOnLowEnergy(DAC_MODULE DACModule);
+
+/**
  * @brief Analog power on DAC in fast mode
  * @param DACModule which AudioDAC you will use
  * @return TRUE:sucess,FALSE:failure
  */
 bool AudioDAC_PowerOn_Fast(DAC_MODULE DACModule);
+
+/**
+ * @brief Analog power on DAC in Fast mode and more safe
+ * @param DACModule which AudioDAC you will use
+ * @return TRUE:sucess,FALSE:failure
+ */
+bool AudioDAC_PowerOn_FastSafe(DAC_MODULE DACModule);
+
+/**
+ * @brief All Analog power down DAC
+ * @param NONE
+ * @return TRUE:sucess,FALSE:failure
+ */
+bool AudioDAC_AllPowerDown(void);
+
+/**
+ * @brief All Analog power down DAC in Fast mode and more safe
+ * @param NONE
+ * @return TRUE:sucess,FALSE:failure
+ */
+bool AudioDAC_AllPowerDown_FastSafe(void);
 
 /**
  * @brief Analog power down DAC
@@ -389,11 +436,25 @@ bool AudioDAC_PowerOn_Fast(DAC_MODULE DACModule);
 bool AudioDAC_PowerDown(DAC_MODULE DACModule);
 
 /**
+ * @brief Analog power down DAC in Fast mode and more safe
+ * @param DACModule which AudioDAC you will use
+ * @return TRUE:sucess,FALSE:failure
+ */
+bool AudioDAC_PowerDown_FastSafe(DAC_MODULE DACModule);
+
+/**
  * @brief Enable all Analog channel for DAC
  * @param NONE
  * @return NONE
  */
 void AudioDAC_AllChannelEnable(void);
+
+/**
+ * @brief Enable all Analog channel for DAC in Fast mode
+ * @param NONE
+ * @return NONE
+ */
+void AudioDAC_AllChannelEnable_FastSafe(void);
 
 /**
  * @brief disable all Analog channel for DAC
@@ -410,11 +471,32 @@ void AudioDAC_AllChannelDisable(void);
 void AudioDAC_ChannelEnable(DAC_MODULE DACModule);
 
 /**
+ * @brief enable Analog channel for DAC in fast mode
+ * @param DACModule which AudioDAC you will use
+ * @return NONE
+ */
+void AudioDAC_ChannelEnable_FastSafe(DAC_MODULE DACModule);
+
+/**
  * @brief disable Analog channel for DAC
  * @param DACModule which AudioDAC you will use
  * @return NONE
  */
 void AudioDAC_ChannelDisable(DAC_MODULE DACModule);
+
+/**
+ * @brief disable Analog channel for DAC in Fast mode and more safe
+ * @param NONE
+ * @return NONE
+ */
+void AudioDAC_AllChannelDisable_FastSafe(void);
+
+/**
+ * @brief disable Analog channel for DAC in Fast mode and more safe
+ * @param DACModule which AudioDAC you will use
+ * @return NONE
+ */
+void AudioDAC_ChannelDisable_FastSafe(DAC_MODULE DACModule);
 
 /**
  * @brief Mute or Unmute SCF

@@ -199,10 +199,7 @@ void SetGlobalKeyValue(uint8_t KeyType, uint16_t KeyValue);
 uint32_t GetGlobalKeyValue(void);
 void ClrGlobalKeyValue(void);
 
-bool Inquire_Specific_Key_Msg(void);
-u8 Inquire_More_Key_Msg(u16 key_number);
 
-u8 Is_key_Ns_msg(u16 KeyIndex);
 
 #ifdef __cplusplus
 }

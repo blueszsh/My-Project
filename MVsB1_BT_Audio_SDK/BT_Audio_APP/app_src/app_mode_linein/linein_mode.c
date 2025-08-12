@@ -86,24 +86,27 @@ static const uint8_t sDmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
 
-#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN) && !defined (CFG_FUNC_RECORDER_EN)
 	255,//PERIPHERAL_ID_SDIO_RX,		//3
 	255,//PERIPHERAL_ID_SDIO_TX,		//4
+#elif defined (CFG_FUNC_RECORDER_EN) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+	5,//PERIPHERAL_ID_SDIO_RX,			//3
+	5,//PERIPHERAL_ID_SDIO_TX,			//4
 #else
-	#ifdef CFG_DMA_RGB_LED_EN
-    255,//PERIPHERAL_ID_SDIO_RX,			//3
-	255,//PERIPHERAL_ID_SDIO_TX,			//4
-    #else
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
-    #endif
 #endif
 	
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
+#if defined CFG_RES_AUDIO_SPDIFOUT_EN || defined CFG_FUNC_SPDIF_MIX_MODE
+	6,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_TX,		    //8 SPDIF_RX /TX same chanell
+#else
 	255,//PERIPHERAL_ID_SDPIF_RX,		//8 SPDIF_RX /TX same chanell
 	255,//PERIPHERAL_ID_SDPIF_TX,		//8 SPDIF_RX /TX same chanell
+#endif
 	255,//PERIPHERAL_ID_SPIM_RX,		//9
 	255,//PERIPHERAL_ID_SPIM_TX,		//10
 	255,//PERIPHERAL_ID_UART0_TX,		//11
@@ -116,11 +119,7 @@ static const uint8_t sDmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_UART1_TX,		//13
 #endif
 
-#ifdef CFG_DMA_RGB_LED_EN
-	4,//PERIPHERAL_ID_TIMER4,			//14
-#else
 	255,//PERIPHERAL_ID_TIMER4,			//14
-#endif
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
 	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
@@ -293,44 +292,6 @@ void LineInPlayRun(uint16_t msgId)
 
 	switch(msgId)
 	{
-	   switch(msgId)
-		{
-              ////zsh A2
-		    case Custom_Event1:
-		        Custom_Event1_get = Custom_Event1_number;
-                Custom_Event1_number = 0;
-                switch(Custom_Event1_get)
-                {
-                    case Custom_Event1_pp:
-                        if(T_linein1_inf.play_state== _Music_play)
-                        {
-                            T_linein1_inf.play_state = _Music_puse;
-                        }
-                        else if(T_linein1_inf.play_state== _Music_puse)
-                        {
-                            T_linein1_inf.play_state = _Music_play;
-                        }
-                        PA_contral();
-                        if(T_linein1_inf.play_state== _Music_play)
-                        {                                                  																		
-						   main_msg_send(MSG_LINE_SET_ON);
-						}
-						else
-						{
-                           main_msg_send(MSG_LINE_SET_OFF);
-						}
-						
-                        //DEBUG_ZX(0, " Custom_Event1_AUX1_pp ", 0);
-                        break;
-                   
-
-                }
-                Custom_Event1_get = 0;
-	            DEBUG_ZX(0, " Custom_Event1 ", 0);
-	            break;
-				//end
-	   	}
-	   
 		case MSG_PLAY_PAUSE:
 			HardWareMuteOrUnMute();
 			break;
@@ -346,11 +307,6 @@ bool LineInPlayInit(void)
 	APP_DBG("LineIn Play Init\n");
 	DMA_ChannelAllocTableSet((uint8_t *)sDmaChannelMap);//lineIn
 
-  Save_task_state(Task_line);
-  T_linein1_inf.play_state = _Music_play;
-  PA_contral();
-
-
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 	//音效参数遍历，确定系统帧长，待修改，sam, mark
 #endif
@@ -365,17 +321,9 @@ bool LineInPlayInit(void)
 	}
 	LineInPlayResInit();
 
-#if 0
-#if defined(CFG_FUNC_REMIND_SBC)
-	DecoderServiceCreate(sLineInPlayCt->msgHandle, DECODER_BUF_SIZE_SBC, DECODER_FIFO_SIZE_FOR_SBC);//提示音格式决定解码器内存消耗
-#elif defined(CFG_FUNC_REMIND_SOUND_EN)
-	DecoderServiceCreate(sLineInPlayCt->msgHandle, DECODER_BUF_SIZE_MP3, DECODER_FIFO_SIZE_FOR_MP3);
-#endif
-#endif
-
 #ifdef CFG_FUNC_AUDIO_EFFECT_EN
 #ifdef CFG_EFFECT_PARAM_IN_FLASH_EN
-	//mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
+	mainAppCt.EffectMode = EFFECT_MODE_FLASH_Music;
 #else
 	mainAppCt.EffectMode = EFFECT_MODE_NORMAL;
 #endif
@@ -384,24 +332,17 @@ bool LineInPlayInit(void)
 	AudioEffectsLoadInit(0, mainAppCt.EffectMode);
 #endif
 
-#ifdef CFG_FUNC_REMIND_SOUND_EN
-	if(RemindSoundServiceItemRequest(SOUND_REMIND_MODE_AUX, REMIND_ATTR_NEED_MUTE_APP_SOURCE) == FALSE)
+	AudioCoreSourceUnmute(APP_SOURCE_NUM,TRUE,TRUE);
+
+	#ifdef CFG_FUNC_REMIND_SOUND_EN
+	if(RemindSoundServiceItemRequest(SOUND_REMIND_XIANLUMO, REMIND_ATTR_NEED_MUTE_APP_SOURCE) == FALSE)
+	#endif
 	{
 		if(IsAudioPlayerMute() == TRUE)
 		{
 			HardWareMuteOrUnMute();
 		}
 	}
-#endif
-
-#ifndef CFG_FUNC_REMIND_SOUND_EN
-	if(IsAudioPlayerMute() == TRUE)
-	{
-		HardWareMuteOrUnMute();
-	}
-#endif
-    Machine_state=Machine_run;//zsh A2
-
 
 	return TRUE;
 }
@@ -415,9 +356,6 @@ bool LineInPlayDeinit(void)
 		return TRUE;
 	}
 
-  T_linein1_inf.play_state = _Music_stop;
-  PA_contral();
-  
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();

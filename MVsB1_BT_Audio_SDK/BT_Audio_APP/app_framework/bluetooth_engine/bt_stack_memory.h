@@ -25,13 +25,13 @@
 #define BT_BASE_MEM_SIZE			(8000) //common
 
 #if (BT_A2DP_SUPPORT == ENABLE)		//a2dp+avrcp
-#define BT_A2DP_MEM_SIZE			(15500)
+#define BT_A2DP_MEM_SIZE			(15800)
 #else
 #define BT_A2DP_MEM_SIZE			0
 #endif
 
 #if (BLE_SUPPORT == ENABLE)
-#define BT_BLE_MEM_SIZE				1600
+#define BT_BLE_MEM_SIZE				2600
 #else
 #define BT_BLE_MEM_SIZE				0
 #endif

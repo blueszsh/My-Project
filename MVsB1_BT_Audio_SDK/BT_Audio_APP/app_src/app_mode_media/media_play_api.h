@@ -155,6 +155,7 @@ void MediaPlayerCloseSongFile(void);
 void MediaPlayerNextSong(bool IsSongPlayEnd);
 void MediaPlayerPreSong(void);
 void MediaPlayerPlayPause(void);
+void MediaPlayerStart(void);
 void MediaPlayerStop(void);
 bool MediaPlayerInitialize(DEV_ID DeviceIndex, int32_t FileIndex, uint32_t FolderIndex);
 void MediaPlayerDeinitialize(void);

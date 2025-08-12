@@ -112,6 +112,12 @@ void BtAppiFunc_BtAvrcpConProcess(FUNC_BT_AVRCP_CON_PROCESS CallbackFunc);
 extern FUNC_BT_AVRCP_CON_PROCESS BtAvrcpConProcess;
 void BtStack_BtAvrcpConRegister(uint8_t index);
 
+//蓝牙AVRCP断开连接函数接口
+typedef void (*FUNC_BT_AVRCP_DISCON_PROCESS)(void);
+void BtAppiFunc_BtAvrcpDisconProcess(FUNC_BT_AVRCP_DISCON_PROCESS CallbackFunc);
+extern FUNC_BT_AVRCP_DISCON_PROCESS BtAvrcpDisconProcess;
+void BtStack_BtAvrcpDisconRegister(uint8_t index);
+
 //蓝牙通话数据发送函数接口
 typedef void (*FUNC_BT_SCO_SEND_PROCESS)(void);
 void BtAppiFunc_BtScoSendProcess(FUNC_BT_SCO_SEND_PROCESS CallbackFunc);

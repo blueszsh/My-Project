@@ -4,7 +4,7 @@
 * @brief	Resampler based on polyphase implementation
 *
 * @author	ZHAO Ying (Alfred)
-* @version	v0.7.2
+* @version	v0.8.0
 *
 * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
 *************************************************************************************
@@ -15,7 +15,6 @@
 
 #include <stdint.h>
 
-#define MAX_FRAME_SAMPLES 128
 #define MAX_NUM_TAPS_PER_PHASE 61
 
 /* Common use of sampling rate conversion 
@@ -50,6 +49,8 @@
 	48000	<--	96000	RESAMPLER_POLYPHASE_SRC_RATIO_1_2
 	48000	<--	176400	RESAMPLER_POLYPHASE_SRC_RATIO_40_147
 	48000	<--	192000	RESAMPLER_POLYPHASE_SRC_RATIO_1_4
+	32000	<--	44100	RESAMPLER_POLYPHASE_SRC_RATIO_320_441
+	32000	<--	48000	RESAMPLER_POLYPHASE_SRC_RATIO_2_3
 */
 /** ratio of sampling rate conversion */
 typedef enum _RESAMPLER_POLYPHASE_SRC_RATIO
@@ -78,6 +79,8 @@ typedef enum _RESAMPLER_POLYPHASE_SRC_RATIO
 	RESAMPLER_POLYPHASE_SRC_RATIO_40_147,	// target:original = 40:147
 	RESAMPLER_POLYPHASE_SRC_RATIO_80_147,	// target:original = 80:147
 	RESAMPLER_POLYPHASE_SRC_RATIO_1_3,		// target:original = 1:3
+	RESAMPLER_POLYPHASE_SRC_RATIO_320_441,	// target:original = 320:441
+	RESAMPLER_POLYPHASE_SRC_RATIO_2_3,		// target:original = 2:3
 
 	RESAMPLER_POLYPHASE_SRC_RATIO_UNSUPPORTED,
 } RESAMPLER_POLYPHASE_SRC_RATIO;

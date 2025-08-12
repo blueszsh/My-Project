@@ -47,6 +47,8 @@ extern "C" {
 #define	CFG_AUDIO_EFFECT_OVERDRIVE_EN		            (0)
 #define	CFG_AUDIO_EFFECT_DISTORTION_EN					(0)
 #define	CFG_AUDIO_EFFECT_EQDRC_EN						(1)
+#define  CFG_AUDIO_EFFECT_BUTTERWORTH                   (1)
+#define  CFG_AUDIO_EFFECT_DYNAMIC_EQ                    (1)
 #else
 //****************************************************************************************
 //。。。说明。。。
@@ -64,7 +66,7 @@ extern "C" {
 #define CFG_AUDIO_EFFECT_VB_EN							(1)
 #define CFG_AUDIO_EFFECT_VOICE_CHANGER_EN				(0)//mic
 #define	CFG_AUDIO_EFFECT_GAIN_CONTROL_EN				(1)
-#define CFG_AUDIO_EFFECT_VOCAL_CUT_EN					(0)//mic
+#define CFG_AUDIO_EFFECT_VOCAL_CUT_EN					(1)//mic
 #define CFG_AUDIO_EFFECT_PLATE_REVERB_EN				(0)
 #define CFG_AUDIO_EFFECT_REVERB_PRO_EN					(0)
 #define CFG_AUDIO_EFFECT_VOICE_CHANGER_PRO_EN			(0)//mic
@@ -92,6 +94,9 @@ extern "C" {
 #define	CFG_AUDIO_EFFECT_COMPANDER_EN					(1)
 #define	CFG_AUDIO_EFFECT_LOW_LEVEL_COMPRESSOR_EN		(1)
 #define CFG_AUDIO_EFFECT_HOWLING_SUPPRESSOR_FINE_EN		(0)
+#define CFG_AUDIO_EFFECT_VIRTUAL_SURROUND_EN			(0)	//虚拟环绕7.1音效，调音文件对应此音效的相关参数不需要调节，只需要开关此音效即可
+#define  CFG_AUDIO_EFFECT_BUTTERWORTH                   (0)
+#define  CFG_AUDIO_EFFECT_DYNAMIC_EQ                    (1)
 #endif
 
 #ifdef  __cplusplus

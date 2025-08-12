@@ -1,18 +1,19 @@
+
 /**
  **************************************************************************************
  * @file    audio_effect_param.h
  * @brief
  *
- * @author  Sam
- * @version V1.0.0
+ * @author  Zheng
+ * @version V2.0.0
  *
  * &copy; Shanghai Mountain View Silicon Technology Co.,Ltd. All rights reserved.
  **************************************************************************************
- */
- 
+*/
+        
 #ifndef __AUDIO_EFFECT_PARAM_H__
 #define __AUDIO_EFFECT_PARAM_H__
- 
+
 #ifdef  __cplusplus
 extern "C" {
 #endif//__cplusplus
@@ -39,14 +40,18 @@ typedef struct _AudioEffectCommParamBuffContext
 	ExciterParam		paramExciter_14;
 	StereoWidenerParam		paramStereoWidener_15;
 	EQParam		paramEQ_16;
-	EQDRCParam		paramEQDRC_17;
-	EQParam		paramEQ_18;
-	LLCompressorParam		paramLLCompressor_19;
-	PhaseControlParam		paramPhaseControl_20;
-	VBParam		paramVB_21;
-	VBClassicParam		paramVBClassic_22;
-	EQDRCParam		paramEQDRC_23;
-	EQParam		paramEQ_24;
+	EQParam		paramEQ_17;
+	DynamicEqParam		paramDynamicEq_18;
+	EQParam		paramEQ_19;
+	EQDRCParam		paramEQDRC_20;
+	EQParam		paramEQ_21;
+	VocalCutParam		paramVocalCut_22;
+	LLCompressorParam		paramLLCompressor_23;
+	PhaseControlParam		paramPhaseControl_24;
+	VBParam		paramVB_25;
+	VBClassicParam		paramVBClassic_26;
+	EQDRCParam		paramEQDRC_27;
+	EQParam		paramEQ_28;
 }AudioEffectCommParamBuffContext;
 
 typedef struct _AudioEffectAECParam_HFPBuffContext

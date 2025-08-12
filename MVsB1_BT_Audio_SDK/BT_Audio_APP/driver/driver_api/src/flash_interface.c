@@ -14,6 +14,7 @@
 #include "type.h"
 #include "spi_flash.h"
 #include <stdarg.h>
+#include "watchdog.h"
 
 #ifdef FUNC_OS_EN
 #include "rtos_api.h"
@@ -142,3 +143,84 @@ SPI_FLASH_ERR_CODE SpiFlashResumDelaySetWpr(uint32_t time)
 //
 //	return ret;
 //}
+
+SPI_FLASH_ERR_CODE SpiFlashReadUniqueIDWpr(uint8_t* Buffer, uint8_t BufLen)
+{
+    SPI_FLASH_ERR_CODE ret;
+#ifdef FUNC_OS_EN
+    osMutexLock(FlashMutex);
+#endif
+    ret = SpiFlashReadUniqueID(Buffer, BufLen);
+#ifdef FUNC_OS_EN
+    osMutexUnlock(FlashMutex);
+#endif
+    return ret;
+}
+
+SPI_FLASH_ERR_CODE FlashEraseExt(uint32_t Offset, uint32_t Size, bool IsSuspend)
+{
+    SPI_FLASH_ERR_CODE ret = ERASE_FLASH_ERR;
+    SPI_FLASH_INFO *pInfo = NULL;
+    int32_t i, Round;
+    
+#ifdef FUNC_OS_EN
+    osMutexLock(FlashMutex);
+#endif
+    
+    //Check if Offset and Size is at 4K alignment
+    if (((Offset & 0xFFF) == 0) && ((Size & 0xFFF) == 0))
+    {
+        pInfo = SpiFlashInfoGet();
+        
+        //Validate input parameters
+        if(pInfo->Capacity >= Offset + Size)
+        {
+            if(Size >= 64 * 1024)
+            {
+                if(Offset & (0x10000 - 1))
+                {
+                    Round = (0x10000 - (Offset & 0xFFFF)) >> 12;
+                    for(i = 0; i < Round; i++)
+                    {
+                        WDG_Feed();
+                        //4K erase
+                        SpiFlashErase(SECTOR_ERASE, Offset / 0x1000, IsSuspend);
+                        Size -= 0x1000;
+                        Offset += 0x1000;
+                    }
+                }
+
+                if(Size >= 64 * 1024)
+                {
+                    Round = Size >> 16;
+                    for(i = 0; i < Round; i++)
+                    {
+                        WDG_Feed();
+                        //64K erase
+                        SpiFlashErase(BLOCK_ERASE, Offset / 0x10000, IsSuspend);
+                        Size -= 0x10000;
+                        Offset += 0x10000;
+                    }
+                }
+            }
+
+            Round = Size >> 12;
+            for(i = 0; i < Round; i++)
+            {
+                WDG_Feed();
+                //4K erase
+                SpiFlashErase(SECTOR_ERASE, Offset / 0x1000, IsSuspend);
+                Offset += 0x1000;
+            }
+
+            ret = FLASH_NONE_ERR;
+        }
+    }
+    
+#ifdef FUNC_OS_EN
+    osMutexUnlock(FlashMutex);
+#endif
+
+    return ret;
+}
+

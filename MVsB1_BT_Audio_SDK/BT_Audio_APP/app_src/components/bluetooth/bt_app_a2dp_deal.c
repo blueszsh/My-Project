@@ -49,12 +49,16 @@ void BtA2dpConnectedDev(BT_A2DP_CALLBACK_PARAMS * param)
 	uint8_t ConnectIndex = 0;
 #if(BT_LINK_DEV_NUM == 2)
 	if((btManager.btLinked_env[0].a2dpState == BT_A2DP_STATE_STREAMING)
-		|| (btManager.btLinked_env[1].a2dpState == BT_A2DP_STATE_STREAMING)
-	  )
+		|| (btManager.btLinked_env[1].a2dpState == BT_A2DP_STATE_STREAMING))
+	{
 		; //有手机在播放了 不能初始化解码器防止出现断音
+	}
 	else
 #endif
-	a2dp_sbc_decoer_init();
+	{
+		a2dp_sbc_decoer_init();
+	}
+
 #ifdef BT_TWS_SUPPORT
 	if((btManager.twsState == BT_TWS_STATE_CONNECTED)&&(btManager.twsRole == BT_TWS_SLAVE))
 	{
@@ -151,7 +155,6 @@ void BtA2dpConnectedDev(BT_A2DP_CALLBACK_PARAMS * param)
 	}
 
 	BtLinkStateConnect(0, ConnectIndex);
-
 }
 
 
@@ -163,15 +166,7 @@ void BtA2dpDisconnectedDev(BT_A2DP_CALLBACK_PARAMS * param)
 	APP_DBG("A2dp disconnect,index:%d\n",param->index);
 	uint8_t index = GetBtManagerA2dpIndex(param->index);
 
-	
-	//SetA2dpState(param->index, BT_A2DP_STATE_NONE);
-	//SetBtDisconnectProfile(BT_CONNECTED_A2DP_FLAG);
-	//重新更新蓝牙decoder相关参数
-//	if(RefreshSbcDecoder)
-//		RefreshSbcDecoder();
-
 	if(index < BT_LINK_DEV_NUM)
-	//if((param->params.bd_addr!=NULL)&&(memcmp(param->params.bd_addr,btManager.btLinked_env[i].remoteAddr,BT_ADDR_SIZE) == 0))
 	{
 		SetA2dpState(index, BT_A2DP_STATE_NONE);
 		SetBtDisconnectProfile(index,BT_CONNECTED_A2DP_FLAG);
@@ -206,15 +201,19 @@ void BtA2dpDisconnectedDev(BT_A2DP_CALLBACK_PARAMS * param)
 			}
 		}
 	}
-	
+	#ifdef RECON_ADD
+	btManager.btReconnectunusual = TRUE;
+	#endif
 
-	//A2DP断开后，开启检测AVRCP断开机制(5S超时)
+	//A2DP断开后，开启检测AVRCP断开机制(3S超时)
 	/*if(IsAvrcpConnected())
 	{
 		btEventListB0Count = btEventListCount;
 		btEventListB0Count += 5000;//延时5s
 		btCheckEventList |= BT_EVENT_AVRCP_DISCONNECT;
 	}*/
+	BtStack_BtAvrcpDisconRegister(param->index);
+
 	SetA2dpState(param->index,BT_A2DP_STATE_NONE);
 }
 
@@ -247,7 +246,6 @@ void BtA2dpConnectTimeout(BT_A2DP_CALLBACK_PARAMS * param)
 	SetA2dpState(param->index,BT_A2DP_STATE_NONE);
 }
 
-
 /*****************************************************************************************
 * A2DP Stream 开始播放
 ****************************************************************************************/
@@ -276,6 +274,7 @@ void BtA2dpStreamStart(BT_A2DP_CALLBACK_PARAMS * param)
 		return ;
 	}
 #endif
+
 #if (BT_HFP_SUPPORT == ENABLE)
 	if(GetSystemMode() != ModeBtAudioPlay)
 	{
@@ -293,11 +292,12 @@ void BtA2dpStreamStart(BT_A2DP_CALLBACK_PARAMS * param)
 		}
 	}
 #endif
+
 	if(IsAudioPlayerMute() == FALSE
 		#ifdef CFG_FUNC_REMIND_SOUND_EN
-		&& (RemindSoundIsPlay() <= 1)
+		&& (!RemindSoundIsPlay())
 		#endif
-	)
+		)
 	{
 		#if(BT_LINK_DEV_NUM == 2)
 		if((btManager.btLinked_env[0].a2dpState == BT_A2DP_STATE_STREAMING) || (btManager.btLinked_env[1].a2dpState == BT_A2DP_STATE_STREAMING))
@@ -311,16 +311,6 @@ void BtA2dpStreamStart(BT_A2DP_CALLBACK_PARAMS * param)
 			a2dp_unmute_delay_cnt = 0;
 		}
 	}
-#ifdef TWS_CODE_BACKUP//BT_TWS_SUPPORT
-	if( GetBtManager()->twsState == BT_TWS_STATE_CONNECTED
-#ifdef CFG_FUNC_REMIND_SOUND_EN
-	  && RemindSoundIsPlay() <= 1
-#endif
-	 )
-	{
-		g_tws_need_init = 1;
-	}
-#endif
 
 #if (BT_LINK_DEV_NUM == 2)
 	if(index < BT_LINK_DEV_NUM)
@@ -328,18 +318,14 @@ void BtA2dpStreamStart(BT_A2DP_CALLBACK_PARAMS * param)
 		SetA2dpState(index, BT_A2DP_STATE_STREAMING);
 	}
 
-//#if (BT_LINK_DEV_NUM == 2)
-	//if(FirstTalkingPhoneIndexGet()!=0xff)
 	if(btManager.HfpCurIndex != 0xff)
 	{
 		APP_DBG("talking now,arvcp pause index %d\n",index);
 		AvrcpCtrlPause(index);
 		return;
 	}
-//#endif
 
 	APP_DBG("A2dp streaming...cur %d, index %d, ,param->index %d\n",btManager.cur_index,index,param->index);
-
 
 	if(btManager.cur_index == index)
 	{
@@ -348,18 +334,13 @@ void BtA2dpStreamStart(BT_A2DP_CALLBACK_PARAMS * param)
 	}
 	else
 	{
-		//if(btManager.cur_index)
-		//printf("111\n");
-#ifdef LAST_PLAY_PRIORITY
+		#ifdef LAST_PLAY_PRIORITY
 		extern uint32_t AvrcpStateSuspendCount;
 		AvrcpStateSuspendCount++;
-#endif
-
+		#endif
 
 		if(GetA2dpState(btManager.cur_index) != BT_A2DP_STATE_STREAMING)
 		{
-			//printf("222\n");
-			//btManager.cur_index = param->index;
 			BtCurIndex_Set(index);
 			BT_DBG("channel[%d]:start playing\n", btManager.cur_index);
 		}
@@ -370,17 +351,8 @@ void BtA2dpStreamStart(BT_A2DP_CALLBACK_PARAMS * param)
 	}
 #endif
 
-#if 0//暂时屏蔽 A2dp播放重配
-#ifdef BT_TWS_SUPPORT
-	tws_audio_init_sync();
-#endif
-#endif
-
-//#if(BT_LINK_DEV_NUM == 2)
-	//if(GetAvrcpState() != BT_AVRCP_STATE_CONNECTED)
-		BtMidMessageSend(MSG_BT_MID_PLAY_STATE_CHANGE, 1);
-//#endif
-
+	btManager.aacFrameNumber = 0;//AAC
+	BtMidMessageSend(MSG_BT_MID_PLAY_STATE_CHANGE, 1);
 	
 #ifndef BT_TWS_SUPPORT
 #if (BT_HFP_SUPPORT == ENABLE)
@@ -392,14 +364,20 @@ void BtA2dpStreamStart(BT_A2DP_CALLBACK_PARAMS * param)
 	}
 #endif
 #endif
+
 #if(BT_LINK_DEV_NUM == 2)
 	if((btManager.btLinked_env[0].a2dpState == BT_A2DP_STATE_STREAMING)
 		|| (btManager.btLinked_env[1].a2dpState == BT_A2DP_STATE_STREAMING)
 	  )
+	{
 		; //有手机在播放了 不能初始化解码器防止出现断音
+	}
 	else
 #endif
-	a2dp_sbc_decoer_init();
+	{
+		a2dp_sbc_decoer_init();
+	}
+
 	SetA2dpState(param->index,BT_A2DP_STATE_STREAMING);
 }
 
@@ -416,6 +394,7 @@ void BtA2dpStreamSuspend(BT_A2DP_CALLBACK_PARAMS * param)
 		SetA2dpState(index, BT_A2DP_STATE_CONNECTED);
 		return ;
 	}
+
 	if(GetSystemMode() != ModeBtAudioPlay)
 		return;
 
@@ -432,15 +411,16 @@ void BtA2dpStreamSuspend(BT_A2DP_CALLBACK_PARAMS * param)
 
 	if(IsAudioPlayerMute() == FALSE
 #ifdef CFG_FUNC_REMIND_SOUND_EN
-		&& RemindSoundIsPlay() <= 1
+		&& (!RemindSoundIsPlay())
 #endif
 	)
 	{
-#if (BT_LINK_DEV_NUM == 2)
+		#if (BT_LINK_DEV_NUM == 2)
 		if( (GetA2dpState(0) != BT_A2DP_STATE_STREAMING) && (GetA2dpState(1) != BT_A2DP_STATE_STREAMING) )//防止抢播可能会出现的断音
-#endif
+		#endif
 		{
-			#ifndef CFG_FUNC_I2S_MIX_MODE
+			#if defined CFG_FUNC_I2S_MIX_MODE || defined CFG_FUNC_LINE_MIX_MODE || defined CFG_FUNC_SPDIF_MIX_MODE
+			#else
 			HardWareMuteOrUnMute();
 			a2dp_unmute_delay_cnt = 0;
 			#endif
@@ -460,12 +440,10 @@ void BtA2dpStreamSuspend(BT_A2DP_CALLBACK_PARAMS * param)
 	if(btManager.cur_index != index)
 		return;
 	
-	{
-		//a2dp pause后 500ms进行切换
-		extern uint32_t AvrcpStateSuspendCount;
-		if(AvrcpStateSuspendCount<22)
-			AvrcpStateSuspendCount = 22;
-	}
+	//a2dp pause后 500ms进行切换
+	extern uint32_t AvrcpStateSuspendCount;
+	if(AvrcpStateSuspendCount<22)
+		AvrcpStateSuspendCount = 22;
 
 	BtMidMessageSend(MSG_BT_MID_PLAY_STATE_CHANGE, 2);
 	SetA2dpState(param->index,BT_A2DP_STATE_CONNECTED);
@@ -534,6 +512,5 @@ void BtA2dpStreamDataType(BT_A2DP_CALLBACK_PARAMS * param)
 			a2dp_sbc_decoer_init();
 	}
 }
-
 
 

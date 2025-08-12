@@ -55,6 +55,7 @@ uint8_t Bt_sniff_fastpower_get(void);
 void BtSniffADDAReadySet(uint8_t set);
 uint8_t BtSniffADDAReadyGet();
 
+uint8_t Bt_sniff_sniff_start_state_get(void);
 #else
 
 //ifndef BT_SNIFF_ENABLE

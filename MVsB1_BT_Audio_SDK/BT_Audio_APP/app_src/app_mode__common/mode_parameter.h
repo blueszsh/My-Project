@@ -124,7 +124,7 @@ volatile SysModeStruct SysMode[]=
 #endif
 };
 
-const uint32_t ModeKeyInvalid[]=// // 模式键无效
+const uint32_t ModeKeyInvalid[]=// 
 {
 #ifdef CFG_APP_IDLE_MODE_EN
 	ModeIdle,

@@ -488,6 +488,15 @@ bool MediaPlayerInitialize(DEV_ID DeviceIndex, int32_t FileIndex, uint32_t Folde
 
 void MediaPlayerDeinitialize(void)
 {
+#ifdef CFG_FUNC_RECORDER_EN
+#ifdef CFG_FUNC_RECORD_SD_UDISK
+	if(gMediaPlayer->RecFileList)
+	{
+		osPortFree(gMediaPlayer->RecFileList);
+		gMediaPlayer->RecFileList = NULL;
+	}
+#endif
+#endif
 	if(gMediaPlayer != NULL)
 	{
 	    osPortFree(gMediaPlayer);
@@ -1192,6 +1201,9 @@ void MediaPlayerPlayPause(void)
 // ²¥·ÅÆ÷ Í£Ö¹Ì¬Éè¶¨
 void MediaPlayerStop(void)
 {
+	if(gMediaPlayer == NULL)
+		return;
+	
 	APP_DBG("PlayCtrl:MediaPlayerStop\n");	
 	gMediaPlayer->CurPlayTime = 0;
 	SetMediaPlayerState(PLAYER_STATE_STOP);
@@ -1820,42 +1832,7 @@ void SetMediaPlayerState(uint8_t state)
 			gMediaPlayer->CurPlayState = state;
 		}
 	}
-
-      if(GetMediaPlayerState()==PLAYER_STATE_PAUSE)
-		{
-            //Curr_task_inf->play_state = _Music_puse;
-            if( GetSystemMode() == ModeCardAudioPlay
-		     ||GetSystemMode() ==ModeCardPlayBack)
-            {
-                 T_sd0_inf.play_state = _Music_puse;
-			}
-			else if( GetSystemMode() == ModeUDiskAudioPlay
-		     ||GetSystemMode() == ModeUDiskPlayBack)
-            {
-                 T_usb_inf.play_state = _Music_puse;
-			}
-
-		}
-		
-		if(GetMediaPlayerState()==PLAYER_STATE_PLAYING)
-		{
-            //Curr_task_inf->play_state = _Music_play;
-            if( GetSystemMode() == ModeCardAudioPlay
-		     ||GetSystemMode() == ModeCardPlayBack)
-            {
-                 T_sd0_inf.play_state = _Music_play;
-			}
-			else if( GetSystemMode() == ModeUDiskAudioPlay
-		     ||GetSystemMode() == ModeUDiskPlayBack)
-            {
-                 T_usb_inf.play_state = _Music_play;
-			}
-		}
-
-	  PA_contral();
 }
-
-
 #ifdef CFG_FUNC_RECORDER_EN
 #ifdef CFG_FUNC_RECORD_SD_UDISK
 //Â¼ÒôÎÄ¼þ¼Ð ¼ìË÷ÅÅÐò

@@ -87,46 +87,79 @@
 static const uint8_t DmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_SPIS_RX = 0,	//0
 	255,//PERIPHERAL_ID_SPIS_TX,		//1
+	
 #ifdef CFG_APP_HDMIIN_MODE_EN
 	5,//PERIPHERAL_ID_TIMER3,			//2
 #else
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
-	255,////4,//PERIPHERAL_ID_SDIO_RX,			//3
-	255,////4,//PERIPHERAL_ID_SDIO_TX,			//4
+
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+	255,//PERIPHERAL_ID_SDIO_RX,		//3
+	255,//PERIPHERAL_ID_SDIO_TX,		//4
+#else
+	4,//PERIPHERAL_ID_SDIO_RX,			//3
+	4,//PERIPHERAL_ID_SDIO_TX,			//4
+#endif
+
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
+#ifdef CFG_RES_AUDIO_SPDIFOUT_EN
+	6,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_TX,		    //8 SPDIF_RX /TX same chanell
+#else
 	255,//PERIPHERAL_ID_SDPIF_RX,		//8 SPDIF_RX /TX same chanell
 	255,//PERIPHERAL_ID_SDPIF_TX,		//8 SPDIF_RX /TX same chanell
+#endif
 	255,//PERIPHERAL_ID_SPIM_RX,		//9
 	255,//PERIPHERAL_ID_SPIM_TX,		//10
-	255,//PERIPHERAL_ID_UART0_TX,		//11
-	255,//PERIPHERAL_ID_UART1_RX,		//12
-	255,//PERIPHERAL_ID_UART1_TX,		//13
-#ifdef CFG_DMA_RGB_LED_EN
-	4,//PERIPHERAL_ID_TIMER4,			//14
+	
+#if (defined(CFG_DUMP_DEBUG_EN)&&(CFG_DUMP_UART_TX_PORT_GROUP == 0))
+	7,//PERIPHERAL_ID_UART0_TX,			//11
 #else
-	255,//PERIPHERAL_ID_TIMER4,			//14
+	255,//PERIPHERAL_ID_UART0_TX,		//11
 #endif
+	255,//PERIPHERAL_ID_UART1_RX,		//12
+	
+#if (defined(CFG_DUMP_DEBUG_EN)&&(CFG_DUMP_UART_TX_PORT_GROUP == 1))
+	7,//PERIPHERAL_ID_UART1_TX,			//13
+#else
+	255,//PERIPHERAL_ID_UART1_TX,		//13
+#endif
+
+	255,//PERIPHERAL_ID_TIMER4,			//14
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
 	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
 	1,//PERIPHERAL_ID_AUDIO_ADC1_RX,	//18
 	2,//PERIPHERAL_ID_AUDIO_DAC0_TX,	//19
 	3,//PERIPHERAL_ID_AUDIO_DAC1_TX,	//20
+
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S0IN_EN)	
+	6,//PERIPHERAL_ID_I2S0_RX,			//21
+#else
 	255,//PERIPHERAL_ID_I2S0_RX,		//21
-#if	(defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 0))
+#endif
+
+#if	((defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 0)) || defined(CFG_RES_AUDIO_I2S0OUT_EN))
 	7,//PERIPHERAL_ID_I2S0_TX,			//22
 #else	
 	255,//PERIPHERAL_ID_I2S0_TX,		//22
 #endif	
+
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)	
+	4,//PERIPHERAL_ID_I2S1_RX,			//23
+#else
 	255,//PERIPHERAL_ID_I2S1_RX,		//23
-#if	(defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 1))
-	7,	//PERIPHERAL_ID_I2S1_TX,		//24
+#endif
+
+#if	((defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 1))|| defined(CFG_RES_AUDIO_I2S1OUT_EN))
+	5,	//PERIPHERAL_ID_I2S1_TX,		//24
 #else
 	255,//PERIPHERAL_ID_I2S1_TX,		//24
 #endif
+
 	255,//PERIPHERAL_ID_PPWM,			//25
 	255,//PERIPHERAL_ID_ADC,     		//26
 	255,//PERIPHERAL_ID_SOFTWARE,		//27
@@ -138,7 +171,7 @@ static const uint8_t DmaChannelMap[29] = {
 #define MSBC_SAMPLE_REATE	    16000	// 16kHz
 #define MSBC_BLOCK_LENGTH	    15
 
-#define DELAY_EXIT_BT_HF_TIME   200 //延时退出HF模式时间设置  单位/ms
+#define DELAY_EXIT_BT_HF_TIME   300 //延时退出HF模式时间设置  单位/ms
 #define CFG_BT_RING_TIME		2000//设置本地铃声播放间隔时间
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -244,7 +277,7 @@ static void BtHfRingRemindNumberRunning(void)
 					return;
 				}		
 				TimeOutSet(&gBtHfCt->CallRingTmr,0);
-				RemindSoundServiceItemRequest(SOUND_REMIND_RING, REMIND_PRIO_NORMAL);
+				RemindSoundServiceItemRequest(SOUND_REMIND_CALLRING, REMIND_PRIO_NORMAL);
 				gBtHfCt->WaitFlag = 1;
 			}
 		}
@@ -308,7 +341,7 @@ static void BtHfRingRemindNumberRunning(void)
 			else if(i == len)
 			{
 				i++;
-				RemindSoundServiceItemRequest(SOUND_REMIND_RING, REMIND_PRIO_NORMAL);
+				RemindSoundServiceItemRequest(SOUND_REMIND_CALLRING, REMIND_PRIO_NORMAL);
 			}
 			else
 			{
@@ -751,20 +784,6 @@ bool BtHfInit(void)
 
 	//注册 通话过程中监控手机通话状态流程
 	BtHfpRunloopRegister();
-
-
-    phone_state = 1;
-	PA_contral();
-	
-#ifdef CFG_DMA_RGB_LED_EN
-    mainAppCt.temp_rgb_mode=mainAppCt.rgb_mode;
-	mainAppCt.rgb_mode=RGB_Effect_HFP_CALL_IN;
-#endif
-#if LEDS_mix_RGB_EN
-    Temp_RGB_curr_effect = RGB_curr_effect;
-    RGB_curr_effect = RGB_Effect_HFP_CALL_IN;
-#endif
-	
 	return TRUE;
 }
 
@@ -820,7 +839,8 @@ void BtHfRun(uint16_t msgId)
 
 	if(sBtHfModeEixtList)
 	{
-		BtHfModeExit();
+		//BtHfModeExit();
+		flagVoiceDelayExitBtHf = 200;
 		sBtHfModeEixtList = 0;
 	}
 	switch(msgId)
@@ -1001,9 +1021,6 @@ bool BtHfDeinit(void)
 	{
 		return TRUE;
 	}
-
-	phone_state = 0;
-	PA_contral();
 	
 	//注销 通话过程中监控手机通话状态流程
 	BtHfpRunloopDeregister();
@@ -1109,9 +1126,6 @@ bool BtHfDeinit(void)
 	//AudioMusicVolSet(mainAppCt.MusicVolume);
 	AudioMusicVol(mainAppCt.MusicVolume);
 
-	//通话模式退出完成，清除标志
-	BtHfModeExitFlag = 0;
-	sBtHfModeEixtList = 0;
 	SetScoConnectFlag(FALSE);
 
 #if (BT_LINK_DEV_NUM == 2)
@@ -1140,15 +1154,9 @@ bool BtHfDeinit(void)
 	//蓝牙任务优先级恢复到默认优先级(4)
 	vTaskPrioritySet(GetBtStackServiceTaskHandle(), GetBtStackServiceTaskPrio());
 
-
-#ifdef CFG_DMA_RGB_LED_EN
-    mainAppCt.rgb_mode=mainAppCt.temp_rgb_mode;
-#endif
-#if LEDS_mix_RGB_EN
-    RGB_curr_effect = Temp_RGB_curr_effect;
-#endif
-
-
+	//通话模式退出完成，清除标志
+	BtHfModeExitFlag = 0;
+	sBtHfModeEixtList = 0;
 
 	return TRUE;
 }
@@ -1184,7 +1192,7 @@ void BtHfModeEnter_Index(uint8_t index)
 		return;
 	}
 
-	if((GetSystemMode() != ModeBtHfPlay)&&(!sBtHfModeEnterFlag))
+	if((!IsBtHfMode())&&(!sBtHfModeEnterFlag))
 	{
 		extern bool GetBtCurPlayState(void);
 		if((GetSystemMode() == ModeBtAudioPlay) && GetBtCurPlayState() && (!SoftFlagGet(SoftFlagBtCurPlayStateMask)))
@@ -1273,7 +1281,7 @@ void BtHfModeExit(void)
 	if(BtHfModeExitFlag)
 		return;
 	
-	if(GetSystemMode() == ModeBtHfPlay)
+	if(IsBtHfMode())
 	{
 		//当通话模式还未完全初始化完成，则将退出的消息插入到保护的队列，在初始化完成后，退出通话模式
 		if((gBtHfCt==NULL)||(sBtHfModeEnterFlag))
@@ -1333,6 +1341,7 @@ bool GetDelayExitBtHfMode(void)
 void DelayExitBtHfModeCancel(void)
 {
 	flagVoiceDelayExitBtHf = 0;
+	sBtHfModeEixtList = 0;
 }
 
 void DelayExitBtHfMode(void)

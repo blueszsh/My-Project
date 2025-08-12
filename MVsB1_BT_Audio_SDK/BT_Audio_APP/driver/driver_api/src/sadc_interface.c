@@ -7,7 +7,7 @@
 #ifdef CFG_APP_CONFIG
 #include "app_config.h"
 #else
-//#define CFG_RES_POWERKEY_ADC_EN
+#define CFG_RES_POWERKEY_ADC_EN
 #endif
 void SarADC_Init(void)
 {
@@ -35,7 +35,6 @@ int16_t SarADC_LDOINVolGet(void)
 	uint32_t DC_Data1;
 	uint32_t DC_Data2;
 
-#if 1//Pin_BAT_check == Port_LDOIN  // zsh A2
 	DC_Data1 = ADC_SingleModeDataGet(ADC_CHANNEL_VIN);
 	DC_Data2 = ADC_SingleModeDataGet(ADC_CHANNEL_VDD1V2);
 	DC_Data1 = (DC_Data1 * 2 * Power_LDO12Get()) / DC_Data2;
@@ -43,34 +42,8 @@ int16_t SarADC_LDOINVolGet(void)
 	{
 		DC_Data1 += 30;//电压低于3.3V之后，采样计算值偏低
 	}
-#else// zsh A2
-		//DC_Data1 = ADC_SingleModeDataGet(_Pin_bat_ch);
-		DC_Data1 = GET_AD_sampling(Pin_BAT_check);
-	   //printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> DC_Data1 == %d\n",DC_Data1);
-		//DEBUG_ZX(0, " DC_Data1 ", DC_Data1);
-		DC_Data1 = (DC_Data1*4/5);
-#endif	
-
+	//DBG("LDOIN ： %d\n", DC_Data1);
 
 	return (int16_t)DC_Data1;
-
 }
-
-
-int16_t Get_ADC_SamplingVolGet(void)
-{
-	uint32_t DC_Data1;
-	uint32_t DC_Data2;
-
-	//DC_Data1 = ADC_SingleModeDataGet(_Pin_bat_ch);
-	DC_Data1 = GET_AD_sampling(Pin_BAT_check);
-   //printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> DC_Data1 == %d\n",DC_Data1);
-	//DEBUG_ZX(0, " DC_Data1 ", DC_Data1);
-	DC_Data1 = (DC_Data1*4/5);
-
-
-	return (int16_t)DC_Data1;
-
-}
-
 

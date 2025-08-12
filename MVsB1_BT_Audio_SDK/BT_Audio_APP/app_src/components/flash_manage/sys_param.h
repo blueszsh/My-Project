@@ -10,7 +10,7 @@
 //4.此处的BT_NAME是系统保留的蓝牙名
 //5.BLE的名称修改在ble广播数据中体现(ble_app_func.c)
 #define BT_NAME						"BP10_BT"
-
+#define BLE_NAME						"BP10_BT_Ble"
 //trim范围:0x07~0x1d -- 针对于老芯片
 #define BT_TRIM_ECO0				0x16 
 //trim范围:0x00~0x1f

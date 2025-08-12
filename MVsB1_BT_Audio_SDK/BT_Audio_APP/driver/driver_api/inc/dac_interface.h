@@ -20,6 +20,7 @@ extern "C"{
 #include "dac.h"
 
 void AudioDAC_Init(DAC_MODULE DACModule, uint32_t SampleRate, void* Buf1, uint16_t Len1, void* Buf2, uint16_t Len2);
+void AudioDAC_InitLowEnergy(DAC_MODULE DACModule, uint32_t SampleRate, void* Buf1, uint16_t Len1, void* Buf2, uint16_t Len2);
 void AudioDAC_SampleRateChange(DAC_MODULE DACModule, uint32_t SampleRate);
 uint16_t AudioDAC_DataSpaceLenGet(DAC_MODULE DACModule);
 uint16_t AudioDAC_DataSet(DAC_MODULE DACModule, void* Buf, uint16_t Len);

@@ -49,12 +49,10 @@
 #include "bt_app_tws.h"
 #include "bb_api.h"
 #include "bt_app_connect.h"
-
 #include "mode_task_api.h"
 #include "bt_app_tws_connect.h"
 
 #ifdef BT_TWS_SUPPORT
-
 
 /**根据appconfig缺省配置:DMA 8个通道配置**/
 /*1、cec需PERIPHERAL_ID_TIMER3*/
@@ -67,7 +65,6 @@
 /*注意DMA 8个通道配置冲突:*/
 /*a、UART在线调音和DAC-X有冲突,默认在线调音使用USB HID*/
 
-
 static const uint8_t DmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_SPIS_RX = 0,	//0
 	255,//PERIPHERAL_ID_SPIS_TX,		//1
@@ -76,59 +73,86 @@ static const uint8_t DmaChannelMap[29] = {
 #else
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
-#ifdef CFG_DMA_RGB_LED_EN
-    255,//PERIPHERAL_ID_SDIO_RX,			//3
-	255,//PERIPHERAL_ID_SDIO_TX,			//4
-    #else
+
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN) && !defined (CFG_FUNC_RECORDER_EN)
+	255,//PERIPHERAL_ID_SDIO_RX,		//3
+	255,//PERIPHERAL_ID_SDIO_TX,		//4
+#elif defined (CFG_FUNC_RECORDER_EN) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+	5,//PERIPHERAL_ID_SDIO_RX,			//3
+	5,//PERIPHERAL_ID_SDIO_TX,			//4
+#else
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
-    #endif
+#endif
+
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
+#if defined CFG_RES_AUDIO_SPDIFOUT_EN || defined CFG_FUNC_SPDIF_MIX_MODE
+	6,//PERIPHERAL_ID_SDPIF_RX,			//8 SPDIF_RX /TX same chanell
+	6,//PERIPHERAL_ID_SDPIF_TX,		    //8 SPDIF_RX /TX same chanell
+#else
 	255,//PERIPHERAL_ID_SDPIF_RX,		//8 SPDIF_RX /TX same chanell
 	255,//PERIPHERAL_ID_SDPIF_TX,		//8 SPDIF_RX /TX same chanell
+#endif
 	255,//PERIPHERAL_ID_SPIM_RX,		//9
 	255,//PERIPHERAL_ID_SPIM_TX,		//10
-	255,//PERIPHERAL_ID_UART0_TX,		//11
-	255,//PERIPHERAL_ID_UART1_RX,		//12
-	255,//PERIPHERAL_ID_UART1_TX,		//13
-#ifdef CFG_DMA_RGB_LED_EN
-	4,//PERIPHERAL_ID_TIMER4,			//14
+	
+#if (defined(CFG_DUMP_DEBUG_EN)&&(CFG_DUMP_UART_TX_PORT_GROUP == 0))
+	7,//PERIPHERAL_ID_UART0_TX,			//11
 #else
-	255,//PERIPHERAL_ID_TIMER4,			//14
+	255,//PERIPHERAL_ID_UART0_TX,		//11
 #endif
+	255,//PERIPHERAL_ID_UART1_RX,		//12
+	
+#if (defined(CFG_DUMP_DEBUG_EN)&&(CFG_DUMP_UART_TX_PORT_GROUP == 1))
+	7,//PERIPHERAL_ID_UART1_TX,			//13
+#else
+	255,//PERIPHERAL_ID_UART1_TX,		//13
+#endif
+
+	255,//PERIPHERAL_ID_TIMER4,			//14
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
 	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
 	1,//PERIPHERAL_ID_AUDIO_ADC1_RX,	//18
 	2,//PERIPHERAL_ID_AUDIO_DAC0_TX,	//19
 	3,//PERIPHERAL_ID_AUDIO_DAC1_TX,	//20
+
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S0IN_EN)
+	6,//PERIPHERAL_ID_I2S0_RX,			//21
+#else
 	255,//PERIPHERAL_ID_I2S0_RX,		//21
-#if	(defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 0))
+#endif
+
+#if	((defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 0)) || defined(CFG_RES_AUDIO_I2S0OUT_EN))
 	7,//PERIPHERAL_ID_I2S0_TX,			//22
 #else	
 	255,//PERIPHERAL_ID_I2S0_TX,		//22
 #endif	
+
+#if defined (CFG_FUNC_I2S_MIX_MODE) && defined (CFG_RES_AUDIO_I2S1IN_EN)
+	4,//PERIPHERAL_ID_I2S1_RX,			//23
+#else
 	255,//PERIPHERAL_ID_I2S1_RX,		//23
-#if	(defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 1))
-	7,	//PERIPHERAL_ID_I2S1_TX,		//24
+#endif
+
+#if	((defined(CFG_RES_AUDIO_I2SOUT_EN )&&(CFG_RES_I2S == 1))|| defined(CFG_RES_AUDIO_I2S1OUT_EN))
+	5,	//PERIPHERAL_ID_I2S1_TX,		//24
 #else
 	255,//PERIPHERAL_ID_I2S1_TX,		//24
 #endif
+
 	255,//PERIPHERAL_ID_PPWM,			//25
 	255,//PERIPHERAL_ID_ADC,     		//26
 	255,//PERIPHERAL_ID_SOFTWARE,		//27
 };
 
 #define TWS_SLAVE_SOURCE_NUM				APP_SOURCE_NUM
-
-#define TWS_SLAVE_LINK_TIMEOUT			(100*60*3)
+#define TWS_SLAVE_LINK_TIMEOUT				(100*60*3)
 
 typedef struct _TwsSlavePlayContext
 {
-
-
 	uint8_t				runflag;
 	uint8_t				umuteflag;
 	TIMER				umuteTime;
@@ -142,9 +166,7 @@ typedef struct _TwsSlavePlayContext
 }TwsSlavePlayContext;
 
 static  TwsSlavePlayContext*		gTwsSlavePlayCt;
-
 const int16_t jingyin[512]={0,0,0};
-
 TWS_CONFIG	gTwsCfg;
 extern uint32_t gSysTick;
 
@@ -210,7 +232,7 @@ void TwsSlaveFifoMuteTimeSet(void)
 		APP_DBG("gTwsSlavePlayCt is NULL! %d\n",__LINE__);
 		return;
 	}
-	gTwsSlavePlayCt->TwsBufMuteTimeout = GetSysTick1MsCnt() + (TWS_STATRT_PLAY_FRAM * 128 * 1000 ) / CFG_PARA_SAMPLE_RATE;
+	gTwsSlavePlayCt->TwsBufMuteTimeout = GetSysTick1MsCnt() + (tws_delay * 128 * 1000 ) / CFG_PARA_SAMPLE_RATE;
 	gTwsSlavePlayCt->runflag = 1;
 	gTwsSlavePlayCt->umuteflag = 0;
 	TimeOutSet(&gTwsSlavePlayCt->umuteTime, 0xfffffff);//设一个近似无限值。
@@ -256,7 +278,6 @@ void TwsSlaveFifoUnmuteSet(void)
 bool TwsSlavePlayResMalloc(uint16_t SampleLen)
 {
 	//InCore1 buf
-
 	return TRUE;
 }
 
@@ -290,16 +311,14 @@ bool TwsSlavePlayInit(void)
 	}
 	memset(gTwsSlavePlayCt, 0, sizeof(TwsSlavePlayContext));
 	
-
 	if(!TwsSlavePlayResMalloc(AudioCoreFrameSizeGet(DefaultNet)))
 	{
 		APP_DBG("TwsSlavePlay Res Error!\n");
 		return FALSE;
 	}
 	
-	
 	//Audio init
-//	//note Soure0.和sink0已经在main app中配置，不要随意配置
+	//note Soure0.和sink0已经在main app中配置，不要随意配置
 	//Core Soure1.Para
 	AudioCoreIO	AudioIOSet;
 	memset(&AudioIOSet, 0, sizeof(AudioCoreIO));
@@ -373,14 +392,7 @@ bool TwsSlavePlayInit(void)
 	{
 	 	HardWareMuteOrUnMute();
 	}
-	//Z_post_msg(Custom_Event2,Custom_Event1_tone_tws_con);
-	RemindSoundServiceItemRequest(SOUND_REMIND_TWS_CON, REMIND_PRIO_SYS|REMIND_ATTR_NEED_HOLD_PLAY);
-
-    Save_task_state(Task_TwsSlave);
-  
-     PA_contral();
-	 
-
+	
 	return TRUE;
 }
 
@@ -436,11 +448,7 @@ void TwsSlavePlayRun(uint16_t msgId)
 	{
 		if((gSysTick - gTwsSlavePlayCt->mode_start_tick) > 3000)
 		{
-			if(tws_audio_state_get() == TWS_DISCONNECT)
-			{
-
-			}
-			else
+			if(tws_audio_state_get() != TWS_DISCONNECT)
 			{
 				gTwsSlavePlayCt->mode_start_busy = 0;
 			}
@@ -510,17 +518,6 @@ bool TwsSlavePlayDeinit(void)
 	}	
 	
 	PauseAuidoCore();	
-	
-	//AudioCoreSourceMute(APP_SOURCE_NUM, TRUE, TRUE);
-#if (CFG_RES_MIC_SELECT) && defined(CFG_FUNC_AUDIO_EFFECT_EN)
-	//AudioCoreSourceMute(MIC_SOURCE_NUM, TRUE, TRUE);
-#endif	
-#if	0//defined(CFG_FUNC_REMIND_SOUND_EN)
-	//AudioCoreSourceMute(REMIND_SOURCE_NUM, TRUE, TRUE);
-#endif
-#ifdef BT_TWS_SUPPORT
-	//AudioCoreSourceMute(TWS_SOURCE_NUM, TRUE, TRUE);
-#endif
 
 	//注意：AudioCore父任务调整到mainApp下，此处只关闭AudioCore通道，不关闭任务
 	AudioCoreProcessConfig((void*)AudioNoAppProcess);
@@ -536,9 +533,6 @@ bool TwsSlavePlayDeinit(void)
 	
 	osPortFree(gTwsSlavePlayCt);
 	gTwsSlavePlayCt = NULL;
-
-
-    T_TwsSlave_inf.play_state = _Music_stop;
 
 	return TRUE;
 }
@@ -591,7 +585,7 @@ void TWS_Params_Init(void)
 
 	gTwsCfg.AudioMode    = TWS_M_L__S_R;
 	
-	tws_mem = tws_mem_size(TWS_STATRT_PLAY_FRAM,gTwsCfg.AudioMode);
+	tws_mem = tws_mem_size(TWS_FIFO_FRAMES,gTwsCfg.AudioMode);
 	p = (uint8_t*)osPortMalloc(tws_mem);
 	if(p == 0)
 	{
@@ -601,9 +595,9 @@ void TWS_Params_Init(void)
 	memset(p, 0, tws_mem);
 	printf("tws_mem_size:%lu\n",tws_mem);
 	tws_mem_set(p);
+	tws_delay_set(tws_delay);
 	gTwsCfg.PairMode    = 0;	
 	gTwsCfg.IsRemindSyncEn = 0;//0:提示音不发送给slave；1:提示音发送给slave同步播放提示音
-	gTwsCfg.IsEffectEn  = CFG_EFFECT_MUSIC_MASTER;//0=master,slaver 独立有调音音效，1=只有master有调音，音效功能，slaver仅做为接收，
 }
 
 
@@ -646,6 +640,11 @@ uint16_t tws_device_space_len(void)
 uint16_t tws_device_space_len(void)
 {
 	return 0;
+}
+
+void tws_clk_sync(uint32_t new_clk_off,int16_t new_bit_off,uint32_t a,int16_t b)
+{
+	
 }
 #endif//#ifdef BT_TWS_SUPPORT
 

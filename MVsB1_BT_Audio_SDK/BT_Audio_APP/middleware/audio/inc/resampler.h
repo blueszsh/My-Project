@@ -21,8 +21,8 @@
 #define MAX_IBUFF_SIZE (MAX_XOFF_SIZE * 2 + MAX_FRAME_SAMPLES)
 #define MAX_OBUFF_SIZE (MAX_FRAME_SAMPLES * MAX_RESAMPLE_FACTOR + MAX_XOFF_SIZE)
 
-/*
-// error code for resampler 
+
+/** error code for resampler */
 typedef enum _RESAMPLER_ERROR_CODE
 {
 	RESAMPLER_ERROR_SAMPLE_RATE_NOT_SUPPORTED = -256,
@@ -32,9 +32,9 @@ typedef enum _RESAMPLER_ERROR_CODE
 	RESAMPLER_ERROR_NUMBER_OF_INPUT_PCM_SAMPLES_TOO_SMALL,
 
 	// No Error
-	RESAMPLER_ERROR_OK = 0,					//< no error            
+	RESAMPLER_ERROR_OK = 0,					/**< no error              */
 } RESAMPLER_ERROR_CODE;
-*/
+
 /** reverb context */
 typedef struct _ResamplerContext
 {

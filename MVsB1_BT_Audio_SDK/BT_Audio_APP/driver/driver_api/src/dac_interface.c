@@ -8,6 +8,9 @@
 #include "ctrlvars.h"
 #endif
 
+extern MCLK_CLK_SEL PLL_CLK_SET1;
+extern MCLK_CLK_SEL PLL_CLK_SET2;
+
 #define USER_DEFINE_MCLK_112896M_DIV_VALUE 	11289600
 #define USER_DEFINE_MCLK_12288M_DIV_VALUE	12288000
 //ChannelSel :0=disable 1=LR,2=X,3=ALL
@@ -40,22 +43,22 @@ void AudioDAC_Init(DAC_MODULE DACModule, uint32_t SampleRate, void* Buf1, uint16
 	{
 		if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100))
 		{
-			Clock_AudioMclkSel(AUDIO_DAC0, PLL_CLOCK1);
+			Clock_AudioMclkSel(AUDIO_DAC0, PLL_CLK_SET1);
 		}
 		else
 		{
-			Clock_AudioMclkSel(AUDIO_DAC0, PLL_CLOCK2);
+			Clock_AudioMclkSel(AUDIO_DAC0, PLL_CLK_SET2);
 		}
 	}
 	if(DAC1Enable)
 	{
 		if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100))
 		{
-			Clock_AudioMclkSel(AUDIO_DAC1, PLL_CLOCK1);
+			Clock_AudioMclkSel(AUDIO_DAC1, PLL_CLK_SET1);
 		}
 		else
 		{
-			Clock_AudioMclkSel(AUDIO_DAC1, PLL_CLOCK2);
+			Clock_AudioMclkSel(AUDIO_DAC1, PLL_CLK_SET2);
 		}
 	}
 
@@ -67,7 +70,9 @@ void AudioDAC_Init(DAC_MODULE DACModule, uint32_t SampleRate, void* Buf1, uint16
 		AudioDAC_VolSet(DAC0, 0xFFF, 0xFFF);//默认使用3/4数字增益
 
 		//更好的听感，系统默认关闭Scramble和Dither
-		AudioDAC_ScrambleDisable(DAC0);
+//		AudioDAC_ScrambleDisable(DAC0);
+		AudioDAC_ScrambleEnable(DAC0);
+		AudioDAC_ScrambleModeSet(DAC0,2);
 		AudioDAC_DitherDisable(DAC0);
 
 		//AudioDAC_DoutModeSet(MODE0);//DAC0独有API
@@ -149,6 +154,10 @@ void AudioDAC_Init(DAC_MODULE DACModule, uint32_t SampleRate, void* Buf1, uint16
 	{
 		DMA_ChannelDisable(PERIPHERAL_ID_AUDIO_DAC0_TX);
 		DMA_CircularConfig(PERIPHERAL_ID_AUDIO_DAC0_TX, Len1/2, Buf1, Len1);
+		/*{//20230927  解决反复复位/切换模式，dac 左右声道反向问题
+			DMA_CircularReadPtrSet(PERIPHERAL_ID_AUDIO_DAC0_TX,0);
+			DMA_CircularWritePtrSet(PERIPHERAL_ID_AUDIO_DAC0_TX, CFG_PARA_SAMPLES_PER_FRAME*4*4);
+		}*/
 		DMA_ChannelEnable(PERIPHERAL_ID_AUDIO_DAC0_TX);
 	}
 
@@ -187,10 +196,24 @@ void AudioDAC_Init(DAC_MODULE DACModule, uint32_t SampleRate, void* Buf1, uint16
 	if(DAC0Enable)
 	{
 		AudioDAC_IBSelect(DAC0, 3, 3);
+#if defined(BT_TWS_SUPPORT) && defined(TWS_DAC0_OUT)
+		#if DAC_RESET_SET
+		AudioDAC_Pause(DAC0);
+		#else
+		AudioDAC_Disable(DAC0);
+		#endif
+#endif
 	}
 	if(DAC1Enable)
 	{
 		AudioDAC_IBSelect(DAC1, 3, 3);
+#if defined(BT_TWS_SUPPORT) && defined(TWS_DACX_OUT)
+		#if DAC_RESET_SET
+		AudioDAC_Pause(DAC1);
+		#else
+		AudioDAC_Disable(DAC1);
+		#endif
+#endif
 	}
 }
 
@@ -219,11 +242,11 @@ void AudioDAC_SampleRateChange(DAC_MODULE DACModule, uint32_t SampleRate)
 	{
 		if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100))
 		{
-			Clock_AudioMclkSel(DAC0, PLL_CLOCK1);
+			Clock_AudioMclkSel(DAC0, PLL_CLK_SET1);
 		}
 		else
 		{
-			Clock_AudioMclkSel(DAC0, PLL_CLOCK2);
+			Clock_AudioMclkSel(DAC0, PLL_CLK_SET2);
 		}
 		AudioDAC_SampleRateSet(DAC0, SampleRate);
 	}
@@ -232,11 +255,11 @@ void AudioDAC_SampleRateChange(DAC_MODULE DACModule, uint32_t SampleRate)
 	{
 		if((SampleRate == 11025) || (SampleRate == 22050) || (SampleRate == 44100))
 		{
-			Clock_AudioMclkSel(DAC1, PLL_CLOCK1);
+			Clock_AudioMclkSel(DAC1, PLL_CLK_SET1);
 		}
 		else
 		{
-			Clock_AudioMclkSel(DAC1, PLL_CLOCK2);
+			Clock_AudioMclkSel(DAC1, PLL_CLK_SET2);
 		}
 		AudioDAC_SampleRateSet(DAC1, SampleRate);
 	}

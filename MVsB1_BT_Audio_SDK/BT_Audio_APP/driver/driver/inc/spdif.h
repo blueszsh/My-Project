@@ -294,6 +294,11 @@ void SPDIF_AlignModeSet(SPDIF_20BIT_24BIT_ALIGN_MODE AlignMode);
  */
 void SPDIF_ClockSourceSelect(SPIDF_CLOCK_SOURCE_INDEX SourceType);
 
+//clockValue spdif来自的时钟值，Hz
+//sampleRate 采样率 Hz
+//返回推荐的spdif分频值
+uint32_t SpdifGetSpdifBetterDivValue(uint32_t clockValue, uint32_t sampleRate);
+
 #ifdef  __cplusplus
 }
 #endif//__cplusplus

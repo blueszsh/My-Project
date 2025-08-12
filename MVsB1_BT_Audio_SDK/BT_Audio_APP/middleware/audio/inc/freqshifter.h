@@ -4,7 +4,7 @@
  * @brief	Frequency shifter for 44.1kHz mono signals
  *
  * @author	ZHAO Ying (Alfred)
- * @version	V1.6.3
+ * @version	V1.7.0
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *
@@ -55,6 +55,18 @@ int32_t freqshifter_init(FreqShifterContext* ct, int32_t deltaf);
  */
 void freqshifter_apply(FreqShifterContext* ct, int16_t *pcm_in, int16_t *pcm_out, int32_t pcm_n);
 
+
+/**
+ * @brief Apply frequency shifting to a frame of PCM data (24 bit).
+ * @param ct Pointer to a FreqShifterContext object.
+ * @param pcm_in Address of the PCM input.
+ * @param pcm_out Address of the PCM output.
+ *        pcm_out can be the same as pcm_in. In this case, the PCM is changed in-place.
+ * @param pcm_n Number of PCM samples to process.
+ * @return none.
+ * @note Input signals should be always 44.1kHz mono PCM values.
+ */
+void freqshifter_apply24(FreqShifterContext* ct, int32_t *pcm_in, int32_t *pcm_out, int32_t pcm_n);
 
 #ifdef __cplusplus
 }

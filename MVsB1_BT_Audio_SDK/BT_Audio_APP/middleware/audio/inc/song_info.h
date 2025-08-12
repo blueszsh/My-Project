@@ -4,7 +4,7 @@
  * @brief   Definition of song information (metadata) related structures
  *
  * @author  Alfred Zhao
- * @version v1.1.0
+ * @version v1.2.0
  *
  * &copy; Shanghai Mountain View Silicon Technology Co.,Ltd. All rights reserved.
  *
@@ -75,7 +75,8 @@ typedef enum _StreamType
 	STREAM_TYPE_WMA,		/**< WMA stream       */
 	STREAM_TYPE_SBC,		/**< SBC stream       */
 	STREAM_TYPE_PCM,		/**< raw PCM stream   */
-	STREAM_TYPE_ADPCM,		/**< IMA_ADPCM stream */
+	STREAM_TYPE_MS_ADPCM,	/**< MS_ADPCM stream  */
+	STREAM_TYPE_IMA_ADPCM,	/**< IMA_ADPCM stream */
 	STREAM_TYPE_FLAC,		/**< FLAC stream      */
 	STREAM_TYPE_APE,		/**< APE stream       */
 	STREAM_TYPE_AAC,		/**< AAC stream       */
@@ -85,6 +86,7 @@ typedef enum _StreamType
 	STREAM_TYPE_DTS,		/**< DTS stream       */
 	STREAM_TYPE_OPUS,		/**< OPUS stream      */
 	STREAM_TYPE_A52,		/**< A52 stream       */
+	STREAM_TYPE_AMRWB,		/**< AMR-WB stream    */
 }StreamType;
 
 
@@ -104,7 +106,7 @@ typedef struct _SongInfo
 	uint32_t vbr_flag;              /**< VBR flag, 0:CBR, 1:VBR                         */
 
 	/*********************************** PCM information ************************************/
-	uint16_t pcm_bit_width;         /**< PCM bit width.  e.g. 16/24                     */
+	uint16_t pcm_bit_width;         /**< PCM bit width.  e.g. 16/24/32                  */
 	uint16_t pcm_data_length;       /**< PCM data length in samples after decoding (irrelevant to #channels and possibly changeable for each frame, e.g. WMA) */
 	int32_t *pcm_addr;              /**< PCM start address                              */
 

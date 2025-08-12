@@ -4,7 +4,7 @@
  * @brief	Virtual bass (bass extension).
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v4.4.0
+ * @version	v4.4.2
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -39,7 +39,6 @@ typedef struct _VBContext
 	int32_t state2;
 	int32_t sd;
 	int32_t cs;
-	//double cs;	
 	int32_t fco[7];		// gl0, gl1, gh0, gh1, a1, a2, a1'
 	//int32_t fpre[3];	// gl, gh, a1
 	//int32_t fop[8];		// gl0, gl1, gh0, gh1, a1, a2, a1', a2'
@@ -50,16 +49,12 @@ typedef struct _VBContext
 	int32_t d[11][4];	// filter delays
 	//int32_t d[13][4];	// filter delays(+additional order 4 HPF)
 
-	int32_t ltrhold;
-	int32_t utrhold;
+	int32_t noise_th;
 	int32_t alpha_attack;
 	int32_t alpha_release;
-	//int32_t alpha_hold;
-	int32_t att, rel, ht;
-	int32_t invatt, invrel;
-	int32_t nstate, g;
+	int32_t ht;
+	int32_t gs;
 	int32_t lthcnt;
-	int32_t uthcnt;
 } VBContext;
 
 

@@ -4,7 +4,7 @@
  * @brief	Echo effect
  *
  * @author	ZHAO Ying (Alfred)
- * @version	v2.1.0
+ * @version	v2.2.0
  *
  * &copy; Shanghai Mountain View Silicon Co.,Ltd. All rights reserved.
  *************************************************************************************
@@ -26,7 +26,6 @@ typedef enum _ECHO_ERROR_CODE
 	ECHO_ERROR_DELAY_NOT_POSITIVE,
 	ECHO_ERROR_ILLEGAL_DRY,
 	ECHO_ERROR_ILLEGAL_WET,
-	ECHO_ERROR_ILLEGAL_QUALITY_MODE,
 
 	// No Error
 	ECHO_ERROR_OK = 0,					/**< no error */
@@ -42,7 +41,7 @@ typedef struct _EchoContext
 	int32_t max_delay_samples;	// maximum delay in samples	
 	int32_t prev_delay_samples;	// previous delay samples	
 	int32_t p;					// next position for overwriting
-	int32_t quality_mode;		// quality mode
+	int32_t high_quality;		// high quality switch
 
 	int16_t in_block[32];		// input block
 	int16_t delay_block[32];	// delay block
@@ -63,25 +62,38 @@ extern "C" {
 
 
 /**
- * @brief Initialize echo effect module
+ * @brief Initialize echo effect module for 16-bit PCM data.
  * @param ct Pointer to an EchoContext object.
  * @param num_channels Number of channels.
  * @param sample_rate Sample rate.
  * @param fc Cutoff frequency of the low-pass filter in Hz. Set 0 to disable the use of the low-pass filter in echo effect. Note that this value should not exceed half of the sample rate, i.e. Nyquist frequency.
  * @param max_delay_samples Maximum delay in samples. This number should be positive. For example if you'd like to have maximum 500ms delay at 44.1kHz sample rate, the max_delay_samples = delay time*sample rate = 500*44.1 = 22050.
- * @param quality_mode Quality mode of echo. 0: compressed, 1: uncompressed 16 bit PCM, 2: uncompressed 24-bit PCM. 
- *        for 16-bit PCM I/O, choose either 0 or 1. for 24-bit PCM I/O, choose either 0 or 2.
- * @param s Delay buffer pointer. This buffer should be allocated by the caller and its capacity depends on both "quality_mode" and "max_delay_samples".
- *        If quality_mode is set 2, the buffer capacity = "max_delay_samples*4" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 88200 bytes (22050*4=88200)
- *        If quality_mode is set 1, the buffer capacity = "max_delay_samples*2" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 44100 bytes (22050*2=44100)
- *        If quality_mode is set 0, the buffer capacity = "ceil(max_delay_samples/32)*19" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 13110 bytes (ceil(22050/32)*19=690*19=13110)
+ * @param high_quality High quality switch. If high_quality is set 1, the delay values are losslessly saved for high quality output, otherwise (high_quality = 0) the delay values are compressed for low memory requirement.
+ * @param s Delay buffer pointer. This buffer should be allocated by the caller and its capacity depends on both "high_quality" and "max_delay_samples".
+ *        If high_quality is set 1, the buffer capacity = "max_delay_samples*2" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 44100 bytes (22050*2=44100)
+ *        If high_quality is set 0, the buffer capacity = "ceil(max_delay_samples/32)*19" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 13110 bytes (ceil(22050/32)*19=690*19=13110)
  * @return error code. ECHO_ERROR_OK means successful, other codes indicate error.
  */
-int32_t echo_init(EchoContext *ct, int32_t num_channels, int32_t sample_rate, int32_t fc, int32_t max_delay_samples, int32_t quality_mode, uint8_t *s);
+int32_t echo_init16(EchoContext *ct, int32_t num_channels, int32_t sample_rate, int32_t fc, int32_t max_delay_samples, int32_t high_quality, uint8_t *s);
 
 
 /**
- * @brief Apply echo effect to a frame of PCM data.
+ * @brief Initialize echo effect module for 24-bit PCM data.
+ * @param ct Pointer to an EchoContext object.
+ * @param num_channels Number of channels.
+ * @param sample_rate Sample rate.
+ * @param fc Cutoff frequency of the low-pass filter in Hz. Set 0 to disable the use of the low-pass filter in echo effect. Note that this value should not exceed half of the sample rate, i.e. Nyquist frequency.
+ * @param max_delay_samples Maximum delay in samples. This number should be positive. For example if you'd like to have maximum 500ms delay at 44.1kHz sample rate, the max_delay_samples = delay time*sample rate = 500*44.1 = 22050.
+ * @param high_quality High quality switch. If high_quality is set 1, the delay values are losslessly saved for high quality output, otherwise (high_quality = 0) the delay values are compressed for low memory requirement. * @param s Delay buffer pointer. This buffer should be allocated by the caller and its capacity depends on both "quality_mode" and "max_delay_samples".
+ *        If high_quality is set 1, the buffer capacity = "max_delay_samples*4" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 88200 bytes (22050*4=88200)
+ *        If high_quality is set 0, the buffer capacity = "ceil(max_delay_samples/32)*19" in bytes. For example if max_delay_samples = 22050, then the buffer capacity should be 13110 bytes (ceil(22050/32)*19=690*19=13110)
+ * @return error code. ECHO_ERROR_OK means successful, other codes indicate error.
+ */
+int32_t echo_init24(EchoContext *ct, int32_t num_channels, int32_t sample_rate, int32_t fc, int32_t max_delay_samples, int32_t high_quality, uint8_t *s);
+
+
+/**
+ * @brief Apply echo effect to a frame of 16-bit PCM data.
  * @param ct Pointer to a EchoContext object.
  * @param pcm_in Address of the PCM input. The data layout for mono: M0,M1,M2,...; for stereo: L0,R0,L1,R1,L2,R2,...
  * @param pcm_out Address of the PCM output. The data layout for mono: M0,M1,M2,...; for stereo: L0,R0,L1,R1,L2,R2,...
@@ -93,11 +105,11 @@ int32_t echo_init(EchoContext *ct, int32_t num_channels, int32_t sample_rate, in
  * @param wet The level of wet(effect) signals in the output. Range: 0% ~ 100%.
  * @return error code. ECHO_ERROR_OK means successful, other codes indicate error.
  */
-int32_t echo_apply(EchoContext *ct, int16_t *pcm_in, int16_t *pcm_out, int32_t n, int16_t attenuation, int32_t delay_samples, int32_t dry, int32_t wet);
+int32_t echo_apply16(EchoContext *ct, int16_t *pcm_in, int16_t *pcm_out, int32_t n, int16_t attenuation, int32_t delay_samples, int32_t dry, int32_t wet);
 
 
 /**
- * @brief Apply echo effect to a frame of PCM data (24-bit)
+ * @brief Apply echo effect to a frame of 24-bit PCM data.
  * @param ct Pointer to a EchoContext object.
  * @param pcm_in Address of the PCM input. The data layout for mono: M0,M1,M2,...; for stereo: L0,R0,L1,R1,L2,R2,...
  * @param pcm_out Address of the PCM output. The data layout for mono: M0,M1,M2,...; for stereo: L0,R0,L1,R1,L2,R2,...
