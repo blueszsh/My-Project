@@ -556,6 +556,7 @@ uint16_t RemindDataLenGet(void)
 			REMIND_DBG("remind play end!\n");
 			RemindSoundPlayEndNotify();	
 			delay_cnt = 0;
+			tone_play_end();//BOEU
 		}
 	}
 	return Mp2Decode.dec_last_len;
@@ -581,6 +582,11 @@ uint16_t RemindDataGet(void* Buf, uint16_t Samples)
 	}
 	return 0;
 #endif	
+}
+
+void RemindSoundItemRequestEnable(void)//boeu
+{
+	RemindSoundCt.Disable = FALSE;
 }
 
 void RemindSoundItemRequestDisable(void)
@@ -642,6 +648,9 @@ bool RemindSoundServiceItemRequest(char *SoundItem, uint32_t play_attribute)
 		//AudioCoreSourceMute(MIC_SOURCE_NUM,TRUE,TRUE);
 		AudioCoreSourceMute(APP_SOURCE_NUM,TRUE,TRUE);
 	}
+    REMIND_DBG("REMIND_SOUND return TRUE\n");
+    Tone_play_state=1;
+	PA_contral();
 
 	return TRUE;
 }

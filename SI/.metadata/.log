@@ -1,0 +1,61 @@
+!SESSION 2025-08-12 18:27:18.758 -----------------------------------------------
+eclipse.buildId=unknown
+java.version=1.7.0_76
+java.vendor=Oracle Corporation
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=zh
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY org.eclipse.emf.ecore 2 0 2025-08-12 18:27:23.419
+!MESSAGE Both 'com.andestech.ide.ldsag' and 'com.andestech.ide.ldsag.xtext' register a package for 'http:///ide.andestech.com.ldsag/ldsag.ecore'
+
+!ENTRY org.eclipse.ui 2 0 2025-08-12 18:27:23.763
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-08-12 18:27:23.763
+!MESSAGE Commands need a name: plug-in='com.andestech.ide.tracer.ui'
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-08-12 18:27:23.763
+!MESSAGE Commands need a name: plug-in='com.andestech.ide.tracer.ui'
+
+!ENTRY org.eclipse.ui 2 0 2025-08-12 18:27:24.095
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-08-12 18:27:24.095
+!MESSAGE Commands need a name: plug-in='com.andestech.ide.tracer.ui'
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-08-12 18:27:24.095
+!MESSAGE Commands need a name: plug-in='com.andestech.ide.tracer.ui'
+
+!ENTRY org.eclipse.ui 2 2 2025-08-12 18:27:24.483
+!MESSAGE Invalid preference category path: org.eclipse.linuxtools.profiling.provider.MainPreferencePage (bundle: org.eclipse.linuxtools.binutils, page: org.eclipse.linuxtools.binutils.preferences)
+
+!ENTRY org.eclipse.ui 2 2 2025-08-12 18:27:24.490
+!MESSAGE Invalid preference category path: org.eclipse.linuxtools.profiling.provider.MainPreferencePage (bundle: org.eclipse.linuxtools.gcov.core, page: org.eclipse.linuxtools.gcov.core.preferences.colors)
+
+!ENTRY org.eclipse.cdt.core 1 0 2025-08-12 18:27:44.885
+!MESSAGE Indexed 'BT_Audio_APP' (132 sources, 331 headers) in 5.43 sec: 23,536 declarations; 71,341 references; 0 unresolved inclusions; 17 syntax errors; 14 unresolved names (0.015%)
+!SESSION 2025-08-13 17:04:01.622 -----------------------------------------------
+eclipse.buildId=unknown
+java.version=1.7.0_76
+java.vendor=Oracle Corporation
+BootLoader constants: OS=win32, ARCH=x86_64, WS=win32, NL=zh
+Command-line arguments:  -os win32 -ws win32 -arch x86_64
+
+!ENTRY org.eclipse.emf.ecore 2 0 2025-08-13 17:04:05.561
+!MESSAGE Both 'com.andestech.ide.ldsag' and 'com.andestech.ide.ldsag.xtext' register a package for 'http:///ide.andestech.com.ldsag/ldsag.ecore'
+
+!ENTRY org.eclipse.ui 2 0 2025-08-13 17:04:06.161
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-08-13 17:04:06.161
+!MESSAGE Commands need a name: plug-in='com.andestech.ide.tracer.ui'
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-08-13 17:04:06.161
+!MESSAGE Commands need a name: plug-in='com.andestech.ide.tracer.ui'
+
+!ENTRY org.eclipse.ui 2 0 2025-08-13 17:04:06.493
+!MESSAGE Warnings while parsing the commands from the 'org.eclipse.ui.commands' and 'org.eclipse.ui.actionDefinitions' extension points.
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-08-13 17:04:06.493
+!MESSAGE Commands need a name: plug-in='com.andestech.ide.tracer.ui'
+!SUBENTRY 1 org.eclipse.ui 2 0 2025-08-13 17:04:06.493
+!MESSAGE Commands need a name: plug-in='com.andestech.ide.tracer.ui'
+
+!ENTRY org.eclipse.ui 2 2 2025-08-13 17:04:06.900
+!MESSAGE Invalid preference category path: org.eclipse.linuxtools.profiling.provider.MainPreferencePage (bundle: org.eclipse.linuxtools.binutils, page: org.eclipse.linuxtools.binutils.preferences)
+
+!ENTRY org.eclipse.ui 2 2 2025-08-13 17:04:06.907
+!MESSAGE Invalid preference category path: org.eclipse.linuxtools.profiling.provider.MainPreferencePage (bundle: org.eclipse.linuxtools.gcov.core, page: org.eclipse.linuxtools.gcov.core.preferences.colors)

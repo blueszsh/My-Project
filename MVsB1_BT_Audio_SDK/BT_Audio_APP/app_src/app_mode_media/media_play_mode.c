@@ -89,10 +89,13 @@ static const uint8_t DmaChannelMap[29] =
 #else
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
-
+#ifdef CFG_DMA_RGB_LED_EN
+    255,//PERIPHERAL_ID_SDIO_RX,			//3
+	255,//PERIPHERAL_ID_SDIO_TX,			//4
+#else
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
-
+#endif
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
 	255,//PERIPHERAL_ID_TIMER2,			//7
@@ -108,7 +111,11 @@ static const uint8_t DmaChannelMap[29] =
 	255,//PERIPHERAL_ID_UART0_TX,		//11
 	255,//PERIPHERAL_ID_UART1_RX,		//12
 	255,//PERIPHERAL_ID_UART1_TX,		//13
+#ifdef CFG_DMA_RGB_LED_EN
+	4,//PERIPHERAL_ID_TIMER4,			//14
+#else
 	255,//PERIPHERAL_ID_TIMER4,			//14
+#endif
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
 #ifdef CFG_FUNC_LINE_MIX_MODE
@@ -547,6 +554,15 @@ bool MediaPlayInit(void)
 
 	APP_DBG("Media Play Init\n");
 
+  if(GetSystemMode()==ModeUDiskAudioPlay)
+  {
+      Save_task_state(Task_usb);
+  }
+  else if(GetSystemMode()==ModeCardAudioPlay)
+  {
+      Save_task_state(Task_sd);
+  }  
+  PA_contral();
 	sMediaPlayCt = (MediaPlayContext*)osPortMalloc(sizeof(MediaPlayContext));
 	if(sMediaPlayCt == NULL)
 	{
@@ -665,9 +681,9 @@ bool MediaPlayInit(void)
 
 #ifdef CFG_FUNC_REMIND_SOUND_EN
 	if(GetSystemMode() == ModeUDiskAudioPlay)
-		ret = RemindSoundServiceItemRequest(SOUND_REMIND_UPANMODE, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
+		ret = RemindSoundServiceItemRequest(SOUND_REMIND_MODE_UPA, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
 	if(GetSystemMode() == ModeCardAudioPlay)
-		ret = RemindSoundServiceItemRequest(SOUND_REMIND_CARDMODE, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
+		ret = RemindSoundServiceItemRequest(SOUND_REMIND_MODE_SD, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
 #ifdef CFG_FUNC_RECORDER_EN
 	if(GetSystemMode() == ModeUDiskPlayBack || GetSystemMode() == ModeCardPlayBack)
 		ret = RemindSoundServiceItemRequest(SOUND_REMIND_RECHUIFA, REMIND_ATTR_NEED_MUTE_APP_SOURCE);
@@ -688,6 +704,7 @@ bool MediaPlayInit(void)
 		HardWareMuteOrUnMute();
 	}
 #endif
+   Machine_state=Machine_run;//zsh A2
 
 #ifdef CFG_FUNC_LINE_MIX_MODE
 	AudioCoreSourceUnmute(LINE_SOURCE_NUM,1,1);
@@ -787,7 +804,21 @@ bool MediaPlayDeinit(void)
 		return TRUE;
 	}
 	APP_DBG("Media Play Deinit\n");
-	
+
+
+   if( GetSystemMode() == ModeCardAudioPlay
+     ||GetSystemMode() == ModeCardPlayBack)
+    {
+         T_sd0_inf.play_state = _Music_stop;
+	}
+	else if( GetSystemMode() == ModeUDiskAudioPlay
+     ||GetSystemMode() == ModeUDiskPlayBack)
+    {
+         T_usb_inf.play_state = _Music_stop;
+	}
+
+    PA_contral();
+		
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();

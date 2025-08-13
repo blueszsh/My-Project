@@ -13,6 +13,9 @@
 #define __APP_CONFIG_H__
 
 #include "type.h"
+#include "zx_top2.h"
+#include "zx_top3.h"
+
 //************************************************************************************************************
 //    本系统默认开启2个系统全局宏，在IDE工程配置(Build Settings-Compiler-Symbols)，此处用于提醒
 //*CFG_APP_CONFIG 和 FUNC_OS_EN*/
@@ -76,10 +79,21 @@
 // 系统App功能模式选择
 //****************************************************************************************
 #define CFG_APP_IDLE_MODE_EN			//-------开关机模式--此模式不可关闭-//
+#if fun_bt_en
 #define CFG_APP_BT_MODE_EN				//-------蓝牙功能-----------------//
+#endif
+#if fun_udisk_en
 #define CFG_APP_USB_PLAY_MODE_EN		//-------UDisk播放模式------------//
+#endif
+#if fun_sd_en
 #define CFG_APP_CARD_PLAY_MODE_EN		//-------SD Card播放模式----------//
+#endif
+#if fun_linein_en
+#define	CFG_APP_LINEIN_MODE_EN
+#endif
+#if fun_fm_en
 #define CFG_APP_RADIOIN_MODE_EN			//-------收音机功能---------------//
+#endif
 
 //****************************************************************************************
 // 说明:
@@ -95,8 +109,12 @@
 // 		1.I2s IN输入跟I2s MIX可同时开也可单独使用，配置不冲突即可  也可以都不用
 //		2.i2s mix in是否经过系统音效处理在后面的参数中可自行配置
 //****************************************************************************************
+#if fun_IIS_in_en
 #define CFG_APP_I2SIN_MODE_EN			//-------I2S IN输入模式-----------//
-//#define CFG_FUNC_I2S_MIX_MODE			//-------I2S MIX模式--------------//
+#endif
+#if fun_IIS_mix_en
+#define CFG_FUNC_I2S_MIX_MODE			//-------I2S MIX模式--------------//
+#endif
 
 //****************************************************************************************
 // 说明:
@@ -104,13 +122,20 @@
 //		2.SPDIF MIX 可用于光纤或者同轴，二选一，不能同时存在
 //		3.SPDIF MIX 默认经过系统音效处理
 //****************************************************************************************
+#if fun_OPTICAL_en
 #define CFG_APP_OPTICAL_MODE_EN			//-------SPDIF 光纤模式------------//
+#endif
+#if fun_COAXIAL_en
 #define CFG_APP_COAXIAL_MODE_EN			//-------SPDIF 同轴模式------------//
 //#define CFG_FUNC_SPDIF_MIX_MODE		//-------SPDIF 混合输入功能---------//
+#endif
 
-
+#if fun_HDMI_en
 //#define CFG_APP_HDMIIN_MODE_EN 		//-------HDMI IN模式---------------//
+#endif
+#if fun_pc_en
 #define CFG_APP_USB_AUDIO_MODE_EN		//-------USB声卡，读卡器，一线通功能---//
+#endif
 
 
 #if defined(CFG_APP_LINEIN_MODE_EN) || defined(CFG_FUNC_LINE_MIX_MODE)
@@ -152,10 +177,30 @@
 //MSG_POWERDOWN --> 进入IDLE模式以后如果CFG_IDLE_MODE_POWER_KEY打开进入powerdown
 #ifdef  CFG_APP_IDLE_MODE_EN
 	#define CFG_IDLE_MODE_POWER_KEY	//power key
-	#define CFG_IDLE_MODE_DEEP_SLEEP //deepsleep
+	//#define CFG_IDLE_MODE_DEEP_SLEEP //deepsleep
 	#ifdef CFG_IDLE_MODE_POWER_KEY
 		#define BAKEUP_FIRST_ENTER_POWERDOWN		//第一次上电需要按下PowerKey
-		#define POWERKEY_MODE		POWERKEY_MODE_SLIDE_SWITCH_LPD//POWERKEY_MODE_PUSH_BUTTON
+		
+		#if (Power_on_off_plan==1 )||(Power_on_off_plan==2)  // zsh A2
+             #define	CFG_FUNC_BACKUP_EN
+        #else
+             #define POWERKEY_MODE					POWERKEY_MODE_BYPASS
+        #endif
+		
+        #ifdef CFG_FUNC_BACKUP_EN
+	         #define	CFG_FUNC_POWERKEY_EN
+           	// zsh A2
+         #if P1_valid==1
+             #define POWERKEY_MODE					POWERKEY_MODE_SLIDE_SWITCH_HPD//POWERKEY_MODE_SLIDE_SWITCH_LPD
+         #elif P1_valid==0
+             #define POWERKEY_MODE					POWERKEY_MODE_SLIDE_SWITCH_LPD//POWERKEY_MODE_SLIDE_SWITCH_LPD
+         #elif P1_valid==2
+             #define POWERKEY_MODE					POWERKEY_MODE_BYPASS//POWERKEY_MODE_PUSH_BUTTON//
+         #elif P1_valid==3
+             #define POWERKEY_MODE					POWERKEY_MODE_BYPASS//POWERKEY_MODE_SLIDE_SWITCH_LPD
+          #endif
+	   #endif
+	   
 		#if (POWERKEY_MODE == POWERKEY_MODE_SLIDE_SWITCH_LPD) || (POWERKEY_MODE == POWERKEY_MODE_SLIDE_SWITCH_HPD)
 			#define POWERKEY_CNT					20
 		#else
@@ -164,7 +209,7 @@
 
 		#if (POWERKEY_MODE == POWERKEY_MODE_PUSH_BUTTON)
 			//powerkey复用短按键功能。
-			#define USE_POWERKEY_PUSH_BUTTON_MSG_SP		MSG_PLAY_PAUSE
+			//#define USE_POWERKEY_PUSH_BUTTON_MSG_SP		MSG_PLAY_PAUSE
 		#endif	
 	#endif
 	#ifdef CFG_IDLE_MODE_DEEP_SLEEP
@@ -199,8 +244,9 @@
 #define CFG_RES_AUDIO_DACX_EN
 
 /**I2S音频输出通道配置选择**/
+#if fun_IIS_out_en
 //#define CFG_RES_AUDIO_I2SOUT_EN
-
+#endif
 /**光纤同轴音频输出通道配置选择**/
 //#define CFG_RES_AUDIO_SPDIFOUT_EN   // 此功能必须关闭TWS
 
@@ -302,17 +348,32 @@
 //    如下解码器类型选择会影响code size;
 //****************************************************************************************
 //#define LOSSLESS_DECODER_HIGH_RESOLUTION//打开后支持高采样率解码，资源消耗较大请自行评估 (不关闭音效可能出现卡顿现象)
-
+#if Z_decode_MP3_EN// zsh A2
 #define USE_MP3_DECODER
+#endif
+#if Z_decode_WMA_EN// zsh A2
 #define USE_WMA_DECODER
+#endif
 #define USE_SBC_DECODER
+#if Z_decode_WAV_EN// zsh A2
 #define USE_WAV_DECODER
+#endif
 //#define USE_DTS_DECODER
+#if Z_decode_FLAC_EN// zsh A2
 #define USE_FLAC_DECODER	//24bit 1.5Mbps高码率时，需要扩大DECODER_FIFO_SIZE_FOR_PLAYER 输出fifo，或扩大输入：FLAC_INPUT_BUFFER_CAPACITY
+#endif
+#if Z_decode_AAC_EN// zsh A2
 //#define USE_AAC_DECODER
+#endif
+#if Z_decode_AIF_EN// zsh A2
 //#define USE_AIF_DECODER
+#endif
+#if Z_decode_AMR_EN// zsh A2
 //#define USE_AMR_DECODER
+#endif
+#if Z_decode_APE_EN// zsh A2
 #define USE_APE_DECODER
+#endif
 
 //****************************************************************************************
 //                 总音效功能配置
@@ -342,7 +403,9 @@
 		#define  SILENCE_POWER_OFF_DELAY_TIME      10*60*100     //无信号关机延时时间，单位：ms
     #endif
 
+	#if Z__EFFECT_usb_DEBUG
 	#define CFG_FUNC_AUDIO_EFFECT_ONLINE_TUNING_EN//在线调音
+	#endif
 	#ifdef CFG_FUNC_AUDIO_EFFECT_ONLINE_TUNING_EN
 
 		//**音频SDK版本号,不要修改**/
@@ -361,8 +424,8 @@
 //		#define  CFG_UART_COMMUNICATION_RX_PIN					GPIOA9
 //		#define  CFG_UART_COMMUNICATION_RX_PIN_MUX_SEL			(1)
 
-		#define  CFG_COMMUNICATION_CRYPTO						(0)////调音通讯加密=1 调音通讯不加密=0
-		#define  CFG_COMMUNICATION_PASSWORD                     0x11223344//////四字节的长度密码
+		#define  CFG_COMMUNICATION_CRYPTO						(Z__EFFECT_usb_DEBUG_PASSWORD_EN)////调音通讯加密=1 调音通讯不加密=0
+		#define  CFG_COMMUNICATION_PASSWORD                     Z__EFFECT_usb_DEBUG_PASSWORD//////四字节的长度密码
 	#endif
 
 	//使用flash存好的调音参数，这个需要升级完整的MVA包，不能只下bin文件
@@ -389,11 +452,11 @@
 #define CFG_PARA_MAX_SAMPLES_PER_FRAME		(512)//(512)
 
 #if (BT_AVRCP_VOLUME_SYNC == ENABLE) && defined(CFG_APP_BT_MODE_EN)
-#define CFG_PARA_MAX_VOLUME_NUM		        (16)	//SDK 16 级音量,针对iphone手机蓝牙音量同步功能定制，音量表16级能一一对应手机端音量级别
-#define CFG_PARA_SYS_VOLUME_DEFAULT			(12)	//SDK默认音量
+#define CFG_PARA_MAX_VOLUME_NUM		        (Z__SYS_MAX_VOL)	//SDK 16 级音量,针对iphone手机蓝牙音量同步功能定制，音量表16级能一一对应手机端音量级别
+#define CFG_PARA_SYS_VOLUME_DEFAULT			(Z__SYS_DEFAULT_VOL)	//SDK默认音量
 #else
-#define CFG_PARA_MAX_VOLUME_NUM		        (32)	//SDK 32 级音量
-#define CFG_PARA_SYS_VOLUME_DEFAULT			(25)	//SDK默认音量
+#define CFG_PARA_MAX_VOLUME_NUM		        (Z__SYS_MAX_VOL)	//SDK 32 级音量
+#define CFG_PARA_SYS_VOLUME_DEFAULT			(Z__SYS_DEFAULT_VOL)	//SDK默认音量
 #endif
 
 //****************************************************************************************
@@ -417,7 +480,8 @@
 //****************************************************************************************
 //                 录音功能配置
 //****************************************************************************************
-//#define CFG_FUNC_RECORDER_EN
+#if fun_rec_en // zsh A2
+#endif
 #ifdef CFG_FUNC_RECORDER_EN
 
 	#define CFG_FUNC_RECORD_SD_UDISK			//录音到SD卡或者U盘
@@ -575,15 +639,17 @@
 //                 UART DEBUG功能配置
 //注意：DEBUG打开后，会增大mic通路的delay，不需要DEBUG调试代码时，建议关闭掉！
 //****************************************************************************************
+#if Z__DEBUG_custom
 #define CFG_FUNC_DEBUG_EN
+#endif
 #ifdef CFG_FUNC_DEBUG_EN
 	//#define CFG_USE_SW_UART
 	#ifdef CFG_USE_SW_UART
-		#define SW_UART_IO_PORT				    SWUART_GPIO_PORT_A//SWUART_GPIO_PORT_B
-		#define SW_UART_IO_PORT_PIN_INDEX	    1//bit num
-		#define  CFG_SW_UART_BANDRATE   		512000//software uart baud rate select:38400 57600 115200 256000 512000 1000000 ,default 512000
+		#define SW_UART_IO_PORT				    Z__printf_port//SWUART_GPIO_PORT_B
+		#define SW_UART_IO_PORT_PIN_INDEX	    Z__printf_bit//bit num
+		#define  CFG_SW_UART_BANDRATE   		Z__printf_RATE//software uart baud rate select:38400 57600 115200 256000 512000 1000000 ,default 512000
 	#else
-		#define CFG_UART_TX_PORT 				(0)//tx port  0--A6，1--A10, 2--A25, 3--A0, 4--A1
+		#define CFG_UART_TX_PORT 				(2)//tx port  0--A6，1--A10, 2--A25, 3--A0, 4--A1
 		#define  CFG_UART_BANDRATE   			512000//hardware uart baud set
 	#endif
 #endif
@@ -597,7 +663,7 @@
 //****************************************************************************************
 #define CFG_FUNC_REMIND_SOUND_EN
 #ifdef CFG_FUNC_REMIND_SOUND_EN
-	#define CFG_PARAM_FIXED_REMIND_VOL   	10		//固定提示音音量值,0表示受music vol同步控制
+	#define CFG_PARAM_FIXED_REMIND_VOL   	Z__PROMPT_TONE_VOL//10		//固定提示音音量值,0表示受music vol同步控制
 #endif
 
 //****************************************************************************************
@@ -618,7 +684,7 @@
     #define CFG_PARA_BEEP_DEFAULT_VOLUME    15//注意:若蓝牙音量同步功能开启后，此值最大为16
 
 /**按键双击功能**/
-#define  CFG_FUNC_DBCLICK_MSG_EN
+//#define  CFG_FUNC_DBCLICK_MSG_EN
 #ifdef CFG_FUNC_DBCLICK_MSG_EN
 	#define  CFG_PARA_CLICK_MSG             MSG_PLAY_PAUSE //单击执行消息
 	#define  CFG_PARA_DBCLICK_MSG           MSG_BT_HF_REDAIL_LAST_NUM   //双击执行消息
@@ -626,14 +692,16 @@
 #endif
 
 /**ADC按键**/
+#if Z_ADKEY  // zsh A2
 #define CFG_RES_ADC_KEY_SCAN				//在device service 中启用Key扫描ADCKEY
 #if defined(CFG_RES_ADC_KEY_SCAN) || defined(CFG_PARA_WAKEUP_SOURCE_ADCKEY)
 	#define CFG_RES_ADC_KEY_USE				//ADC按键功能 启用
 #endif
-
+#endif
 /**IR按键**/
+#if Remote_EN  // zsh A2
 #define CFG_RES_IR_KEY_SCAN				//启用device service Key扫描IRKey
-
+#endif
 /**编码旋钮按键**/
 //#define	CFG_RES_CODE_KEY_USE
 

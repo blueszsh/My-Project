@@ -1,0 +1,60 @@
+2025 05 23-20:08:14
+------------------------------
+[ShengJiGou] USB has connected! Ver:DOG-20231031-V6.2.7
+[ShengJiGou] USB has connected! Ver:DOG-20231031-V6.2.7
+[ShengJiGou] USB is linked!
+G:/Assist Project/LIUHUAS/ZY-H100-BP1048B2/MVsB1_BT_Karaoke_SDK_v0.3.3/BT_Audio_APP/Debug/output/main_merge.mva
+----> This is BP10 MVA
+芯片型号为BP10
+(Packages be found in MVA )BlkCount = 0x04
+G:/Assist Project/LIUHUAS/ZY-H100-BP1048B2/MVsB1_BT_Karaoke_SDK_v0.3.3/BT_Audio_APP/Debug/output/main_merge.mva
+Find Command Data...
+Find Flash Driver Data...
+Find Code Data...
+code len=0xFB598
+code offset=0x0
+2745_Real_Code_Length(In MVA)= 0xFB598
+2801_Real_Code_Length(In MVA)= 0xFB598
+Find Const(Index Data and Table) Data...
+const len=0x44E09
+const offset=0x170000
+USB Dongle(JIAMIGOU) is linked! Ver:V2.1.0
+******(01-code)
+******(02-const)
+[pack_count_InFushContainer] count = 0x2
+Start  to  Generate MVAX File...
+[pack_count_InFushContainer] count (add 01+03 )= 0x4
+---->NOT exist code KeyInfo
+---->NOT exist Algorithm KeyInfo
+Handshake [ShengJiGou] -- OK!
+SJG_Write[7-10]= 0x0D_70_00_00
+Handshake  (MVB)  [ShenJiGou]  --OK !!!
+Device's Flash init ok
+Start to download Burn File data...
+---Write 65536 / 1313229 Bytes Data to Flash
+---Write 131072 / 1313229 Bytes Data to Flash
+---Write 196608 / 1313229 Bytes Data to Flash
+---Write 262144 / 1313229 Bytes Data to Flash
+---Write 327680 / 1313229 Bytes Data to Flash
+---Write 393216 / 1313229 Bytes Data to Flash
+---Write 458752 / 1313229 Bytes Data to Flash
+---Write 524288 / 1313229 Bytes Data to Flash
+---Write 589824 / 1313229 Bytes Data to Flash
+---Write 655360 / 1313229 Bytes Data to Flash
+---Write 720896 / 1313229 Bytes Data to Flash
+---Write 786432 / 1313229 Bytes Data to Flash
+---Write 851968 / 1313229 Bytes Data to Flash
+---Write 917504 / 1313229 Bytes Data to Flash
+---Write 983040 / 1313229 Bytes Data to Flash
+---Write 1048576 / 1313229 Bytes Data to Flash
+---Write 1114112 / 1313229 Bytes Data to Flash
+---Write 1179648 / 1313229 Bytes Data to Flash
+---Write 1245184 / 1313229 Bytes Data to Flash
+---Write 1310720 / 1313229 Bytes Data to Flash
+---Write 1313216 / 1313229 Bytes Data to Flash
+---Write 1313229 / 1313229 Bytes Data to Flash
+Burn File download OK, and Checking the flash data...
+Congratulation, Download success!
+-----------------------------------------
+
+Shown CRC (0x) : 70_0D

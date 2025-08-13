@@ -123,8 +123,13 @@ static const uint8_t DmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_TIMER3,			//2
 #endif
 
+#ifdef CFG_DMA_RGB_LED_EN
+	5,//PERIPHERAL_ID_SDIO_RX,			//3
+	5,//PERIPHERAL_ID_SDIO_TX,			//4
+#else
 	255,//PERIPHERAL_ID_SDIO_RX,			//3
 	255,//PERIPHERAL_ID_SDIO_TX,			//4
+#endif
 
 	255,//PERIPHERAL_ID_UART0_RX,		//5
 	255,//PERIPHERAL_ID_TIMER1,			//6
@@ -141,7 +146,11 @@ static const uint8_t DmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_UART0_TX,		//11
 	255,//PERIPHERAL_ID_UART1_RX,		//12
 	255,//PERIPHERAL_ID_UART1_TX,		//13
+#ifdef CFG_DMA_RGB_LED_EN
+	4,//PERIPHERAL_ID_TIMER4,			//14
+#else
 	255,//PERIPHERAL_ID_TIMER4,			//14
+#endif
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
 	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
@@ -178,6 +187,17 @@ static const uint8_t DmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_SOFTWARE,		//27
 };
 
+
+
+#ifdef CFG_DMA_RGB_LED_EN
+RGB_ST RGB_R;
+RGB_ST RGB_G;
+RGB_ST RGB_B;
+
+
+#endif
+
+
 static void MainAppInit(void)
 {
 	memset(&mainAppCt, 0, sizeof(MainAppContext));
@@ -208,7 +228,19 @@ static void SysVarInit(void)
 		tws_delay = TWS_DELAY_FRAMES;
 	}
 #endif
-	mainAppCt.MusicVolume = pBpSysInfo->MusicVolume;
+
+    BOEU_Music_MIC_ECHO_Vol_Init();
+
+
+	#if Z__SYS_DEFAULT_VOL
+	  #if Z__BT_AVRCP_VOLUME_SYNC
+	     mainAppCt.MusicVolume = Z__SYS_DEFAULT_VOL;
+	  #else
+	     mainAppCt.MusicVolume = Music_Volume;//pBpSysInfo->MusicVolume;
+	  #endif
+	#else
+    mainAppCt.MusicVolume = pBpSysInfo->MusicVolume;
+	#endif
 	if((mainAppCt.MusicVolume > CFG_PARA_MAX_VOLUME_NUM) || (mainAppCt.MusicVolume <= 0))
 	{
 		mainAppCt.MusicVolume = CFG_PARA_MAX_VOLUME_NUM;
@@ -222,7 +254,11 @@ static void SysVarInit(void)
 #endif	
 	APP_DBG("EffectMode:%d,%d\n", mainAppCt.EffectMode, pBpSysInfo->EffectMode);
 	
-	mainAppCt.MicVolume = pBpSysInfo->MicVolume;
+	#if Z__SYS_DEFAULT_MIC_VOL
+	mainAppCt.MicVolume = Mic_Volume;//pBpSysInfo->MicVolume;
+	#else
+    mainAppCt.MicVolume = pBpSysInfo->MicVolume;
+	#endif
 	if((mainAppCt.MicVolume > CFG_PARA_MAX_VOLUME_NUM) || (mainAppCt.MicVolume <= 0))
 	{
 		mainAppCt.MicVolume = CFG_PARA_MAX_VOLUME_NUM;
@@ -261,7 +297,38 @@ static void SysVarInit(void)
 	}
 	mainAppCt.MicEffectDelayStepBak = mainAppCt.MicEffectDelayStep;
 	APP_DBG("MicEffectDelayStep:%d,%d\n", mainAppCt.MicEffectDelayStep, pBpSysInfo->MicEffectDelayStep);
+
+
+#ifdef CFG_FUNC_MIC_ECHO_REVERB_GAIN_EN
+
+    #if Z__SYS_DEFAULT_EOHO_VOL
+	mainAppCt.ReverbGainStep = MicECHO_Volume;//pBpSysInfo->ReverbGainStep;
+	#else
+    mainAppCt.ReverbGainStep = pBpSysInfo->ReverbGainStep;
+	#endif
 	
+	 if((mainAppCt.ReverbGainStep > MAX_MIC_DIG_STEP) || (mainAppCt.ReverbGainStep <= 0))
+	 {
+		 //mainAppCt.ReverbGainStep = Z__SYS_DEFAULT_EOHO_VOL;
+	 }
+
+	 #if Z__SYS_DEFAULT_EOHO_VOL
+	  mainAppCt.EchoGainStep = MicECHO_Volume;//pBpSysInfo->EchoGainStep;
+	 #else
+      mainAppCt.EchoGainStep = pBpSysInfo->EchoGainStep;
+	 #endif
+	 
+	 if((mainAppCt.EchoGainStep > MAX_MIC_DIG_STEP) || (mainAppCt.EchoGainStep <= 0))
+	 {
+		// mainAppCt.EchoGainStep = Z__SYS_DEFAULT_EOHO_VOL;
+	 }
+	// DBG("#####MicEchoGainStep:%d,%d\n", mainAppCt.EchoGainStep, pBpSysInfo->EchoGainStep);
+	// DBG("#####MicEchoGainStep:%d,%d\n", mainAppCt.ReverbGainStep, pBpSysInfo->ReverbGainStep);
+
+#endif
+
+
+
 #ifdef CFG_FUNC_MUSIC_TREB_BASS_EN	
     mainAppCt.MusicBassStep = pBpSysInfo->MusicBassStep;
     if((mainAppCt.MusicBassStep > MAX_MUSIC_DIG_STEP) || (mainAppCt.MusicBassStep <= 0))
@@ -368,6 +435,61 @@ static void SysVarInit(void)
 	#ifdef CFG_FUNC_SILENCE_AUTO_POWER_OFF_EN
 	mainAppCt.Silence_Power_Off_Time = 0;
 	#endif
+
+#if (fun_idle_en == 0)
+		  	#ifdef CFG_DMA_RGB_LED_EN
+			
+			    mainAppCt.rgb_mode=0;
+				extern uint8_t LedInit;
+				if(LedInit == 2)
+					LedInit=0;
+				
+			#endif
+
+
+	/*if( mainAppCt.appBackupMode == ModeOpticalAudioPlay
+  	  ||mainAppCt.appBackupMode == ModeCoaxialAudioPlay)	
+	{
+	     mainAppCt.appBackupMode = ModeBtAudioPlay;
+	}*/
+
+
+	
+#else
+			
+        if(Idle_sw.idle_mode == on_line)
+        {
+           ///// mainAppCt.appBackupMode = ModeIdle;  //
+           #ifdef CFG_DMA_RGB_LED_EN
+		       mainAppCt.rgb_mode=0xff;
+		       mainAppCt.temp_rgb_mode = RGB_Effect_PowerOff_Charge;
+			   extern uint8_t LedInit;
+				if(LedInit == 2)
+					LedInit=0;
+	       #endif
+		   #if LEDS_mix_RGB_EN
+		   RGB_curr_effect = RGB_Effect_PowerOff_Charge;
+		   #endif
+		}
+		else
+		{
+           //  mainAppCt.appBackupMode = ModeBtAudioPlay;
+			
+		   #ifdef CFG_DMA_RGB_LED_EN
+		        mainAppCt.rgb_mode=RGB_Effect_PowerOn;
+		      //  mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
+				extern uint8_t LedInit;
+				if(LedInit == 2)
+					LedInit=0;
+	       #endif
+		   #if LEDS_mix_RGB_EN
+		     RGB_curr_effect = RGB_Effect_PowerOn;
+		   //  Temp_RGB_curr_effect=RGB_curr_effect;
+		   #endif
+		}			
+	#endif
+
+	
 }
 
 static void SystemInit(void)
@@ -890,6 +1012,9 @@ static void MainAppTaskEntrance(void * param)
 	MessageContext		msg;
 	
 	SystemInit();
+#if Power_on_off_plan==2
+    IO_contral_init(P2_Pin_POWER_MOS,0,0,0,1);
+#endif
 	while(1)
 	{
 		MessageRecv(mainAppCt.msgHandle, &msg, MAIN_APP_MSG_TIMEOUT);
@@ -897,6 +1022,18 @@ static void MainAppTaskEntrance(void * param)
 		PublicDetect();
 		PublicMsgPross(msg);
 
+      PowerOnBtPairTonePlay();
+#if fun_idle_en && CHARGE_EN
+      if(Idle_sw.idle_mode == on_line)
+      {
+          if(!IsInCharge())
+          {
+             if(!IsInCharge())
+                  power_down_zx();
+		  }
+	  }
+	  
+#endif
 #ifdef SOFT_WACTH_DOG_ENABLE
 		big_dog_feed();
 #else

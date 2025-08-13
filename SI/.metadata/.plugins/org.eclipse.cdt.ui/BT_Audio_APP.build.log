@@ -1,0 +1,326 @@
+19:40:52 **** Incremental Build of configuration Release for project BT_Audio_APP ****
+make pre-build main-build 
+..\tools\script.bat
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\Release>cd .. 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>if exist mp2 (rd /s /q mp2 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>md mp2 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>cd remind_res 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>for %i in (16K//*.mp3) do (..\tools\remind_script\ffmpeg.exe -i 16K//%i -ab 24000 -ac 1 -ar 16000 ..\mp2//%i.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//0.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//0.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//1.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//1.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//2.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//2.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//3.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//3.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//4.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//4.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//5.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//5.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//6.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//6.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//7.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//7.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//8.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//8.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//9.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//9.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>(..\tools\remind_script\ffmpeg.exe -i 16K//callring.mp3 -ab 24000 -ac 1 -ar 16000 ..\mp2//callring.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>del info.txt 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\remind_res>cd .. 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>for %i in (remind_res//*.mp3) do (tools\remind_script\ffmpeg.exe -i remind_res//%i -ab 32000 -ac 1 mp2//%i.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//BTmode.mp3 -ab 32000 -ac 1 mp2//BTmode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//btpair.mp3 -ab 32000 -ac 1 mp2//btpair.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//bt_con.mp3 -ab 32000 -ac 1 mp2//bt_con.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//bt_dis.mp3 -ab 32000 -ac 1 mp2//bt_dis.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//cardmode.mp3 -ab 32000 -ac 1 mp2//cardmode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//connect.mp3 -ab 32000 -ac 1 mp2//connect.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//disconnect.mp3 -ab 32000 -ac 1 mp2//disconnect.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//DLguodi.mp3 -ab 32000 -ac 1 mp2//DLguodi.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//FMmode.mp3 -ab 32000 -ac 1 mp2//FMmode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//guanji.mp3 -ab 32000 -ac 1 mp2//guanji.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//Gxianmode.mp3 -ab 32000 -ac 1 mp2//Gxianmode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//HDMImode.mp3 -ab 32000 -ac 1 mp2//HDMImode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//i2smode.mp3 -ab 32000 -ac 1 mp2//i2smode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//kaiji.mp3 -ab 32000 -ac 1 mp2//kaiji.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//LeftChannel.mp3 -ab 32000 -ac 1 mp2//LeftChannel.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//low_power.mp3 -ab 32000 -ac 1 mp2//low_power.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//luyin.mp3 -ab 32000 -ac 1 mp2//luyin.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//mode_bt.mp3 -ab 32000 -ac 1 mp2//mode_bt.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//mode_tws.mp3 -ab 32000 -ac 1 mp2//mode_tws.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//MUTE.mp3 -ab 32000 -ac 1 mp2//MUTE.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//power_off.mp3 -ab 32000 -ac 1 mp2//power_off.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//power_on.mp3 -ab 32000 -ac 1 mp2//power_on.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//REChuifang.mp3 -ab 32000 -ac 1 mp2//REChuifang.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//RightChannel.mp3 -ab 32000 -ac 1 mp2//RightChannel.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//ring.mp3 -ab 32000 -ac 1 mp2//ring.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//shangyishou.mp3 -ab 32000 -ac 1 mp2//shangyishou.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//shengkamode.mp3 -ab 32000 -ac 1 mp2//shengkamode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//StopRec.mp3 -ab 32000 -ac 1 mp2//StopRec.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//tws_con.mp3 -ab 32000 -ac 1 mp2//tws_con.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//tws_dis.mp3 -ab 32000 -ac 1 mp2//tws_dis.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//Tzhoumode.mp3 -ab 32000 -ac 1 mp2//Tzhoumode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//Upanmode.mp3 -ab 32000 -ac 1 mp2//Upanmode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//updateok.mp3 -ab 32000 -ac 1 mp2//updateok.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//Volmax.mp3 -ab 32000 -ac 1 mp2//Volmax.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//vol_max.mp3 -ab 32000 -ac 1 mp2//vol_max.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//vol_min.mp3 -ab 32000 -ac 1 mp2//vol_min.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//xianlumode.mp3 -ab 32000 -ac 1 mp2//xianlumode.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>(tools\remind_script\ffmpeg.exe -i remind_res//xiayisou.mp3 -ab 32000 -ac 1 mp2//xiayisou.mp3.mp2  1>>info.txt 2>&1 ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>del info.txt 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>cd mp2 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\mp2>ren *.mp2 *. 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\mp2>cd .. 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>tools\remind_script\MergeAudio2BinNew.exe -a 0x0 -i ..\..\mp2 
+Wed Aug 13 19:40:56 2025
+MergeAudio2Bin Tools version v4.1 for MVS SDK SoundRemind
+current path: F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\tools\remind_script
+inputdir=..\..\mp2
+base address = 0x0
+0       : address = 00001000, size = 00000798, fullname = 0.mp3
+1       : address = 00001798, size = 000006C0, fullname = 1.mp3
+2       : address = 00001E58, size = 00000798, fullname = 2.mp3
+3       : address = 000025F0, size = 00000798, fullname = 3.mp3
+4       : address = 00002D88, size = 000006C0, fullname = 4.mp3
+5       : address = 00003448, size = 00000870, fullname = 5.mp3
+6       : address = 00003CB8, size = 000006C0, fullname = 6.mp3
+7       : address = 00004378, size = 00000870, fullname = 7.mp3
+8       : address = 00004BE8, size = 00000798, fullname = 8.mp3
+9       : address = 00005380, size = 00000870, fullname = 9.mp3
+BTmode  : address = 00005BF0, size = 00000F82, fullname = BTmode.mp3
+btpair  : address = 00006B72, size = 00000F1A, fullname = btpair.mp3
+bt_con  : address = 00007A8C, size = 00000EB1, fullname = bt_con.mp3
+bt_dis  : address = 0000893D, size = 00001053, fullname = bt_dis.mp3
+callring: address = 00009990, size = 00001368, fullname = callring.mp3
+cardmode: address = 0000ACF8, size = 00000EB1, fullname = cardmode.mp3
+connect : address = 0000BBA9, size = 00001539, fullname = connect.mp3
+disconne: address = 0000D0E2, size = 00001053, fullname = disconnect.mp3
+DLguodi : address = 0000E135, size = 000019B6, fullname = DLguodi.mp3
+FMmode  : address = 0000FAEB, size = 000011F5, fullname = FMmode.mp3
+guanji  : address = 00010CE0, size = 00000C3E, fullname = guanji.mp3
+Gxianmod: address = 0001191E, size = 00001124, fullname = Gxianmode.mp3
+HDMImode: address = 00012A42, size = 00001814, fullname = HDMImode.mp3
+i2smode : address = 00014256, size = 000015A1, fullname = i2smode.mp3
+kaiji   : address = 000157F7, size = 00000C3E, fullname = kaiji.mp3
+LeftChan: address = 00016435, size = 00000C3E, fullname = LeftChannel.mp3
+low_powe: address = 00017073, size = 0000118D, fullname = low_power.mp3
+luyin   : address = 00018200, size = 00000C3E, fullname = luyin.mp3
+mode_bt : address = 00018E3E, size = 00002ADB, fullname = mode_bt.mp3
+mode_tws: address = 0001B919, size = 00001AF0, fullname = mode_tws.mp3
+MUTE    : address = 0001D409, size = 0000061F, fullname = MUTE.mp3
+power_of: address = 0001DA28, size = 00003E0A, fullname = power_off.mp3
+power_on: address = 00021832, size = 000077FF, fullname = power_on.mp3
+REChuifa: address = 00029031, size = 00000BD6, fullname = REChuifang.mp3
+RightCha: address = 00029C07, size = 00000BD6, fullname = RightChannel.mp3
+ring    : address = 0002A7DD, size = 0000194E, fullname = ring.mp3
+shangyis: address = 0002C12B, size = 00000CA7, fullname = shangyishou.mp3
+shengkam: address = 0002CDD2, size = 00000F82, fullname = shengkamode.mp3
+StopRec : address = 0002DD54, size = 00000EB1, fullname = StopRec.mp3
+tws_con : address = 0002EC05, size = 00001124, fullname = tws_con.mp3
+tws_dis : address = 0002FD29, size = 00001124, fullname = tws_dis.mp3
+Tzhoumod: address = 00030E4D, size = 00001053, fullname = Tzhoumode.mp3
+Upanmode: address = 00031EA0, size = 00001053, fullname = Upanmode.mp3
+updateok: address = 00032EF3, size = 00000F1A, fullname = updateok.mp3
+Volmax  : address = 00033E0D, size = 00000EB1, fullname = Volmax.mp3
+vol_max : address = 00034CBE, size = 000008FA, fullname = vol_max.mp3
+vol_min : address = 000355B8, size = 00000272, fullname = vol_min.mp3
+xianlumo: address = 0003582A, size = 00000F1A, fullname = xianlumode.mp3
+xiayisou: address = 00036744, size = 00000BD6, fullname = xiayisou.mp3
+total file size=226074
+CRC16 = 0x5AD7
+finished...
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>rd /s /q mp2 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>fc tools\remind_script\sound_remind_item.h app_framework\audio_engine\remind_sound_item.h 
+正在比较文件 TOOLS\REMIND_SCRIPT\sound_remind_item.h 和 APP_FRAMEWORK\AUDIO_ENGINE\REMIND_SOUND_ITEM.H
+FC: 找不到差异
+
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>if 0 == 1 (copy tools\remind_script\sound_remind_item.h app_framework\audio_engine\remind_sound_item.h ) 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>cd tools\sys_parameter_script 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\tools\sys_parameter_script>copy ..\..\app_src\system_config\parameter.ini parameter.ini 
+已复制         1 个文件。
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\tools\sys_parameter_script>sys_parameter parameter.ini sys_parameter.h sys_parameter.bin 
+--Nov  8 2021 V1.0.0--
+bt_LocalDeviceName	-> BP10_BT
+ble_LocalDeviceName	-> BP10_BT_Ble
+bt_TxPowerLevel	-> 22
+bt_PagePowerLevel	-> 16
+BtTrimECO0	-> 22
+BtTrim	-> 20
+TwsVolSyncEnable	-> 1
+bt_CallinRingType	-> 2
+bt_BackgroundType	-> 0
+bt_SimplePairingEnable	-> 1
+bt_PinCode	-> 0000
+bt_ReconnectionEnable	-> 1
+bt_ReconnectionTryCounts	-> 5
+bt_ReconnectionInternalTime	-> 3
+bt_BBLostReconnectionEnable	-> 1
+bt_BBLostTryCounts	-> 90
+bt_BBLostInternalTime	-> 5
+bt_TwsReconnectionEnable	-> 1
+bt_TwsReconnectionTryCounts	-> 3
+bt_TwsReconnectionInternalTime	-> 3
+bt_TwsBBLostReconnectionEnable	-> 1
+bt_TwsBBLostTryCounts	-> 3
+bt_TwsBBLostInternalTime	-> 5
+bt_TwsPairingWhenPhoneConnectedSupport	-> 0
+bt_TwsConnectedWhenActiveDisconSupport	-> 0
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\tools\sys_parameter_script>del parameter.ini 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\tools\sys_parameter_script>cd ..\.. 
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>fc tools\sys_parameter_script\sys_parameter.h app_src\components\flash_manage\sys_param_typedef.h 
+正在比较文件 TOOLS\SYS_PARAMETER_SCRIPT\sys_parameter.h 和 APP_SRC\COMPONENTS\FLASH_MANAGE\SYS_PARAM_TYPEDEF.H
+FC: 找不到差异
+
+
+F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>if 0 == 1 (copy tools\sys_parameter_script\sys_parameter.h app_src\components\flash_manage\sys_param_typedef.h ) 
+ 
+正在构建文件： ../app_src/hmi/detect/device_detect.c
+正在调用： Andes C Compiler
+nds32le-elf-gcc -DFUNC_OS_EN=1 -DCFG_APP_CONFIG -DHAVE_CONFIG_H -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/cec/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_hdmi" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/audio" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/soft_watchdog" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_spdif" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/slow_device_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode__common" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_bt" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_i2s" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_idle" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_linein" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_media" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_radio" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_usb_audio" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/bluetooth" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/ble" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/flash_manage" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/rtc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/upgrade" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/detect" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/display" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/fm" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/key" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/system_config" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashboot" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/mode_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/bluetooth_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/audio_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/otg" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/power" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtc/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/fatfs/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/audio/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/mv_utils/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/lrc/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/rtos_api" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/freertos/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashfs/inc" -Os1 -mcmodel=medium -g3 -Wall -mcpu=d1088-spu -c -fmessage-length=0 -ldsp -mext-dsp -std=gnu99 -ffunction-sections -fdata-sections -MMD -MP -MF"app_src/hmi/detect/device_detect.d" -MT"app_src/hmi/detect/device_detect.d app_src/hmi/detect/device_detect.o" -o "app_src/hmi/detect/device_detect.o" "../app_src/hmi/detect/device_detect.c"
+../app_src/hmi/detect/device_detect.c: In function 'DeviceDetect':
+../app_src/hmi/detect/device_detect.c:469:1: warning: label 'DetectCardExit' defined but not used [-Wunused-label]
+ DetectCardExit:
+ ^
+../app_src/hmi/detect/device_detect.c: In function 'DevicePlugEventCheck':
+../app_src/hmi/detect/device_detect.c:588:11: warning: variable 'Plug' set but not used [-Wunused-but-set-variable]
+  uint32_t Plug;
+           ^
+../app_src/hmi/detect/device_detect.c: In function 'DeviceServicePocess':
+../app_src/hmi/detect/device_detect.c:717:7: warning: unused variable 'is_need_send_to_master' [-Wunused-variable]
+  bool is_need_send_to_master;
+       ^
+../app_src/hmi/detect/device_detect.c: In function 'IsMediaPlugOut':
+../app_src/hmi/detect/device_detect.c:1018:11: warning: unused variable 'detect_time_timer' [-Wunused-variable]
+  uint32_t detect_time_timer = 300;
+           ^
+../app_src/hmi/detect/device_detect.c: At top level:
+../app_src/hmi/detect/device_detect.c:111:17: warning: 'ReadCardDetectPin' defined but not used [-Wunused-function]
+ static uint32_t ReadCardDetectPin(void)
+                 ^
+已结束构建： ../app_src/hmi/detect/device_detect.c
+ 
+正在构建目标： BT_Audio_APP.adx
+正在调用： Andes C Linker
+nds32le-elf-gcc -Os1 -nostartfiles -static -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/cec" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/audio" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtc" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashfs" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/lrc" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/fatfs" -mcmodel=medium -ldsp -mext-dsp -T"../BP10_8Mbit.ld" -Wl,--gc-sections -mvh -o "BT_Audio_APP.adx"  ./app_framework/audio_engine/audio_core_adapt.o ./app_framework/audio_engine/audio_core_api.o ./app_framework/audio_engine/audio_core_service.o ./app_framework/audio_engine/audio_effect_api.o ./app_framework/audio_engine/beep.o ./app_framework/audio_engine/communication.o ./app_framework/audio_engine/decoder.o ./app_framework/audio_engine/recorder_service.o ./app_framework/audio_engine/remind_sound.o  ./app_framework/bluetooth_engine/bt_engine_audio.o ./app_framework/bluetooth_engine/bt_engine_utility.o ./app_framework/bluetooth_engine/bt_stack_service.o  ./app_framework/mode_engine/mode_task.o  ./app_framework/slow_device_engine/slow_device_task.o  ./app_src/app_mode__common/BT_BQB_Test.o ./app_src/app_mode__common/i2s_mix_mode_set.o ./app_src/app_mode__common/mode_task_api.o ./app_src/app_mode__common/spdif_out_api.o  ./app_src/app_mode_bt/bt_hf_api.o ./app_src/app_mode_bt/bt_hf_mode.o ./app_src/app_mode_bt/bt_play_api.o ./app_src/app_mode_bt/bt_play_mode.o ./app_src/app_mode_bt/tws_mode.o  ./app_src/app_mode_hdmi/hdmi_in_mode.o  ./app_src/app_mode_i2s/i2sin_mode.o  ./app_src/app_mode_idle/idle_mode.o  ./app_src/app_mode_linein/line_api.o ./app_src/app_mode_linein/linein_mode.o  ./app_src/app_mode_media/browser_parallel.o ./app_src/app_mode_media/browser_tree.o ./app_src/app_mode_media/media_play_api.o ./app_src/app_mode_media/media_play_mode.o  ./app_src/app_mode_radio/radio_mode.o  ./app_src/app_mode_spdif/spdif_api.o ./app_src/app_mode_spdif/spdif_mode.o  ./app_src/app_mode_usb_audio/otg_device_audio.o ./app_src/app_mode_usb_audio/usb_audio_mode.o  ./app_src/components/audio/audio_effect.o ./app_src/components/audio/audio_effect_class.o ./app_src/components/audio/audio_effect_flash_param.o ./app_src/components/audio/audio_effect_param.o ./app_src/components/audio/audio_effect_process.o ./app_src/components/audio/audio_effect_user.o ./app_src/components/audio/audio_vol.o ./app_src/components/audio/comm_param.o ./app_src/components/audio/ctrlvars.o ./app_src/components/audio/eq_drc_params.o ./app_src/components/audio/eq_params.o  ./app_src/components/audio/music_parameter/AECParam_HFP.o ./app_src/components/audio/music_parameter/CommParam.o  ./app_src/components/ble/ble_app_func.o  ./app_src/components/bluetooth/bt_app_a2dp_deal.o ./app_src/components/bluetooth/bt_app_avrcp_deal.o ./app_src/components/bluetooth/bt_app_common.o ./app_src/components/bluetooth/bt_app_connect.o ./app_src/components/bluetooth/bt_app_ddb_info.o ./app_src/components/bluetooth/bt_app_hfp_deal.o ./app_src/components/bluetooth/bt_app_init.o ./app_src/components/bluetooth/bt_app_sniff.o ./app_src/components/bluetooth/bt_app_spp.o ./app_src/components/bluetooth/bt_app_tws.o ./app_src/components/bluetooth/bt_app_tws_connect.o ./app_src/components/bluetooth/bt_boot_api.o ./app_src/components/bluetooth/bt_em_config.o  ./app_src/components/dump/dump_uart.o  ./app_src/components/flash_manage/breakpoint.o ./app_src/components/flash_manage/flash_table.o ./app_src/components/flash_manage/pc_online_param.o ./app_src/components/flash_manage/sys_param.o  ./app_src/components/rtc/rtc_ctrl.o  ./app_src/components/soft_watchdog/soft_watch_dog.o  ./app_src/components/upgrade/upgrade.o  ./app_src/hmi/detect/device_detect.o ./app_src/hmi/detect/misc.o  ./app_src/hmi/display/display.o ./app_src/hmi/display/display_task.o ./app_src/hmi/display/seg_led_disp.o ./app_src/hmi/display/seg_panel.o  ./app_src/hmi/fm/QN8035.o ./app_src/hmi/fm/RDA5807.o  ./app_src/hmi/key/adc_key.o ./app_src/hmi/key/adc_levels.o ./app_src/hmi/key/code_key.o ./app_src/hmi/key/io_key.o ./app_src/hmi/key/ir_key.o ./app_src/hmi/key/ir_nec_key.o ./app_src/hmi/key/key.o  ./app_src/main.o ./app_src/main_task.o  ./app_src/power/deepsleep.o ./app_src/power/power_monitor.o ./app_src/power/soft_power.o  ./app_src/startup/crt0.o ./app_src/startup/init-default.o ./app_src/startup/interrupt.o ./app_src/startup/retarget.o  ./app_src/system_config/Dma_Led.o ./app_src/system_config/iic.o ./app_src/system_config/qn8027.o ./app_src/system_config/zx.o  ./driver/driver_api/src/adc_interface.o ./driver/driver_api/src/backup_interface.o ./driver/driver_api/src/dac_interface.o ./driver/driver_api/src/fft_api.o ./driver/driver_api/src/flash_interface.o ./driver/driver_api/src/i2c_host.o ./driver/driver_api/src/i2c_interface.o ./driver/driver_api/src/i2s_interface.o ./driver/driver_api/src/ppwm_interface.o ./driver/driver_api/src/sadc_interface.o ./driver/driver_api/src/spdif_interface.o ./driver/driver_api/src/spim_interface.o ./driver/driver_api/src/sw_uart.o ./driver/driver_api/src/uarts_interface.o  ./driver/driver_api/src/otg/device/otg_device_standard_request.o ./driver/driver_api/src/otg/device/otg_device_stor.o  ./middleware/audio/src/audio_decoder_api.o ./middleware/audio/src/bits.o ./middleware/audio/src/libmp2dec.o ./middleware/audio/src/mvstdio.o  ./middleware/bluetooth/src/ble_app_callback.o ./middleware/bluetooth/src/bt_mid_a2dp.o ./middleware/bluetooth/src/bt_mid_avrcp.o ./middleware/bluetooth/src/bt_mid_hfp.o ./middleware/bluetooth/src/bt_mid_interface.o ./middleware/bluetooth/src/bt_mid_manager.o ./middleware/bluetooth/src/bt_mid_tws.o  ./middleware/cec/src/hdmi_in_api.o  ./middleware/fatfs/src/ffpresearch.o  ./middleware/flashboot/flash_boot.o  ./middleware/flashfs/src/FlashFS_Intf.o  ./middleware/mv_utils/src/debug.o ./middleware/mv_utils/src/mcu_circular_buf.o ./middleware/mv_utils/src/shell.o ./middleware/mv_utils/src/string_convert.o  ./middleware/rtos/rtos_api/rtos_api.o  ./test/auto_test.o   -lDriver -ltws -lcec -lsra -lsbcenc -lVocalCut -lmp3enc -lAudioEffectLibrary -lresampler -lAudioDecoderLibrary -lBtStack -lFlashFS -lLrc -lfatfs -lRTC -lcvsd_plc -lBlueAEC -ldsp -lm
+已结束构建目标： BT_Audio_APP.adx
+ 
+/usr/bin/make --no-print-directory post-build
+nds32le-elf-objcopy -O binary "BT_Audio_APP.adx" output/BT_Audio_APP.bin ; ../tools/script_post.bat
+	//#define CFG_EFFECT_PARAM_IN_FLASH_EN
+不需要注释
+ok
+提示音大小= 0x38000
+['main', 'table', 'bp_data', 'bt_data', 'remind', 'sys_parameter']
+new_section== ['bp_data']
+new_section2== ['bp_data']
+new_section== ['bp_data', 'bt_data']
+new_section2== ['bp_data', 'bt_data']
+new_section1== ['remind']
+new_section2== ['bp_data', 'bt_data', 'remind']
+new_section1== ['remind', 'sys_parameter']
+new_section2== ['bp_data', 'bt_data', 'remind', 'sys_parameter']
+123== [8192, 8192, 229376, 4096]
+total： 0x3d000
+offset: 0x1c0000
+333== 4
+create 4k tables success
+n== 2
+[8192, 8192, 229376, 4096]
+total: 0x39000
+des: 0x1c4000
+The ini is: MV_SDKConfig.ini
+flash_capacity = 0x800
+ ----------Chip_type=BP10_8M
+section包含： ['fileset', 'chipinfo', 'code', 'data']
+crc_len = boot_len
+actual_boot_lenth = 64416
+ok
+不重叠
+当前运行时间： 0.49485039710998535
+-----------------This_is_the_Script_make_end---------------
+
+运行时间： 1.1337130069732666
+ 
+正在调用： NM (symbol listing)
+nds32le-elf-nm -n -l -C "BT_Audio_APP.adx" > output/symbol.txt
+已结束构建： output/symbol.txt
+ 
+正在调用： Readelf (ELF info listing)
+nds32le-elf-readelf -a "BT_Audio_APP.adx" > output/readelf.txt
+已结束构建： output/readelf.txt
+ 
+正在调用： Objdump (disassembly)
+nds32le-elf-objdump -x -d -C "BT_Audio_APP.adx" > output/objdump.txt
+已结束构建： output/objdump.txt
+ 
+正在调用： Size (section size listing)
+nds32le-elf-size  "BT_Audio_APP.adx" | tee output/.PHONY.size
+   text (code + rodata)	   data	    bss	    dec	    hex	filename
+ 865636 (568132 + 297504)	   1856	  82028	 949520	  e7d10	BT_Audio_APP.adx
+已结束构建： output/.PHONY.size
+ 
+
+19:41:01 Build Finished (took 8s.591ms)
+

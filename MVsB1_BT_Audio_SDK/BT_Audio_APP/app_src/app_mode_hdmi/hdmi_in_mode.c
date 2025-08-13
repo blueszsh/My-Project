@@ -443,6 +443,13 @@ bool HdmiInPlayResMalloc(uint16_t SampleLen)
 	AudioCoreSourceUnmute(LINE_SOURCE_NUM,1,1);
 #endif
 
+	//zsh A2
+	Save_task_state(Task_HDMI_in);
+    T_HDMI_in_inf.play_state = _Music_play;
+    PA_contral();
+   //end
+
+    Machine_state=Machine_run;//zsh A2
 	return TRUE;
 }
 
@@ -697,6 +704,9 @@ bool HdmiInPlayDeinit(void)
 		return FALSE;
 	}
 
+    T_HDMI_in_inf.play_state = _Music_stop;
+    PA_contral();
+	
 	if(IsAudioPlayerMute() == FALSE)
 	{
 		HardWareMuteOrUnMute();

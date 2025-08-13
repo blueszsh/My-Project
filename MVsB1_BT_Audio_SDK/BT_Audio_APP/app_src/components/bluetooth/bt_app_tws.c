@@ -722,6 +722,32 @@ void BtTwsRecvCmdData(BT_TWS_CALLBACK_PARAMS * param)
 			}
 
 			APP_DBG("slave rcv cmd_a2dp_state = %d\n", val);
+            if(val == BT_PLAYER_STATE_PLAYING)
+            {
+		        T_TwsSlave_inf.play_state =_Music_play;
+		          #ifdef CFG_DMA_RGB_LED_EN
+					mainAppCt.rgb_mode = RGB_Effect_Bt_Play;
+			        mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
+			      #endif
+			      #if LEDS_mix_RGB_EN
+					    RGB_curr_effect = RGB_Effect_Bt_Play;
+				        Temp_RGB_curr_effect=RGB_curr_effect;
+			      #endif  
+			}
+			else
+			{
+		        T_TwsSlave_inf.play_state =_Music_puse;
+				 #ifdef CFG_DMA_RGB_LED_EN
+					mainAppCt.rgb_mode = RGB_Effect_Bt_Pause;
+			        mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
+			      #endif
+			      #if LEDS_mix_RGB_EN
+				    RGB_curr_effect = RGB_Effect_Bt_Pause;
+			        Temp_RGB_curr_effect=RGB_curr_effect;
+			      #endif 
+				  
+	        }
+			PA_contral();
 		}
 		break;
 #ifdef CFG_FUNC_MUSIC_EQ_MODE_EN

@@ -1832,6 +1832,39 @@ void SetMediaPlayerState(uint8_t state)
 			gMediaPlayer->CurPlayState = state;
 		}
 	}
+
+      if(GetMediaPlayerState()==PLAYER_STATE_PAUSE)
+		{
+            //Curr_task_inf->play_state = _Music_puse;
+            if( GetSystemMode() == ModeCardAudioPlay
+		     ||GetSystemMode() ==ModeCardPlayBack)
+            {
+                 T_sd0_inf.play_state = _Music_puse;
+			}
+			else if( GetSystemMode() == ModeUDiskAudioPlay
+		     ||GetSystemMode() == ModeUDiskPlayBack)
+            {
+                 T_usb_inf.play_state = _Music_puse;
+			}
+
+		}
+		
+		if(GetMediaPlayerState()==PLAYER_STATE_PLAYING)
+		{
+            //Curr_task_inf->play_state = _Music_play;
+            if( GetSystemMode() == ModeCardAudioPlay
+		     ||GetSystemMode() == ModeCardPlayBack)
+            {
+                 T_sd0_inf.play_state = _Music_play;
+			}
+			else if( GetSystemMode() == ModeUDiskAudioPlay
+		     ||GetSystemMode() == ModeUDiskPlayBack)
+            {
+                 T_usb_inf.play_state = _Music_play;
+			}
+		}
+
+	  PA_contral();
 }
 #ifdef CFG_FUNC_RECORDER_EN
 #ifdef CFG_FUNC_RECORD_SD_UDISK

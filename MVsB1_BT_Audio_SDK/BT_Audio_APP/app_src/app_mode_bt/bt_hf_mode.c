@@ -98,8 +98,13 @@ static const uint8_t DmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_SDIO_RX,		//3
 	255,//PERIPHERAL_ID_SDIO_TX,		//4
 #else
+  	#ifdef CFG_DMA_RGB_LED_EN
+    255,//PERIPHERAL_ID_SDIO_RX,			//3
+	255,//PERIPHERAL_ID_SDIO_TX,			//4
+    #else
 	4,//PERIPHERAL_ID_SDIO_RX,			//3
 	4,//PERIPHERAL_ID_SDIO_TX,			//4
+	#endif
 #endif
 
 	255,//PERIPHERAL_ID_UART0_RX,		//5
@@ -128,7 +133,11 @@ static const uint8_t DmaChannelMap[29] = {
 	255,//PERIPHERAL_ID_UART1_TX,		//13
 #endif
 
+#ifdef CFG_DMA_RGB_LED_EN
+	4,//PERIPHERAL_ID_TIMER4,			//14
+#else
 	255,//PERIPHERAL_ID_TIMER4,			//14
+#endif
 	255,//PERIPHERAL_ID_TIMER5,			//15
 	255,//PERIPHERAL_ID_TIMER6,			//16
 	0,//PERIPHERAL_ID_AUDIO_ADC0_RX,	//17
@@ -341,7 +350,7 @@ static void BtHfRingRemindNumberRunning(void)
 			else if(i == len)
 			{
 				i++;
-				RemindSoundServiceItemRequest(SOUND_REMIND_CALLRING, REMIND_PRIO_NORMAL);
+				RemindSoundServiceItemRequest(SOUND_REMIND_RING, REMIND_PRIO_NORMAL);
 			}
 			else
 			{
@@ -784,6 +793,20 @@ bool BtHfInit(void)
 
 	//注册 通话过程中监控手机通话状态流程
 	BtHfpRunloopRegister();
+
+
+    phone_state = 1;
+	PA_contral();
+	
+#ifdef CFG_DMA_RGB_LED_EN
+    mainAppCt.temp_rgb_mode=mainAppCt.rgb_mode;
+	mainAppCt.rgb_mode=RGB_Effect_HFP_CALL_IN;
+#endif
+#if LEDS_mix_RGB_EN
+    Temp_RGB_curr_effect = RGB_curr_effect;
+    RGB_curr_effect = RGB_Effect_HFP_CALL_IN;
+#endif
+	
 	return TRUE;
 }
 
@@ -1021,6 +1044,9 @@ bool BtHfDeinit(void)
 	{
 		return TRUE;
 	}
+
+	phone_state = 0;
+	PA_contral();
 	
 	//注销 通话过程中监控手机通话状态流程
 	BtHfpRunloopDeregister();
@@ -1157,6 +1183,12 @@ bool BtHfDeinit(void)
 	//通话模式退出完成，清除标志
 	BtHfModeExitFlag = 0;
 	sBtHfModeEixtList = 0;
+#ifdef CFG_DMA_RGB_LED_EN
+    mainAppCt.rgb_mode=mainAppCt.temp_rgb_mode;
+#endif
+#if LEDS_mix_RGB_EN
+    RGB_curr_effect = Temp_RGB_curr_effect;
+#endif
 
 	return TRUE;
 }

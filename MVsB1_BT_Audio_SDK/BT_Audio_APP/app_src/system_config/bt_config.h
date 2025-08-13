@@ -78,7 +78,7 @@
  */
 #define BT_A2DP_SUPPORT				ENABLE //A2DP和AVRCP关联
 #if CFG_RES_MIC_SELECT
-#define BT_HFP_SUPPORT				ENABLE
+#define BT_HFP_SUPPORT				Phone_function
 #endif
 #define BT_SPP_SUPPORT				DISABLE
 	
@@ -169,7 +169,7 @@
  * If it doesn't support Advanced AVRCP, TG side will be ignored
  * 音量同步功能需要开启该宏开关
  */
-#define BT_AVRCP_VOLUME_SYNC			DISABLE
+#define BT_AVRCP_VOLUME_SYNC			Z__BT_AVRCP_VOLUME_SYNC
 
 /*
  * If it doesn't support Advanced AVRCP, TG side will be ignored
@@ -236,7 +236,7 @@
 #define BT_REMOTE_AEC_DISABLE			//关闭手机端AEC
 
 //MIC无运放,使用如下参数(参考)
-#define BT_HFP_MIC_PGA_GAIN				15  //ADC PGA GAIN +18db(0~31, 0:max, 31:min)
+#define BT_HFP_MIC_PGA_GAIN				0//15  //ADC PGA GAIN +18db(0~31, 0:max, 31:min)
 #define BT_HFP_MIC_PGA_GAIN_BOOST_SEL	2
 #define BT_HFP_MIC_DIGIT_GAIN			4095
 #define BT_HFP_INPUT_DIGIT_GAIN			1100
@@ -266,7 +266,7 @@
 #include "bt_tws_api.h"
 
 #define BT_TWS_LINK_NUM				1		//TWS参数仅能为1， 不可修改
-#define CFG_TWS_ONLY_IN_BT_MODE		DISABLE //enable:仅在蓝牙模式下工作, disable:在所有模式下工作
+#define CFG_TWS_ONLY_IN_BT_MODE		ENABLE //enable:仅在蓝牙模式下工作, disable:在所有模式下工作
 #define TWS_FIFO_FRAMES				120 	//@Framesize=128, 对应music通路的TWS缓冲深度帧数
 #define TWS_DELAY_FRAMES			56*2	//建议112，~325mS; music通路的delay时间 N*2.9mS@44100；此值越大，主副箱距离越远, 25 < TWS_DELAY_FRAMES < TWS_FIFO_FRAMES
 //#define CFG_CMD_DELAY				10      //ms 主从CMD发送到处理延时5ms左右，信道质量差时更长，考虑被打断会形成7~20mS延时，此处设10ms较合适。

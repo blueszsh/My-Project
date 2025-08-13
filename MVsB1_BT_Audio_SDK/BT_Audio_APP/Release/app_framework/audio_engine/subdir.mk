@@ -1,0 +1,48 @@
+################################################################################
+# 自动生成的文件。不要编辑！
+################################################################################
+
+# Add inputs and outputs from these tool invocations to the build variables 
+C_SRCS += \
+../app_framework/audio_engine/audio_core_adapt.c \
+../app_framework/audio_engine/audio_core_api.c \
+../app_framework/audio_engine/audio_core_service.c \
+../app_framework/audio_engine/audio_effect_api.c \
+../app_framework/audio_engine/beep.c \
+../app_framework/audio_engine/communication.c \
+../app_framework/audio_engine/decoder.c \
+../app_framework/audio_engine/recorder_service.c \
+../app_framework/audio_engine/remind_sound.c 
+
+OBJS += \
+./app_framework/audio_engine/audio_core_adapt.o \
+./app_framework/audio_engine/audio_core_api.o \
+./app_framework/audio_engine/audio_core_service.o \
+./app_framework/audio_engine/audio_effect_api.o \
+./app_framework/audio_engine/beep.o \
+./app_framework/audio_engine/communication.o \
+./app_framework/audio_engine/decoder.o \
+./app_framework/audio_engine/recorder_service.o \
+./app_framework/audio_engine/remind_sound.o 
+
+C_DEPS += \
+./app_framework/audio_engine/audio_core_adapt.d \
+./app_framework/audio_engine/audio_core_api.d \
+./app_framework/audio_engine/audio_core_service.d \
+./app_framework/audio_engine/audio_effect_api.d \
+./app_framework/audio_engine/beep.d \
+./app_framework/audio_engine/communication.d \
+./app_framework/audio_engine/decoder.d \
+./app_framework/audio_engine/recorder_service.d \
+./app_framework/audio_engine/remind_sound.d 
+
+
+# Each subdirectory must supply rules for building sources it contributes
+app_framework/audio_engine/%.o: ../app_framework/audio_engine/%.c
+	@echo '正在构建文件： $<'
+	@echo '正在调用： Andes C Compiler'
+	$(CROSS_COMPILE)gcc -DFUNC_OS_EN=1 -DCFG_APP_CONFIG -DHAVE_CONFIG_H -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/cec/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_hdmi" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/audio" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/soft_watchdog" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_spdif" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/slow_device_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode__common" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_bt" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_i2s" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_idle" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_linein" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_media" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_radio" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_usb_audio" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/bluetooth" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/ble" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/flash_manage" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/rtc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/upgrade" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/detect" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/display" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/fm" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/key" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/system_config" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashboot" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/mode_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/bluetooth_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/audio_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/otg" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/power" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtc/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/fatfs/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/audio/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/mv_utils/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/lrc/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/rtos_api" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/freertos/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashfs/inc" -Os1 -mcmodel=medium -g3 -Wall -mcpu=d1088-spu -c -fmessage-length=0 -ldsp -mext-dsp -std=gnu99 -ffunction-sections -fdata-sections -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d) $(@:%.o=%.o)" -o "$@" "$<"
+	@echo '已结束构建： $<'
+	@echo ' '
+
+

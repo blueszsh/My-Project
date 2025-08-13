@@ -104,6 +104,13 @@ extern rtosfun ptrace_TASK_SWITCHED_OUT;
 #endif
 
 extern volatile uint8_t uart_switch;
+#ifdef CFG_DMA_RGB_LED_EN
+extern void ModeTest(void);
+#ifdef CFG_MORE_GPIO_RGB_CTRL_EN
+extern void ModeTest1(void);
+#endif
+extern void rgb_data_deal(void);
+#endif
 
 
 void _printf_float()
@@ -199,11 +206,19 @@ void Timer2Interrupt(void)
 	BtHf_Timer1msProcess();
 #endif
 #endif
+#ifdef CFG_DMA_RGB_LED_EN
+	ModeTest();
+	#ifdef CFG_MORE_GPIO_RGB_CTRL_EN
+	ModeTest1();
+	#endif
+	rgb_data_deal();
+#endif
+    _1ms_fun();
 	uart_log_out();
 	OneMSTimer();
 }
 
-#ifdef CFG_FUNC_LED_REFRESH
+#if (defined(CFG_FUNC_LED_REFRESH) || defined(CFG_DMA_RGB_LED_EN))
 __attribute__((section(".tcm_section")))
 void Timer6Interrupt(void)
 {
@@ -213,8 +228,18 @@ void Timer6Interrupt(void)
 	//关键字    __attribute__((section(".tcm_section")))
 	//客户需要将自己的实现的API代码添加关键字
 	//GPIO_RegOneBitSet(GPIO_A_TGL, GPIO_INDEX2);
+ #if DIGITAL_TUBE_EN		
 	extern void LedFlushDisp(void);
 	LedFlushDisp();
+ #endif
+ 
+	
+#ifdef CFG_DMA_RGB_LED_EN
+     extern void LedDmaDataMode(void);
+     LedDmaDataMode();
+#endif
+ 
+ 
 }
 #endif
 
@@ -522,7 +547,8 @@ int main(void)
 	NVIC_EnableIRQ(SWI_IRQn);
 	GIE_ENABLE();	//开启总中断
 
-#ifdef CFG_FUNC_LED_REFRESH
+#if (defined(CFG_FUNC_LED_REFRESH) || defined(CFG_DMA_RGB_LED_EN))	//默认优先级为0，旨在提高刷新速率，特别是断点记忆等写flash操作有影响刷屏，必须严格遵守所有timer6中断调用都是TCM代码，含调用的driver库代码
+
 	//默认优先级为0，旨在提高刷新速率，特别是断点记忆等写flash操作有影响刷屏，必须严格遵守所有timer6中断调用都是TCM代码，含调用的driver库代码
 	//已确认GPIO_RegOneBitSet、GPIO_RegOneBitClear在TCM区，其他api请先确认。
 	NVIC_SetPriority(Timer6_IRQn, 0);
@@ -620,7 +646,68 @@ int main(void)
 #endif
 
 	uart_switch = 1;
+
+   ZX_boot_init();
+
+#if fun_idle_en
+   #if CHARGE_EN
+    if(IsInCharge())
+    {
+        DelayMs(10);//延时消抖
+		if(IsInCharge())//插充电上电进待机
+		{
+           Idle_sw.idle_mode = on_line;
+		   APP_DBG("----------- PowerOn Enter IDLE ---------------\n"); 
+
+		   if(update_ok)//升级后,开机
+		   {
+               update_ok=0;
+			   Idle_sw.idle_mode = off_line;
+		   }
+		
+		}
+		else
+		{
+           Idle_sw.idle_mode = off_line;
+		}
+	}
+	else
+	{
+         Idle_sw.idle_mode = off_line;
+	}
 	
+	#endif
+#endif
+    PA_contral();
+   // DelayMs(500);   
+   // WDG_Feed();
+
+#if LED1_EN
+    #if Pin_LED1== Port_B0
+      GPIO_PortBModeSet(GPIOB0, 0);
+    #elif Pin_LED1== Port_B1
+      GPIO_PortBModeSet(GPIOB1, 0);
+   #endif
+
+#endif
+
+    #if (Power_on_off_plan==8)
+	 DelayMs(1000);
+	 WDG_Feed();
+		#if fun_idle_en == 0
+	    printf(">>>>>>>>>>>>>>>>   MOS  start\n");
+		POWER_MOS_ON();
+		#elif fun_idle_en && CHARGE_EN //开待机模式
+        //  if(Idle_sw.idle_mode == off_line)
+          {
+              printf(">>>>>>>>>>>>>>>>   MOS  start\n");
+		      POWER_MOS_ON();
+		  }
+		#endif
+   #endif 
+
+
+   
 	MainAppTaskStart();
 	vTaskStartScheduler();
 

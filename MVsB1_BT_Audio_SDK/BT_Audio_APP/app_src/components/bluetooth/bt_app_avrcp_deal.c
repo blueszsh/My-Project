@@ -181,6 +181,39 @@ void BtAvrcpPlayStatusChanged(BT_AVRCP_CALLBACK_PARAMS * param)
 	uint8_t index = GetBtManagerAvrcpIndex(param->index);
 	APP_DBG("Remote AVRCP Play State [%d],index = %d\n", param->params.avrcpAdv.avrcpAdvMediaStatus,param->index);
 
+    if(param->params.avrcpAdv.avrcpAdvMediaStatus==1)
+    {
+       T_bt_inf.play_state =_Music_play;
+      // BT_state = BT_A2DP_Start;
+      #ifdef CFG_DMA_RGB_LED_EN
+		mainAppCt.rgb_mode = RGB_Effect_Bt_Play;
+        mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
+      #endif
+      #if LEDS_mix_RGB_EN
+		    RGB_curr_effect = RGB_Effect_Bt_Play;
+	        Temp_RGB_curr_effect=RGB_curr_effect;
+      #endif
+
+	}
+	else  if(param->params.avrcpAdv.avrcpAdvMediaStatus==2)
+    {
+       T_bt_inf.play_state =_Music_puse;
+      // BT_state = BT_A2DP_Suspend;
+      if(btManager.btLinkState == 1)
+      {
+	      #ifdef CFG_DMA_RGB_LED_EN
+			mainAppCt.rgb_mode = RGB_Effect_Bt_Pause;
+	        mainAppCt.temp_rgb_mode = mainAppCt.rgb_mode;
+	      #endif
+	      #if LEDS_mix_RGB_EN
+			    RGB_curr_effect = RGB_Effect_Bt_Pause;
+		        Temp_RGB_curr_effect=RGB_curr_effect;
+	      #endif
+      }
+	}
+
+	PA_contral();
+
 	if(GetSystemMode() != ModeBtAudioPlay)
 		return;
 

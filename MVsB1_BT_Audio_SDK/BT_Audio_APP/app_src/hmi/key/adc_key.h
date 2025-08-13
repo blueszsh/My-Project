@@ -37,6 +37,7 @@ extern "C" {
 #define ADC_120V    120*4096/330
 #define ADC_130V    130*4096/330
 #define ADC_140V    140*4096/330
+#define ADC_148V    148*4096/330// zsh A2
 #define ADC_150V    150*4096/330
 #define ADC_160V    160*4096/330
 #define ADC_165V    165*4096/330
@@ -58,6 +59,7 @@ extern "C" {
 
 #define ADC_300V    300*4096/330
 #define ADC_310V    310*4096/330
+#define ADC_316V    316*4096/330 // zsh A2
 #define ADC_320V    320*4096/330
 #define ADC_330V    330*4096/330
 #define ADC_340V    340*4096/330

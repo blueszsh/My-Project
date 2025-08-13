@@ -414,6 +414,10 @@ bool UsbDevicePlayInit(void)
 			HardWareMuteOrUnMute();
 		}
 	}
+  Save_task_state(Task_pc);
+  T_pc_inf.play_state  =_Music_play;
+  PA_contral();
+  Machine_state=Machine_run;//zsh A2
 
 	return TRUE;
 }
@@ -497,6 +501,9 @@ bool UsbDevicePlayDeinit(void)
 	{
 		return TRUE;
 	}
+
+  T_pc_inf.play_state  =_Music_stop;
+  PA_contral();
 	
 	if(IsAudioPlayerMute() == FALSE)
 	{

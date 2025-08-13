@@ -1,0 +1,37 @@
+---- CHARGE_EN 匹配 (9 in 6 文件) ----
+Idle_mode.c (f:\my-project\...\app_mode_idle):288
+	   #if CHARGE_EN && fun_idle_en
+	   if(Idle_sw.idle_mode == on_line)
+	   {
+Idle_mode.c (f:\my-project\...\app_mode_idle):664
+				#if fun_idle_en && CHARGE_EN
+				  if(Idle_sw.idle_mode == on_line)//插充电开机,停留在IDLE
+				  {
+Main.c (f:\my-project\...\app_src):653
+   #if CHARGE_EN
+    if(IsInCharge())
+    {
+Main.c (f:\my-project\...\app_src):700
+		#elif fun_idle_en && CHARGE_EN //开待机模式
+        //  if(Idle_sw.idle_mode == off_line)
+          {
+Main_task.c (f:\my-project\...\app_src):1026
+#if fun_idle_en && CHARGE_EN
+      if(Idle_sw.idle_mode == on_line)
+      {
+Sys_gpio.h (f:\my-project\...\system_config):117
+     #if CHARGE_EN
+	  #define	CFG_FUNC_OPTION_CHARGER_DETECT 	 //打开该宏定义，支持GPIO检测充电设备插入功能
+     #endif
+Zx.c (f:\my-project\...\system_config):832
+	  #if CHARGE_EN
+           Charge_IO_INIT();
+	  #endif
+Zx.c (f:\my-project\...\system_config):2175
+		 #elif fun_idle_en && CHARGE_EN //开待机模式
+		 /*
+		    开机: 1.通常按键开机; 2.插充电进待机后再按键正式开机
+Zx_top2.h (f:\my-project\...\system_config):572
+#define CHARGE_EN                      1
+#define Charge_det_pin               Port_B6
+//#define Charge_in_status               1 //充电插入状态

@@ -29,6 +29,26 @@
 
 #define SoftFlagMask			0xFFFFFFFF
 
+
+#ifdef CFG_DMA_RGB_LED_EN
+
+typedef struct{
+	uint8_t rgb_pwm_cnt;
+	uint8_t buf[32];//
+#ifdef CFG_MORE_GPIO_RGB_CTRL_EN
+	uint8_t buf1[32];
+#endif
+//	int8_t buf_bak[RGB_LED_NUM];
+}RGB_ST;
+
+extern RGB_ST RGB_R;
+extern RGB_ST RGB_G;
+extern RGB_ST RGB_B;
+#endif
+
+
+
+
 #ifdef CFG_RES_IR_NUMBERKEY
 extern bool Number_select_flag;
 extern uint16_t Number_value;
@@ -146,6 +166,33 @@ typedef struct _MainAppContext
 	uint8_t  	hdmiArcOnFlg;
 	uint8_t     hdmiSourceMuteFlg;
 	uint8_t     hdmiResetFlg;
+#endif
+#ifdef CFG_DMA_RGB_LED_EN 
+	uint8_t             rgb_mode;
+    uint8_t             temp_rgb_mode;
+	uint8_t             r_duty;
+	uint8_t             g_duty;
+	uint8_t             b_duty;
+	uint8_t             rgb_step;
+	uint8_t             r_duty_add;
+	uint8_t             g_duty_add;
+	uint8_t             b_duty_add;
+	uint8_t             rgb_duty_add;
+
+    uint8_t             rgb_colours_flag;
+	
+#ifdef CFG_MORE_GPIO_RGB_CTRL_EN
+	uint8_t				rgb_mode1;
+	uint8_t             r_duty1;
+	uint8_t             g_duty1;
+	uint8_t             b_duty1;
+	uint8_t             rgb_step1;
+
+	uint8_t             r_duty_add1;
+	uint8_t             g_duty_add1;
+	uint8_t             b_duty_add1;
+	uint8_t             rgb_duty_add1;
+#endif
 #endif
 
 	bool        tws_device_init_flag;
