@@ -15,6 +15,8 @@ app_framework/audio_engine/remind_sound.d app_framework/audio_engine/remind_soun
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/gpio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/rtos_api/rtos_api.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/freertos/inc/FreeRTOS.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/freertos/inc/projdefs.h \
@@ -221,6 +223,10 @@ app_framework/audio_engine/remind_sound.d app_framework/audio_engine/remind_soun
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/rtos_api/rtos_api.h:
 

@@ -15,6 +15,8 @@ app_src/components/flash_manage/sys_param.d app_src/components/flash_manage/sys_
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/gpio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth/inc/bt_a2dp_api.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth/inc/bt_avrcp_api.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth/inc/bt_hfp_api.h \
@@ -50,6 +52,10 @@ app_src/components/flash_manage/sys_param.d app_src/components/flash_manage/sys_
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth/inc/bt_a2dp_api.h:
 

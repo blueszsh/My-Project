@@ -15,6 +15,8 @@ app_src/hmi/display/display.d app_src/hmi/display/display.o: \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/gpio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h \
  ../app_src/hmi/display/display.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timeout.h \
@@ -204,6 +206,10 @@ app_src/hmi/display/display.d app_src/hmi/display/display.o: \
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h:
 

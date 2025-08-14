@@ -683,7 +683,9 @@ void Io_init()
    #if CHAGER_DCDC_CTRL_EN
 	 CHAGER_DCDC_EN_init();
    #endif
-
+   #if USB5V_DCDC_CTRL_EN
+	 USB5V_DCDC_EN_init();
+   #endif
       #if RGB_DCDC_CTRL_EN
 	 RGB_DCDC_EN_init();
    #endif
@@ -2383,7 +2385,8 @@ u16 Key_msg_ulteriorly_dispose(u8 lv_type,u8 ZX_key_msg)
 	}
 	#endif
 
-	if (ZX_key_msg == _Key_fun1_TWS){
+	if (ZX_key_msg == _Key_fun1_TWS&&GetSystemMode()==ModeBtAudioPlay){
+			
 		if (Tws_state)
 		{
 			main_msg_send(MSG_BT_TWS_DISCONNECT);
@@ -2947,11 +2950,11 @@ void PA_processing_event()
     if(Global_playing_flag==1||Global_rec_playing_flag==_Rec_dealing||Global_rec_playing_flag==_Rec_playback)
     {
         Global_PA_work = PA_on;
-        DBG("PA_contral()PA_on  Global_playing_flag==1\n");
+     //   DBG("PA_contral()PA_on  Global_playing_flag==1\n");
     }
     else
     {
-        DBG("PA_contral()PA_off  Global_playing_flag==0\n");
+    //    DBG("PA_contral()PA_off  Global_playing_flag==0\n");
         Global_PA_work = PA_off;
     }
 /*
@@ -2991,13 +2994,13 @@ void PA_processing_event()
 	if(phone_state==1)
 	{
 		Global_PA_work = PA_on;
-		DBG("PA_contral()PA_on  hone_state==1\n");
+		//DBG("PA_contral()PA_on  hone_state==1\n");
 	}
 
     if(Tone_play_state==1)
     {
         Global_PA_work = PA_on;
-         DBG("PA_contral()PA_on  Tone_play_state==1\n");
+        // DBG("PA_contral()PA_on  Tone_play_state==1\n");
     }
     /*
     if(VOl_didi_continuous==1)
@@ -3017,14 +3020,15 @@ void PA_processing_event()
     {
         Global_PA_work = PA_off;
     }*/
-    
+    #if Built_in_echo_EN
+
     
     if(KTV_MIC_state)
     {
         Global_PA_work = PA_on;
-       DBG("PA_contral()PA_on  KTV_MIC_state\n");
+      // DBG("PA_contral()PA_on  KTV_MIC_state\n");
     }
-	
+	#endif
     #if 0//Built_in_echo_EN == 0
         Global_PA_work = PA_on;//做音箱常开
 	#endif
@@ -4065,8 +4069,12 @@ void power_down_zx()
 	DelayMs(10);
 
    // MUTE_ON();
-	#if 0//CHAGER_DCDC_CTRL_EN
+	#if CHAGER_DCDC_CTRL_EN
 	CHAGER_DCDC_DIS();
+	#endif
+
+    #if USB5V_DCDC_CTRL_EN
+	USB5V_DCDC_DIS();
 	#endif
     #if RGB_DCDC_CTRL_EN
 	RGB_DCDC_DIS();

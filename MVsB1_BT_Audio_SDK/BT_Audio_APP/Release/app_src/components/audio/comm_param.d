@@ -79,6 +79,8 @@ app_src/components/audio/comm_param.d app_src/components/audio/comm_param.o: \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/gpio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/audio/audio_effect_class.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/audio/audio_effect_user_config.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/audio/inc/audio_effect_library.h \
@@ -308,6 +310,10 @@ app_src/components/audio/comm_param.d app_src/components/audio/comm_param.o: \
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/audio/audio_effect_class.h:
 

@@ -21,6 +21,8 @@ driver/driver_api/src/spdif_interface.d driver/driver_api/src/spdif_interface.o:
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth/inc/bt_tws_api.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/system_config/sys_gpio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/mode_engine/mode_task.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/rtos_api/rtos_api.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/freertos/inc/FreeRTOS.h \
@@ -94,6 +96,10 @@ driver/driver_api/src/spdif_interface.d driver/driver_api/src/spdif_interface.o:
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/system_config/sys_gpio.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/mode_engine/mode_task.h:
 

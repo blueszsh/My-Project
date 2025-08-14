@@ -46,9 +46,9 @@
 //0x198000  //提示音烧录地址           不要超过0x1F0000
 
 #define fun_bt_en                       1
-#define fun_udisk_en                    0
-#define fun_sd_en                       0
-#define fun_linein_en                  	0
+#define fun_udisk_en                    1
+#define fun_sd_en                       1
+#define fun_linein_en                  	1
 #define fun_fm_en                       0
 #define fun_pc_en                       0
 #define fun_OPTICAL_en                  0  //光纤
@@ -287,11 +287,21 @@
 
 //--------------------------[电源升压控制]
 // 电源升压控制
-#define  CHAGER_DCDC_CTRL_EN                         0
-#define  CHAGER_DCDC_EN_PIN				       Port_B4	
+#define  CHAGER_DCDC_CTRL_EN                         1
+#define  CHAGER_DCDC_EN_PIN				       Port_A5	
 #define  CHAGER_DCDC_EN_init()            	IO_contral_init(CHAGER_DCDC_EN_PIN,0,0,0,1);
 #define  CHAGER_DCDC_EN()            		IO_contral_init(CHAGER_DCDC_EN_PIN,0,0,0,1);
 #define  CHAGER_DCDC_DIS()            		IO_contral_init(CHAGER_DCDC_EN_PIN,0,0,0,0);
+
+//--------------------------[USB 5V 升压控制]
+// USB 5V升压控制
+#define  USB5V_DCDC_CTRL_EN                         1
+#define  USB5V_DCDC_EN_PIN				       Port_B6	
+#define  USB5V_DCDC_EN_init()            	IO_contral_init(USB5V_DCDC_EN_PIN,0,0,0,1);
+#define  USB5V_DCDC_EN()            		IO_contral_init(USB5V_DCDC_EN_PIN,0,0,0,1);
+#define  USB5V_DCDC_DIS()            		IO_contral_init(USB5V_DCDC_EN_PIN,0,0,0,0);
+
+
 
 //--------------------------[RGB电源控制]
 // RGB电源控制
@@ -369,8 +379,8 @@
 #endif
 
 #define Phone_function                  1       //通话功能使能   ENABLE , DISABLE
-#define Phone_MIC_NUM                	0 //由音效文件选择       	//通话麦 0=NO MIC, 1= MIC1, 2= MIC2, 3 = MCI1+MIC2
-#define Z__TonePhoneNumber              0                   //来电报号使能
+#define Phone_MIC_NUM                	0       //由音效文件选择       	//通话麦 0=NO MIC, 1= MIC1, 2= MIC2, 3 = MCI1+MIC2
+#define Z__TonePhoneNumber              0       //来电报号使能
 
 //通话相关配置在  BT_HFP_AEC_ENABLE
 
@@ -437,7 +447,7 @@
 #define PA1_EN              1               //功放1使能
 #define PA1_type            PA_type_1_1     //功放1控制方案
 
-#define PA1_mute_pin        Port_A5         //功放1 MUTE脚 //Port_B3
+#define PA1_mute_pin        Port_A22         //功放1 MUTE脚 //Port_B3
 
 
 
@@ -570,7 +580,7 @@
 
 //充电检测
 #define CHARGE_EN                      1
-#define Charge_det_pin               Port_B6
+#define Charge_det_pin                  Port_A9
 //#define Charge_in_status               1 //充电插入状态
 #define Charge_IO_INIT()        IO_contral_init(Charge_det_pin,1,0,0,0)
 /*
@@ -581,8 +591,8 @@
 
 
 //满电检测PIN  (检测充电IC PIN)
-#define  Full_Voltage_Pin_EN           0
-#define  Full_voltage_det_pin           Port_A1
+#define  Full_Voltage_Pin_EN          1
+#define  Full_voltage_det_pin           Port_A8
 #define  Full_voltage_pin_init()        IO_contral_init(Full_voltage_det_pin,1,1,0,0) 
 #define  Full_voltage_status            1 //充满状态 (充电IC给的状态)
 #define  Get_Full_voltage_status()     IO_in_check(Full_voltage_det_pin)
@@ -750,8 +760,8 @@ _Key_fun1_RGB_next2,  下一个,不包含关闭
 #define Z_pwoerkey_11_EN               0           //开启后powerkey支持11个按键 前提不能开启内部mos
 
 
-#define Z_ADkey_1_EN                    0          //按键ADKEY1识别 使能
-#define Pin_ADK1                        Port_A23                     
+#define Z_ADkey_1_EN                    1          //按键ADKEY1识别 使能
+#define Pin_ADK1                        Port_A31                     
 
 #define Z_ADkey_2_EN                    0           //按键ADKEY2识别 使能
 #define Pin_ADK2                        Port_A24
@@ -1072,8 +1082,8 @@ _Key_fun1_KT0641_next,    循环切换下一个频率
 
 //***************************************************************************** 【内置混响】
 //一般K歌唛初始化音效用HunXiang.c, 纯蓝牙音箱初始化音效用 Music.c
-#define Built_in_echo_EN                1 // 1: 混响使能(应用K歌宝,K歌音箱) 0: 关闭混响(应用纯蓝牙音箱)
-#define Built_in_MIC_NUM                3 // 1      //混响mic选择       0=NO MIC, 1= MIC1, 2= MIC2, 3 = MCI1+MIC2
+#define Built_in_echo_EN                0 // 1: 混响使能(应用K歌宝,K歌音箱) 0: 关闭混响(应用纯蓝牙音箱)
+#define Built_in_MIC_NUM                1 // 1      //混响mic选择       0=NO MIC, 1= MIC1, 2= MIC2, 3 = MCI1+MIC2
 
 // Built_in_echo_EN 打开 初始化音效会用HunXiang.c
 // Built_in_echo_EN 关闭 初始化音效会用 Music.c
@@ -1500,31 +1510,8 @@ _Key_fun1_KT0641_next,    循环切换下一个频率
         		          {_Key_long_5s ,}, \
         		          {_Key_long_6s ,}, \
         		          {_Key_hold___ ,}},\
-	    },\
-	    {\
-            PowK1_Res__16,{{_Key_click__ ,},\
-                          {_Key_double_ ,}, \
-                          {_Key_CLICK3_ ,}, \
-        		          {_Key_long_1s ,_Key_fun2_TWS_bt_dis}, \
-        		          {_Key_long_2s ,}, \
-        		          {_Key_long_3s ,}, \
-        		          {_Key_long_4s ,}, \
-        		          {_Key_long_5s ,_Key_fun1_TWS}, \
-        		          {_Key_long_6s ,}, \
-        		          {_Key_hold___ ,}},\
-	    },\
-         {\
-            PowK1_Res__82,{{_Key_click__ ,_Key_fun1_volume_down},\
-                          {_Key_double_ ,}, \
-                          {_Key_CLICK3_ ,}, \
-        		          {_Key_long_1s ,_Key_fun1_prev}, \
-        		          {_Key_long_2s ,}, \
-        		          {_Key_long_3s ,}, \
-        		          {_Key_long_4s ,}, \
-        		          {_Key_long_5s ,}, \
-        		          {_Key_long_6s ,}, \
-        		          {_Key_hold___ ,}},\
 	    },
+
 
 #endif
 
@@ -1533,43 +1520,41 @@ _Key_fun1_KT0641_next,    循环切换下一个频率
 
 #if Z_ADkey_1_EN
 #define Z__ADK1 \
-         {\
-            ADK1_Res___0,{{_Key_click__ ,_Key_fun1_clean_voice},\
-                          {_Key_double_ ,}, \
-                          {_Key_CLICK3_ ,}, \
-        		          {_Key_long_1s ,_Key_fun1_powerdown}, \
-        		          {_Key_hold___ ,}},\
-	    },\
 	    {\
-            ADK1_Res_8_2,{{_Key_click__ ,_Key_fun1_pp},\
-                          {_Key_double_ ,}, \
+            ADK1_Res__12,{{_Key_click__ , _Key_fun1_mode },\
+                          {_Key_double_ ,_Key_fun1_mode}, \
                           {_Key_CLICK3_ ,}, \
-        		          {_Key_long_1s ,_Key_fun1_mode}, \
+        		          {_Key_long_1s ,}, \
         		          {_Key_hold___ ,}},\
-	    },\
-	    {\
-            ADK1_Res__12,{{_Key_click__ ,_Key_fun1_prev},\
-                          {_Key_double_ ,}, \
-                          {_Key_CLICK3_ ,}, \
-        		          {_Key_long_1s ,_Key_fun1_volume_down}, \
-        		          {_Key_hold___ ,_Key_fun1_volume_down}},\
 	    },\
         {\
-            ADK1_Res__18,{{_Key_click__ ,_Key_fun1_next},\
+            ADK1_Res__18,{{_Key_click__ ,_Key_fun1_TWS },\
                           {_Key_double_ ,}, \
                           {_Key_CLICK3_ ,}, \
         		          {_Key_long_1s ,}, \
-        		          {_Key_hold___ ,_Key_fun1_volume_up}},\
+        		          {_Key_hold___ ,}},\
 	    },\
 	     {\
-            ADK1_Res__27,{{_Key_click__ ,_Key_fun1_DMA_RGB_MODE_effect_SW},\
+            ADK1_Res__27,{{_Key_click__ ,_Key_fun1_volume_up },\
+                          {_Key_double_ ,_Key_fun1_volume_up}, \
+                          {_Key_CLICK3_ ,_Key_fun1_volume_up}, \
+        		          {_Key_long_1s ,_Key_fun1_next }, \
+        		          {_Key_hold___ ,}},\
+	    },\
+  	    {\
+            ADK1_Res__39,{{_Key_click__ ,_Key_fun1_volume_down },\
+                          {_Key_double_ ,_Key_fun1_volume_down}, \
+                          {_Key_CLICK3_ ,_Key_fun1_volume_down}, \
+        		          {_Key_long_1s ,_Key_fun1_prev }, \
+        		          {_Key_hold___ ,}},\
+	    },\
+  	    {\
+            ADK1_Res__58,{{_Key_click__ ,_Key_fun1_DMA_RGB_MODE_effect_SW },\
                           {_Key_double_ ,}, \
                           {_Key_CLICK3_ ,}, \
         		          {_Key_long_1s ,_Key_fun1_DMA_RGB_SW}, \
         		          {_Key_hold___ ,}},\
 	    },
-  
-
 #endif
 
 		

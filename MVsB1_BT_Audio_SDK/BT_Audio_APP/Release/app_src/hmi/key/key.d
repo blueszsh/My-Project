@@ -15,6 +15,8 @@ app_src/hmi/key/key.d app_src/hmi/key/key.o: ../app_src/hmi/key/key.c \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/gpio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h \
+ /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode__common/app_message.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/mv_utils/inc/debug.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/mv_utils/inc/type.h \
@@ -155,13 +157,7 @@ app_src/hmi/key/key.d app_src/hmi/key/key.o: ../app_src/hmi/key/key.c \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/audio/inc/resampler.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/system_config/bt_config.h \
  /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timeout.h \
- /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/audio_engine/beep.h \
- /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/mode_engine/mode_task.h \
- /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/main_task.h \
- /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashboot/flash_boot.h \
- /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/flash_manage/flash_table.h \
- ../app_src/hmi/key/adc_key.h \
- /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_idle/idle_mode.h
+ ../app_src/hmi/key/adc_key.h
 
 ../app_src/hmi/key/adc_levels.h:
 
@@ -194,6 +190,10 @@ app_src/hmi/key/key.d app_src/hmi/key/key.o: ../app_src/hmi/key/key.c \
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timer.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/i2c_host.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/sd_card.h:
+
+/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/sdio.h:
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode__common/app_message.h:
 
@@ -477,16 +477,4 @@ app_src/hmi/key/key.d app_src/hmi/key/key.o: ../app_src/hmi/key/key.c \
 
 /cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc/timeout.h:
 
-/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/audio_engine/beep.h:
-
-/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/mode_engine/mode_task.h:
-
-/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/main_task.h:
-
-/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashboot/flash_boot.h:
-
-/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/flash_manage/flash_table.h:
-
 ../app_src/hmi/key/adc_key.h:
-
-/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_idle/idle_mode.h:

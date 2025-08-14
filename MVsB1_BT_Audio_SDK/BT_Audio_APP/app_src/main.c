@@ -293,11 +293,11 @@ void SystemClockInit(void)
 
 	if (Clock_CoreClockFreqGet() > 320*1000000)
 	{
-		Clock_ApbClkDivSet(6);
+		Clock_ApbClkDivSet(2);
 	}
 	else
 	{
-		Clock_ApbClkDivSet(5);
+		Clock_ApbClkDivSet(2);
 	}
 }
 

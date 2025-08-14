@@ -1,4 +1,4 @@
-19:40:52 **** Incremental Build of configuration Release for project BT_Audio_APP ****
+18:48:22 **** Incremental Build of configuration Release for project BT_Audio_APP ****
 make pre-build main-build 
 ..\tools\script.bat
 
@@ -125,7 +125,7 @@ F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\mp2>ren *.mp2 *.
 F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\mp2>cd .. 
 
 F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>tools\remind_script\MergeAudio2BinNew.exe -a 0x0 -i ..\..\mp2 
-Wed Aug 13 19:40:56 2025
+Thu Aug 14 18:48:25 2025
 MergeAudio2Bin Tools version v4.1 for MVS SDK SoundRemind
 current path: F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP\tools\remind_script
 inputdir=..\..\mp2
@@ -236,88 +236,4 @@ FC: 找不到差异
 
 F:\My-Project\MVsB1_BT_Audio_SDK\BT_Audio_APP>if 0 == 1 (copy tools\sys_parameter_script\sys_parameter.h app_src\components\flash_manage\sys_param_typedef.h ) 
  
-正在构建文件： ../app_src/hmi/detect/device_detect.c
-正在调用： Andes C Compiler
-nds32le-elf-gcc -DFUNC_OS_EN=1 -DCFG_APP_CONFIG -DHAVE_CONFIG_H -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/cec/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_hdmi" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/audio" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/soft_watchdog" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_spdif" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/slow_device_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode__common" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_bt" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_i2s" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_idle" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_linein" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_media" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_radio" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/app_mode_usb_audio" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/bluetooth" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/ble" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/flash_manage" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/rtc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/components/upgrade" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/detect" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/display" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/fm" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/hmi/key" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/system_config" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashboot" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/mode_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/bluetooth_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_framework/audio_engine" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver_api/inc/otg" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/app_src/power" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtc/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/fatfs/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/audio/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/mv_utils/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/lrc/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/rtos_api" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtos/freertos/inc" -I"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashfs/inc" -Os1 -mcmodel=medium -g3 -Wall -mcpu=d1088-spu -c -fmessage-length=0 -ldsp -mext-dsp -std=gnu99 -ffunction-sections -fdata-sections -MMD -MP -MF"app_src/hmi/detect/device_detect.d" -MT"app_src/hmi/detect/device_detect.d app_src/hmi/detect/device_detect.o" -o "app_src/hmi/detect/device_detect.o" "../app_src/hmi/detect/device_detect.c"
-../app_src/hmi/detect/device_detect.c: In function 'DeviceDetect':
-../app_src/hmi/detect/device_detect.c:469:1: warning: label 'DetectCardExit' defined but not used [-Wunused-label]
- DetectCardExit:
- ^
-../app_src/hmi/detect/device_detect.c: In function 'DevicePlugEventCheck':
-../app_src/hmi/detect/device_detect.c:588:11: warning: variable 'Plug' set but not used [-Wunused-but-set-variable]
-  uint32_t Plug;
-           ^
-../app_src/hmi/detect/device_detect.c: In function 'DeviceServicePocess':
-../app_src/hmi/detect/device_detect.c:717:7: warning: unused variable 'is_need_send_to_master' [-Wunused-variable]
-  bool is_need_send_to_master;
-       ^
-../app_src/hmi/detect/device_detect.c: In function 'IsMediaPlugOut':
-../app_src/hmi/detect/device_detect.c:1018:11: warning: unused variable 'detect_time_timer' [-Wunused-variable]
-  uint32_t detect_time_timer = 300;
-           ^
-../app_src/hmi/detect/device_detect.c: At top level:
-../app_src/hmi/detect/device_detect.c:111:17: warning: 'ReadCardDetectPin' defined but not used [-Wunused-function]
- static uint32_t ReadCardDetectPin(void)
-                 ^
-已结束构建： ../app_src/hmi/detect/device_detect.c
- 
-正在构建目标： BT_Audio_APP.adx
-正在调用： Andes C Linker
-nds32le-elf-gcc -Os1 -nostartfiles -static -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/bluetooth" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/cec" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/driver/driver" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/audio" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/rtc" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/flashfs" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/lrc" -L"/cygdrive/F/My-Project/MVsB1_BT_Audio_SDK/BT_Audio_APP/middleware/fatfs" -mcmodel=medium -ldsp -mext-dsp -T"../BP10_8Mbit.ld" -Wl,--gc-sections -mvh -o "BT_Audio_APP.adx"  ./app_framework/audio_engine/audio_core_adapt.o ./app_framework/audio_engine/audio_core_api.o ./app_framework/audio_engine/audio_core_service.o ./app_framework/audio_engine/audio_effect_api.o ./app_framework/audio_engine/beep.o ./app_framework/audio_engine/communication.o ./app_framework/audio_engine/decoder.o ./app_framework/audio_engine/recorder_service.o ./app_framework/audio_engine/remind_sound.o  ./app_framework/bluetooth_engine/bt_engine_audio.o ./app_framework/bluetooth_engine/bt_engine_utility.o ./app_framework/bluetooth_engine/bt_stack_service.o  ./app_framework/mode_engine/mode_task.o  ./app_framework/slow_device_engine/slow_device_task.o  ./app_src/app_mode__common/BT_BQB_Test.o ./app_src/app_mode__common/i2s_mix_mode_set.o ./app_src/app_mode__common/mode_task_api.o ./app_src/app_mode__common/spdif_out_api.o  ./app_src/app_mode_bt/bt_hf_api.o ./app_src/app_mode_bt/bt_hf_mode.o ./app_src/app_mode_bt/bt_play_api.o ./app_src/app_mode_bt/bt_play_mode.o ./app_src/app_mode_bt/tws_mode.o  ./app_src/app_mode_hdmi/hdmi_in_mode.o  ./app_src/app_mode_i2s/i2sin_mode.o  ./app_src/app_mode_idle/idle_mode.o  ./app_src/app_mode_linein/line_api.o ./app_src/app_mode_linein/linein_mode.o  ./app_src/app_mode_media/browser_parallel.o ./app_src/app_mode_media/browser_tree.o ./app_src/app_mode_media/media_play_api.o ./app_src/app_mode_media/media_play_mode.o  ./app_src/app_mode_radio/radio_mode.o  ./app_src/app_mode_spdif/spdif_api.o ./app_src/app_mode_spdif/spdif_mode.o  ./app_src/app_mode_usb_audio/otg_device_audio.o ./app_src/app_mode_usb_audio/usb_audio_mode.o  ./app_src/components/audio/audio_effect.o ./app_src/components/audio/audio_effect_class.o ./app_src/components/audio/audio_effect_flash_param.o ./app_src/components/audio/audio_effect_param.o ./app_src/components/audio/audio_effect_process.o ./app_src/components/audio/audio_effect_user.o ./app_src/components/audio/audio_vol.o ./app_src/components/audio/comm_param.o ./app_src/components/audio/ctrlvars.o ./app_src/components/audio/eq_drc_params.o ./app_src/components/audio/eq_params.o  ./app_src/components/audio/music_parameter/AECParam_HFP.o ./app_src/components/audio/music_parameter/CommParam.o  ./app_src/components/ble/ble_app_func.o  ./app_src/components/bluetooth/bt_app_a2dp_deal.o ./app_src/components/bluetooth/bt_app_avrcp_deal.o ./app_src/components/bluetooth/bt_app_common.o ./app_src/components/bluetooth/bt_app_connect.o ./app_src/components/bluetooth/bt_app_ddb_info.o ./app_src/components/bluetooth/bt_app_hfp_deal.o ./app_src/components/bluetooth/bt_app_init.o ./app_src/components/bluetooth/bt_app_sniff.o ./app_src/components/bluetooth/bt_app_spp.o ./app_src/components/bluetooth/bt_app_tws.o ./app_src/components/bluetooth/bt_app_tws_connect.o ./app_src/components/bluetooth/bt_boot_api.o ./app_src/components/bluetooth/bt_em_config.o  ./app_src/components/dump/dump_uart.o  ./app_src/components/flash_manage/breakpoint.o ./app_src/components/flash_manage/flash_table.o ./app_src/components/flash_manage/pc_online_param.o ./app_src/components/flash_manage/sys_param.o  ./app_src/components/rtc/rtc_ctrl.o  ./app_src/components/soft_watchdog/soft_watch_dog.o  ./app_src/components/upgrade/upgrade.o  ./app_src/hmi/detect/device_detect.o ./app_src/hmi/detect/misc.o  ./app_src/hmi/display/display.o ./app_src/hmi/display/display_task.o ./app_src/hmi/display/seg_led_disp.o ./app_src/hmi/display/seg_panel.o  ./app_src/hmi/fm/QN8035.o ./app_src/hmi/fm/RDA5807.o  ./app_src/hmi/key/adc_key.o ./app_src/hmi/key/adc_levels.o ./app_src/hmi/key/code_key.o ./app_src/hmi/key/io_key.o ./app_src/hmi/key/ir_key.o ./app_src/hmi/key/ir_nec_key.o ./app_src/hmi/key/key.o  ./app_src/main.o ./app_src/main_task.o  ./app_src/power/deepsleep.o ./app_src/power/power_monitor.o ./app_src/power/soft_power.o  ./app_src/startup/crt0.o ./app_src/startup/init-default.o ./app_src/startup/interrupt.o ./app_src/startup/retarget.o  ./app_src/system_config/Dma_Led.o ./app_src/system_config/iic.o ./app_src/system_config/qn8027.o ./app_src/system_config/zx.o  ./driver/driver_api/src/adc_interface.o ./driver/driver_api/src/backup_interface.o ./driver/driver_api/src/dac_interface.o ./driver/driver_api/src/fft_api.o ./driver/driver_api/src/flash_interface.o ./driver/driver_api/src/i2c_host.o ./driver/driver_api/src/i2c_interface.o ./driver/driver_api/src/i2s_interface.o ./driver/driver_api/src/ppwm_interface.o ./driver/driver_api/src/sadc_interface.o ./driver/driver_api/src/spdif_interface.o ./driver/driver_api/src/spim_interface.o ./driver/driver_api/src/sw_uart.o ./driver/driver_api/src/uarts_interface.o  ./driver/driver_api/src/otg/device/otg_device_standard_request.o ./driver/driver_api/src/otg/device/otg_device_stor.o  ./middleware/audio/src/audio_decoder_api.o ./middleware/audio/src/bits.o ./middleware/audio/src/libmp2dec.o ./middleware/audio/src/mvstdio.o  ./middleware/bluetooth/src/ble_app_callback.o ./middleware/bluetooth/src/bt_mid_a2dp.o ./middleware/bluetooth/src/bt_mid_avrcp.o ./middleware/bluetooth/src/bt_mid_hfp.o ./middleware/bluetooth/src/bt_mid_interface.o ./middleware/bluetooth/src/bt_mid_manager.o ./middleware/bluetooth/src/bt_mid_tws.o  ./middleware/cec/src/hdmi_in_api.o  ./middleware/fatfs/src/ffpresearch.o  ./middleware/flashboot/flash_boot.o  ./middleware/flashfs/src/FlashFS_Intf.o  ./middleware/mv_utils/src/debug.o ./middleware/mv_utils/src/mcu_circular_buf.o ./middleware/mv_utils/src/shell.o ./middleware/mv_utils/src/string_convert.o  ./middleware/rtos/rtos_api/rtos_api.o  ./test/auto_test.o   -lDriver -ltws -lcec -lsra -lsbcenc -lVocalCut -lmp3enc -lAudioEffectLibrary -lresampler -lAudioDecoderLibrary -lBtStack -lFlashFS -lLrc -lfatfs -lRTC -lcvsd_plc -lBlueAEC -ldsp -lm
-已结束构建目标： BT_Audio_APP.adx
- 
-/usr/bin/make --no-print-directory post-build
-nds32le-elf-objcopy -O binary "BT_Audio_APP.adx" output/BT_Audio_APP.bin ; ../tools/script_post.bat
-	//#define CFG_EFFECT_PARAM_IN_FLASH_EN
-不需要注释
-ok
-提示音大小= 0x38000
-['main', 'table', 'bp_data', 'bt_data', 'remind', 'sys_parameter']
-new_section== ['bp_data']
-new_section2== ['bp_data']
-new_section== ['bp_data', 'bt_data']
-new_section2== ['bp_data', 'bt_data']
-new_section1== ['remind']
-new_section2== ['bp_data', 'bt_data', 'remind']
-new_section1== ['remind', 'sys_parameter']
-new_section2== ['bp_data', 'bt_data', 'remind', 'sys_parameter']
-123== [8192, 8192, 229376, 4096]
-total： 0x3d000
-offset: 0x1c0000
-333== 4
-create 4k tables success
-n== 2
-[8192, 8192, 229376, 4096]
-total: 0x39000
-des: 0x1c4000
-The ini is: MV_SDKConfig.ini
-flash_capacity = 0x800
- ----------Chip_type=BP10_8M
-section包含： ['fileset', 'chipinfo', 'code', 'data']
-crc_len = boot_len
-actual_boot_lenth = 64416
-ok
-不重叠
-当前运行时间： 0.49485039710998535
------------------This_is_the_Script_make_end---------------
-
-运行时间： 1.1337130069732666
- 
-正在调用： NM (symbol listing)
-nds32le-elf-nm -n -l -C "BT_Audio_APP.adx" > output/symbol.txt
-已结束构建： output/symbol.txt
- 
-正在调用： Readelf (ELF info listing)
-nds32le-elf-readelf -a "BT_Audio_APP.adx" > output/readelf.txt
-已结束构建： output/readelf.txt
- 
-正在调用： Objdump (disassembly)
-nds32le-elf-objdump -x -d -C "BT_Audio_APP.adx" > output/objdump.txt
-已结束构建： output/objdump.txt
- 
-正在调用： Size (section size listing)
-nds32le-elf-size  "BT_Audio_APP.adx" | tee output/.PHONY.size
-   text (code + rodata)	   data	    bss	    dec	    hex	filename
- 865636 (568132 + 297504)	   1856	  82028	 949520	  e7d10	BT_Audio_APP.adx
-已结束构建： output/.PHONY.size
- 
+make: Nothing to be done for 'main-build'.

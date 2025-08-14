@@ -429,11 +429,11 @@ enum
     ADK1_Res_2_2,
     ADK1_Res_4_7,
     ADK1_Res_8_2,
-    ADK1_Res__12,
-    ADK1_Res__18,
-    ADK1_Res__27,
+    ADK1_Res__12,// 134
+    ADK1_Res__18,// 135
+    ADK1_Res__27,// 136
     ADK1_Res__39,
-    ADK1_Res__58,
+    ADK1_Res__58,// 138
     ADK1_Res_100,
     ADK1_Res_220,
     

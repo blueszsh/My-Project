@@ -119,12 +119,12 @@
      #endif
 	  #ifdef CFG_FUNC_OPTION_CHARGER_DETECT
 			//≥‰µÁºÏ≤‚∂Àø⁄…Ë÷√
-			#define CHARGE_DETECT_PORT_PU			GPIO_B_PU
-			#define CHARGE_DETECT_PORT_PD			GPIO_B_PD
-			#define CHARGE_DETECT_PORT_IN			GPIO_B_IN
-			#define CHARGE_DETECT_PORT_IE			GPIO_B_IE
-			#define CHARGE_DETECT_PORT_OE			GPIO_B_OE
-			#define CHARGE_DETECT_GPIO				GPIOB6
+			#define CHARGE_DETECT_PORT_PU			GPIO_A_PU
+			#define CHARGE_DETECT_PORT_PD			GPIO_A_PD
+			#define CHARGE_DETECT_PORT_IN			GPIO_A_IN
+			#define CHARGE_DETECT_PORT_IE			GPIO_A_IE
+			#define CHARGE_DETECT_PORT_OE			GPIO_A_OE
+			#define CHARGE_DETECT_GPIO				GPIOA9
 	  #endif
 
   #if Pin_BAT_check!=Port_LDOIN
